@@ -1,0 +1,20 @@
+# данные, база с настройками и ключами, файлы, журналы
+var/
+*.sqlite
+*.sqlite-*
+*.log
+*.pid
+
+# окружение
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# локальное
+.env
+.env.*
+*.swp
+.DS_Store
