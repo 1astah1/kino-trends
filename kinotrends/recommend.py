@@ -7,7 +7,8 @@ import statistics
 from collections import Counter, defaultdict
 from datetime import datetime
 
-from .db import dumps, get_meta, loads, set_meta
+from . import rights
+from .db import dumps, get_meta, get_setting, loads, set_meta
 from .recognize import GENERIC_TAGS
 from .stats import FEATURE_RU, Filters, _base_rows, _median, films
 from .text import duration_bucket
@@ -156,7 +157,11 @@ def today(conn: sqlite3.Connection, f: Filters, limit: int = 10) -> dict:
             "hooks": (ins or {}).get("hooks", [])[:3] if ins else [],
         })
     items.sort(key=lambda x: (-x["opportunity"], -x["vpd_sum"]))
-    return {"items": items[:limit], "global_time": gtime, "period": f.period}
+    top = items[:limit]
+    lv = rights.levels(conn, [it["title_id"] for it in top])
+    for it in top:
+        it["rights"] = lv[it["title_id"]]
+    return {"items": top, "global_time": gtime, "period": f.period, "rights_policy": get_setting(conn, "rights_policy")}
 
 
 def digest_text(rec: dict, base_url: str = "") -> str:
@@ -164,6 +169,11 @@ def digest_text(rec: dict, base_url: str = "") -> str:
     lines = [f"🎬 <b>Что резать сегодня</b> (ролики за {rec['period']} дн.)"]
     for i, it in enumerate(items, 1):
         head = f"{i}. <b>{html.escape(it['label'])}</b>" + (f" ({it['year']})" if it["year"] else "") + f" · {it['kind_ru']} · балл {it['opportunity']}"
+        rl = (it.get("rights") or {}).get("level")
+        if rl == "caution":
+            head += " · ⚠ права: с оговорками"
+        elif rl == "block":
+            head += " · ✕ права: не проходит"
         lines.append(head)
         lines.append("   " + "; ".join(html.escape(w) for w in it["why"][:3]))
         p = it["plan"]
@@ -233,7 +243,15 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
     rec = next((it for it in today(conn, f, limit=400)["items"] if it["title_id"] == title_id), None)
     ins = get_insights(conn, title_id)
     sched = [dict(r) for r in conn.execute("SELECT id, day, slot, status FROM schedule WHERE title_id = ? ORDER BY day DESC LIMIT 5", (title_id,))]
+    rt = rights.evaluate(conn, title_id) or rights.levels(conn, [title_id])[title_id]
+    rights_ok = rights.allowed(rt["level"], get_setting(conn, "rights_policy"))
+    clip_min, clip_max = bucket_bounds.get(plan.get("duration") or "", (30, 60))
+    if rt.get("clip_max_s"):
+        clip_max = min(clip_max, rt["clip_max_s"])  # с заявкой Content ID шортс дольше 60 с блокируется
+        clip_min = min(clip_min, clip_max)
     return {
+        "rights": {"level": rt["level"], "level_ru": rt.get("level_ru"), "risk": rt.get("risk"), "reasons": rt.get("reasons", []), "rule": rt.get("rule"),
+                   "clip_max_s": rt.get("clip_max_s"), "holder": rt.get("holder"), "holder_policy": rt.get("holder_policy"), "passes": rights_ok},
         "title": d["title"], "stats": d["stats"], "why": rec["why"] if rec else [], "opportunity": rec["opportunity"] if rec else None,
         "plan": plan, "scenes": (ins or {}).get("scenes", []), "hooks": (ins or {}).get("hooks", []), "advice": (ins or {}).get("advice", []),
         "insights_at": (ins or {}).get("generated_at"), "top_channels": d["channels"][:5], "hashtags_all": d["hashtags"][:10],
@@ -251,6 +269,7 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
             "scenes": [{"name": sc["name"], "what_to_cut": sc["what_to_cut"], "quotes": sc.get("quotes", []), "where": sc.get("where", ""),
                         "reference_urls": [t["url"] for t in sc.get("top", [])]} for sc in (ins or {}).get("scenes", [])],
             "hooks": (ins or {}).get("hooks", []), "duration": plan.get("duration"), "hashtags": plan.get("hashtags"), "best_time": plan.get("best_time"),
+            "rights_level": rt["level"], "rights_ok": rights_ok, "clip_max_s": clip_max,
         },
         "cutter": {
             "source_url": main_src["url"] if main_src else None,
@@ -258,8 +277,11 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
             "direct_file_url": dl["file_url"] if dl and dl.get("file_url") else None,
             "alt_url": alt_src["url"] if alt_src else None,
             "hint": cutter_hint(ins, expl),
-            "clip_min_s": bucket_bounds.get(plan.get("duration") or "", (30, 60))[0],
-            "clip_max_s": bucket_bounds.get(plan.get("duration") or "", (30, 60))[1],
+            "clip_min_s": clip_min,
+            "clip_max_s": clip_max,
+            "rights_ok": rights_ok,
+            "rights_level": rt["level"],
+            "rights_note": "; ".join(rt.get("reasons", [])[:2]),
         },
     }
 

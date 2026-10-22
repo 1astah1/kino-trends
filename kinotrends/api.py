@@ -12,7 +12,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, files, neuro, notify, posters, recommend, schedule, sources, stats
+from . import db, files, neuro, notify, posters, recommend, rights, schedule, sources, stats
 from .collector import STATE, Collector
 from .llm import LLMError, llm_from_settings, usage_today
 from .config import DEFAULT_SETTINGS, THUMB_DIR, USER_AGENT, WEB_DIR
@@ -26,7 +26,7 @@ app = FastAPI(title="Kino Trends", docs_url="/api/docs", openapi_url="/api/opena
 REC = Recognizer()
 JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None}}
 SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token")
-TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url")
+TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy")
 _bg_lock = threading.Lock()
 _SCHED_STOP = threading.Event()
 
@@ -339,7 +339,11 @@ def api_films(period: str = "30", min_conf: float = 0.6, min_views: int = 0, lan
               kind: str = "all", genre: str | None = None, q: str | None = None, limit: int = 100, offset: int = 0) -> dict:
     c = _conn()
     try:
-        return stats.films(c, _filters(period, min_conf, min_views, lang), limit=min(limit, 1000), sort=sort, kind=kind, genre=genre, q=q, offset=offset)
+        out = stats.films(c, _filters(period, min_conf, min_views, lang), limit=min(limit, 1000), sort=sort, kind=kind, genre=genre, q=q, offset=offset)
+        lv = rights.levels(c, [it["title_id"] for it in out["items"]])
+        for it in out["items"]:
+            it["rights"] = lv.get(it["title_id"])
+        return out
     finally:
         c.close()
 
@@ -686,7 +690,8 @@ def settings_put(payload: dict = Body(...)) -> dict:
                 if str(v).startswith("••••"):
                     continue
             elif k in TEXT_KEYS:
-                pass
+                if k == "rights_policy" and str(v).strip() not in rights.POLICY_CHOICES:
+                    raise HTTPException(400, "rights_policy: strict|balanced|off")
             else:
                 try:
                     int(v)
@@ -981,6 +986,91 @@ def api_explain_generate(title_id: str) -> dict:
         except LLMError as e:
             raise HTTPException(502, f"модель не ответила: {e}")
         return {"explain": {"text": text, "generated_at": db.now_iso()}}
+    finally:
+        c.close()
+
+
+@app.get("/api/films/{title_id}/rights")
+def api_rights(title_id: str) -> dict:
+    """Оценка по авторским правам: пересчитывается по сохранённым уликам при каждом запросе."""
+    c = _conn()
+    try:
+        a = rights.evaluate(c, title_id)
+        if a is None:
+            raise HTTPException(404, "нет такого произведения")
+        return a
+    finally:
+        c.close()
+
+
+@app.post("/api/films/{title_id}/rights/refresh")
+def api_rights_refresh(title_id: str) -> dict:
+    """Полная перепроверка одного произведения: модель о правообладателе, страницы чужих нарезок, живость исходников."""
+    c = _conn()
+    try:
+        t = rights.title_info(c, title_id)
+        if t is None:
+            raise HTTPException(404, "нет такого произведения")
+        notes = []
+        llm = llm_from_settings(db.all_settings(c))
+        if llm.configured:
+            try:
+                rights.llm_assess(c, llm, t)
+            except LLMError as e:
+                notes.append(f"модель не ответила: {e}")
+        else:
+            notes.append("модель не настроена: правообладатель не определяется")
+        r = rights.recheck_videos(c, [title_id], budget=60, min_age_days=0)
+        notes.append(f"перепроверено чужих нарезок: {r['checked']}, снесено: {r['removed']}")
+        s = rights.check_sources_alive(c, [title_id])
+        if s["checked"]:
+            notes.append(f"исходников проверено: {s['checked']}, удалённых: {s['dead']}")
+        a = rights.evaluate(c, title_id)
+        a["notes"] = notes
+        return a
+    finally:
+        c.close()
+
+
+@app.post("/api/films/{title_id}/rights/manual")
+def api_rights_manual(title_id: str, payload: dict = Body(default={})) -> dict:
+    c = _conn()
+    try:
+        if not c.execute("SELECT 1 FROM titles WHERE id = ?", (title_id,)).fetchone():
+            raise HTTPException(404, "нет такого произведения")
+        try:
+            return rights.set_manual(c, title_id, payload.get("level") or None, (payload.get("note") or "").strip() or None)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        c.close()
+
+
+@app.post("/api/rights/events")
+def api_rights_event(payload: dict = Body(...)) -> dict:
+    """Оператор или нарезчик сообщает, что случилось с нашим роликом: claim | block | strike | ok. Оценка пересчитывается сразу."""
+    c = _conn()
+    try:
+        tid = payload.get("title_id")
+        if not tid:
+            raise HTTPException(400, "нужен title_id")
+        try:
+            a = rights.add_event(c, tid, str(payload.get("kind") or ""), source=str(payload.get("source") or "operator"),
+                                 claimant=(payload.get("claimant") or None), video_url=(payload.get("video_url") or None), note=(payload.get("note") or None))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        if a is None:
+            raise HTTPException(404, "нет такого произведения")
+        return a
+    finally:
+        c.close()
+
+
+@app.get("/api/rights/overview")
+def api_rights_overview() -> dict:
+    c = _conn()
+    try:
+        return rights.overview(c)
     finally:
         c.close()
 

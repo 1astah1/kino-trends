@@ -9,8 +9,8 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from . import recommend
-from .db import dumps, loads, now_iso
+from . import recommend, rights
+from .db import dumps, get_setting, loads, now_iso
 from .stats import KIND_RU, Filters
 
 MSK = timezone(timedelta(hours=3))
@@ -35,6 +35,14 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
     recs = recommend.today(conn, f, limit=80)["items"]
     pool = {r["title_id"]: r for r in recs}
     since = (datetime.strptime(start, "%Y-%m-%d") - timedelta(days=cooldown)).strftime("%Y-%m-%d")
+    # проверка по авторским правам: не прошедшие политику уходят из пула и из незафиксированных слотов впереди
+    policy = get_setting(conn, "rights_policy")
+    future_ids = [r[0] for r in conn.execute("SELECT DISTINCT title_id FROM schedule WHERE title_id IS NOT NULL AND day >= ?", (start,))]
+    lv = rights.levels(conn, list(pool) + future_ids)
+    blocked = {tid for tid, r in lv.items() if not rights.allowed(r["level"], policy)}
+    if blocked:
+        conn.execute(f"DELETE FROM schedule WHERE day >= ? AND locked = 0 AND status = 'planned' AND title_id IN ({','.join('?' * len(blocked))})", (start, *blocked))
+        pool = {k: v for k, v in pool.items() if k not in blocked}
     if rebuild:
         conn.execute("DELETE FROM schedule WHERE day >= ? AND locked = 0 AND status = 'planned'", (start,))
     existing = {(r["day"], r["slot"]): r for r in conn.execute("SELECT * FROM schedule WHERE day >= ?", (since,))}
@@ -83,6 +91,7 @@ def view(conn: sqlite3.Connection, start: str | None = None, days: int = 7, back
     rows = conn.execute("""SELECT s.*, COALESCE(t.label_ru, t.label_en) AS label, t.year, t.kind FROM schedule s LEFT JOIN titles t ON t.id = s.title_id
                            WHERE s.day BETWEEN ? AND ? ORDER BY s.day, s.slot""", (d0, d1)).fetchall()
     by_day: dict[str, list] = {}
+    lv = rights.levels(conn, [r["title_id"] for r in rows if r["title_id"]])
     for r in rows:
         src = conn.execute("SELECT video_id, url, label, channel, duration_s, verified, kind, season, episode, language FROM title_sources WHERE title_id = ? ORDER BY verified DESC, score DESC LIMIT 1", (r["title_id"],)).fetchone() if r["title_id"] else None
         alt = None
@@ -95,6 +104,7 @@ def view(conn: sqlite3.Connection, start: str | None = None, days: int = 7, back
             "id": r["id"], "day": r["day"], "slot": r["slot"], "title_id": r["title_id"], "label": r["label"], "year": r["year"],
             "kind_ru": KIND_RU.get(r["kind"], r["kind"]), "reason": r["reason"], "plan": loads(r["plan"], {}), "status": r["status"], "locked": bool(r["locked"]),
             "source": dict(src) if src else None, "source_alt": dict(alt) if alt else None, "explain": ex["text"] if ex else None,
+            "rights": lv.get(r["title_id"]) if r["title_id"] else None,
             "kinopoisk_url": f"https://www.kinopoisk.ru/{'series' if r['kind'] in ('series', 'animated_series', 'anime', 'tv_show') else 'film'}/{kp['kp_id']}/" if kp and kp["kp_id"] else None,
         })
     out = []

@@ -264,3 +264,15 @@ details.fold > summary::before { content: "▸"; color: var(--ink-3); font-size:
 .cutter-link > b { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); }
 .cutter-row { display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
 .cutter-row input { flex: 1 1 260px; min-height: 30px; font-size: .84rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--surface); }
+
+/* авторские права */
+.rights-line { font-size: .8rem; color: var(--warn-ink); line-height: 1.4; } .rights-line.block { color: var(--bad-ink); } .rights-line.unknown { color: var(--ink-3); }
+.rights-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.tag.tag-lg { font-size: .86rem; padding: 3px 12px; }
+.risk { display: inline-flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--ink-2); }
+.risk .bar { width: 120px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; display: inline-block; }
+.risk .bar i { display: block; height: 100%; background: var(--good); border-radius: 3px; } .risk .bar i.caution { background: var(--warn); } .risk .bar i.block { background: var(--bad); } .risk .bar i.unknown { background: var(--ink-3); }
+.rule { font-size: .82rem; color: var(--ink-3); margin: 6px 0 8px; }
+.rights-actions { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-top: 12px; font-size: .85rem; }
+.rights-actions label.inline, .rights-actions .inline-form { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rights-actions select, .rights-actions input { padding: 4px 8px; font-size: .85rem; } .rights-actions input { max-width: 240px; }

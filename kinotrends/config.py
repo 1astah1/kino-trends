@@ -63,6 +63,9 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "storage_url": "",              # публичный адрес каталога файлов, например http://1.2.3.4/files
     "storage_max_gb": "20",         # потолок хранилища на сервере-хранилище
     "storage_ttl_hours": "72",      # сколько держать файлы
+    "rights_policy": "balanced",    # авторские права в календаре: strict = только «проходит», balanced = и «с оговорками», off = только пометка
+    "rights_llm_max": "40",         # сколько произведений за прогон спрашивать у модели про правообладателя
+    "rights_recheck_max": "400",    # сколько чужих нарезок перепроверять за прогон на сносы
 }
 
 for _d in (VAR, DICT_DIR, LOG_DIR, THUMB_DIR):

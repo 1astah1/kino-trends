@@ -316,6 +316,18 @@ async function renderOverview(main) {
       h('dt', null, 'каналов в слежении'), h('dd', { class: 'num' }, `${fmtFull(t.channels_tracked)} из ${fmtFull(t.channels)} встреченных`),
     ), 'что уже собрано'),
   ));
+  api('api/rights/overview').then(rv => {
+    const cal = rv.calendar || {};
+    const claimList = rv.claimants.length ? h('ul', { class: 'src-list' }, rv.claimants.map(x => h('li', null, h('div', null, h('span', { class: 'title-link' }, x.name), h('span', { class: 'sub' }, x.titles.slice(0, 3).join(', '))), h('span', { class: 'meta num' }, `${x.n} ${plural(x.n, 'снос', 'сноса', 'сносов')}`)))) : empty('Сносов по жалобам не замечено', `Удалено чужих роликов всего: ${fmtFull(rv.removed.total)}. Нарезки из календаря и топа перепроверяются каждый прогон.`);
+    const blockedList = rv.blocked.length ? h('ul', { class: 'src-list' }, rv.blocked.map(b => h('li', null, h('div', null, h('a', { href: `#/film/${b.title_id}`, class: 'title-link' }, b.label), h('span', { class: 'sub' }, (b.reasons || []).slice(0, 2).join('; '))), h('span', { class: 'meta num', title: 'риск' }, b.risk)))) : h('p', { class: 'muted' }, 'Ни одно произведение не отсеяно.');
+    const evList = rv.events.length ? h('ul', { class: 'src-list' }, rv.events.map(e => h('li', null, eventTag(e.kind), h('div', null, e.title_id ? h('a', { href: `#/film/${e.title_id}`, class: 'title-link' }, e.label || e.title_id) : null, e.note ? h('span', { class: 'sub' }, e.note) : null), h('span', { class: 'meta' }, ago(e.ts))))) : h('p', { class: 'muted' }, 'Претензий на наши ролики не записано. Отмечайте их на странице произведения: оценка учится на этом.');
+    box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px' },
+      panel('Авторские права', h('div', null,
+        h('div', { class: 'status-line' }, h('span', null, 'в календаре: ', h('b', null, `${cal.ok || 0} проходит · ${cal.caution || 0} с оговорками · ${cal.block || 0} не проходит · ${cal.unknown || 0} не проверено`)), h('span', null, 'политика: ', h('b', null, rv.policy_ru)), h('span', null, 'проверено произведений: ', h('b', null, fmtFull(rv.checked)))),
+        h('h3', { style: 'margin:12px 0 6px' }, 'Не проходят'), blockedList,
+        h('h3', { style: 'margin:12px 0 6px' }, 'Кто сносит чужие нарезки'), claimList), rv.last_checked ? `обновлено ${ago(rv.last_checked)}` : 'ещё не проверялось', h('a', { class: 'btn btn-sm', href: '#/collect' }, 'политика')),
+      panel('Наш опыт с правами', evList, 'заявки, блокировки и страйки на наших роликах')));
+  }).catch(() => {});
 }
 const periodLabel = () => ({ '7': '7 дней', '30': '30 дней', '90': '90 дней', all: 'всё время' })[state.filters.period];
 
@@ -358,6 +370,7 @@ async function renderFilms(main) {
     { id: 'wiki', label: 'Интерес', num: true, sort: true, help: 'interest', cell: r => r.wiki_7d != null ? h('span', { title: `Википедия: ${fmtFull(r.wiki_7d)} просмотров статьи в день${r.trends_7d != null ? `; Google Trends ${Math.round(r.trends_7d)}/100` : ''}` }, fmtN(r.wiki_7d), r.wiki_ratio ? h('span', { class: 'tag ' + (r.wiki_ratio >= 1.5 ? 'tag-good' : r.wiki_ratio < 0.7 ? 'tag-warn' : ''), style: 'margin-left:4px' }, '×' + String(r.wiki_ratio).replace('.', ',')) : null) : h('span', { class: 'muted' }, '—') },
     ...(d.items.some(r => r.like_rate != null) ? [{ id: 'like', label: 'Лайки', num: true, title: 'лайков на 100 просмотров, где известны лайки', cell: r => r.like_rate != null ? fmtPct(r.like_rate, 1) : h('span', { class: 'muted' }, '—') }] : []),
     { id: 'dur', label: 'Длит.', num: true, title: 'средняя длительность ролика', cell: r => fmtDur(r.dur_avg) },
+    { id: 'rights', label: 'Права', help: 'rights', cell: r => rightsTag(r.rights, true) },
     { id: 'score', label: 'Балл', num: true, sort: true, help: 'score', cell: r => scoreCell(r.score) },
   ].filter(c => detailed || !DETAIL_ONLY.has(c.id)), d.items, { key: 'films', onSort: () => render() });
   box.append(panel(`${fmtFull(d.total)} ${plural(d.total, 'произведение', 'произведения', 'произведений')}`, tbl, `период: ${periodLabel()}, уверенность ≥ ${state.filters.min_conf.replace('.', ',')}`, modeBtn));
@@ -412,6 +425,7 @@ async function renderFilm(main, titleId) {
   box.append(h('div', { class: 'grid grid-halves' },
     panel('Исходник для нарезки', srcBody, 'полный фильм или серии на YouTube и Rutube, проверка нейросетью'),
     panel('Почему это стоит резать', exBody, 'нейросеть по статистике и лучшим чужим роликам')));
+  box.append(h('div', { style: 'margin-top:18px' }, panel('Авторские права', rightsPanel(titleId), 'пройдёт ли в календарь и к нарезчику: сносы чужих нарезок, правообладатель, исходник, наш опыт')));
   const intBody = h('div');
   const drawInterest = (d) => {
     intBody.innerHTML = '';
@@ -631,6 +645,7 @@ async function renderCollect(main) {
       h('dt', null, 'распознано'), h('dd', { class: 'num' }, `${fmtFull(st.recognized_new || 0)} из ${fmtFull(st.recognized_checked || 0)} проверенных`),
       h('dt', null, 'каналов в слежение'), h('dd', { class: 'num' }, `+${fmtFull(st.auto_channels_added || 0)}`),
       h('dt', null, 'нейросеть'), h('dd', { class: 'num' }, `проверено ${fmtFull(st.neuro_checked || 0)}, опознано ${fmtFull(st.neuro_recognized || 0)}, ${(st.neuro_cost_usd || 0).toFixed(3)} $`),
+      h('dt', null, 'авторские права'), h('dd', { class: 'num' }, st.rights_titles != null ? `${fmtFull(st.rights_titles)} произведений · снесено нарезок ${fmtFull(st.rights_removed || 0)} · не проходит ${fmtFull(st.rights_block || 0)} · с оговорками ${fmtFull(st.rights_caution || 0)}` : '—'),
     ));
     logBox.innerHTML = '';
     (c.log || []).forEach(l => logBox.append(h('div', { class: l.level }, `${(l.ts || '').slice(11, 19)}  ${l.msg}`)));
@@ -752,9 +767,12 @@ async function renderCollect(main) {
       sf('schedule_days', 'дней вперёд', 'number'),
       sf('schedule_per_day', 'произведений в день', 'number'),
       sf('schedule_cooldown_days', 'не повторять раньше, дней', 'number'),
-      sf('auto_hashtags_max', 'автодобор хэштегов, максимум', 'number', 'хэштеги, под которыми много опознанных киношортсов')),
+      sf('auto_hashtags_max', 'автодобор хэштегов, максимум', 'number', 'хэштеги, под которыми много опознанных киношортсов'),
+      sel('rights_policy', 'проверка авторских прав', [['balanced', 'проходит и с оговорками'], ['strict', 'только проходит'], ['off', 'только пометка, не отсеивать']], 'что пускать в календарь; «не проходит» при strict и balanced отсеивается'),
+      sf('rights_llm_max', 'правообладателей спрашивать у модели за прогон', 'number'),
+      sf('rights_recheck_max', 'чужих нарезок перепроверять на сносы за прогон', 'number', 'страницы роликов из календаря и топа; сносы по жалобам идут в риск')),
     h('div', { class: 'actions', style: 'margin-top:10px' },
-      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['schedule_days', 'schedule_per_day', 'schedule_cooldown_days', 'auto_hashtags_max'], 'Сохранено') }, 'Сохранить'),
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['schedule_days', 'schedule_per_day', 'schedule_cooldown_days', 'auto_hashtags_max', 'rights_policy', 'rights_llm_max', 'rights_recheck_max'], 'Сохранено') }, 'Сохранить'),
       h('a', { class: 'btn', href: '#/cut' }, 'открыть календарь'))), 'строится после каждого прогона');
   box.append(h('div', { class: 'grid grid-2' }, statusPanel, dictPanel));
   box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px' }, neuroPanel, h('div', { class: 'grid', style: 'align-content:start' }, tgPanel, calPanel)));
@@ -821,8 +839,53 @@ const explainBlock = (text, titleId, onDone) => {
 };
 const planLine = p => [p.duration ? `длительность ${p.duration}` : null, p.hook ? `хук: ${p.hook}` : null, p.best_time ? `время: ${p.best_time}` : null, p.hashtags && p.hashtags.length ? p.hashtags.slice(0, 4).map(t => '#' + t).join(' ') : null].filter(Boolean).join(' · ');
 
+// ---------- авторские права ----------
+const RIGHTS_RU = { ok: 'проходит', caution: 'с оговорками', block: 'не проходит', unknown: 'не проверено' };
+const RIGHTS_CLS = { ok: 'tag-good', caution: 'tag-warn', block: 'tag-bad', unknown: '' };
+const RIGHTS_POLICY_RU = { block: 'блокирует и страйкует', claim: 'заявляет права через Content ID', tolerant: 'терпит нарезки', unknown: 'поведение неизвестно' };
+const RIGHTS_EVENT_RU = { claim: 'заявка Content ID', block: 'ролик заблокирован', strike: 'страйк', ok: 'прошёл без претензий', manual: 'решение оператора' };
+const rightsTag = (r, short = false) => { if (!r) return null; const lvl = r.level || 'unknown'; return h('span', { class: 'tag rights-tag ' + RIGHTS_CLS[lvl], title: (r.reasons || []).join('\n') || 'проверка авторских прав' }, (short ? '' : 'права: ') + RIGHTS_RU[lvl] + (!short && r.risk != null ? ` · риск ${r.risk}` : '')); };
+const rightsLine = (r) => { if (!r || !r.level || r.level === 'ok' || !(r.reasons || []).length) return null; return h('div', { class: 'rights-line ' + r.level }, (r.level === 'block' ? '✕ ' : '⚠ ') + r.reasons.slice(0, 2).join('; ') + (r.clip_max_s ? ` · клип до ${r.clip_max_s} с` : '')); };
+const eventTag = (kind) => h('span', { class: `tag ${kind === 'ok' ? 'tag-good' : kind === 'claim' ? 'tag-warn' : kind === 'manual' ? 'tag-accent' : 'tag-bad'}` }, RIGHTS_EVENT_RU[kind] || kind);
+function rightsPanel(titleId) {
+  const body = h('div');
+  const draw = (r) => {
+    body.innerHTML = '';
+    if (!r) { body.append(h('p', { class: 'muted' }, 'не удалось загрузить оценку')); return; }
+    const lvl = r.level || 'unknown', s = r.signals || {};
+    body.append(h('div', { class: 'rights-head' },
+      h('span', { class: 'tag tag-lg ' + RIGHTS_CLS[lvl] }, RIGHTS_RU[lvl]),
+      h('span', { class: 'risk', title: 'риск 0–100: от 40 с оговорками, от 65 не проходит' }, h('span', { class: 'bar' }, h('i', { class: lvl, style: `width:${r.risk || 0}%` })), h('span', { class: 'num' }, r.risk != null ? `риск ${r.risk}` : 'риск —')),
+      r.holder ? h('span', { class: 'muted' }, `${r.holder}: ${r.holder_policy_ru || ''}`) : null,
+      r.passes === false ? h('span', { class: 'tag tag-bad' }, 'в календарь не ставится') : null));
+    body.append(h('ul', { class: 'why' }, (r.reasons || []).map(x => h('li', null, x))));
+    if (r.rule) body.append(h('p', { class: 'rule' }, r.rule));
+    if (r.notes && r.notes.length) body.append(h('p', { class: 'rule' }, r.notes.join(' · ')));
+    const kv = [
+      ['чужих нарезок перепроверено', `${fmtFull(s.rated || 0)} · снесено по правам ${fmtFull(s.removed_strict || 0)}${s.removed_total ? ` · удалено всего ${fmtFull(s.removed_total)}` : ''}`],
+      s.claimants && s.claimants.length ? ['кто жаловался', s.claimants.map(([n, k]) => `${n} (${k})`).join(', ')] : null,
+      ['исходник', s.source ? `${s.source.official ? 'официальный канал' : 'неофициальный канал'}${s.source.alive === false ? ', удалён' : s.source.alive ? ', жив' : ''}${s.source.channel ? ': ' + s.source.channel : ''}` : 'не найден'],
+      ['нейросеть о правообладателе', s.llm ? `${s.llm.holder || '—'} · ${RIGHTS_POLICY_RU[s.llm.holder_policy] || s.llm.holder_policy}${s.llm.public_domain ? ' · общественное достояние' : ''}${s.llm.official_free_ru ? ' · официально выложен бесплатно' : ''}${s.llm.music_risk ? ' · музыкальный риск' : ''} · уверенность ${Math.round((s.llm.confidence || 0) * 100)} %${s.llm.note ? ' · ' + s.llm.note : ''}` : 'не спрашивали'],
+      ['проверено', r.checked_at ? ago(r.checked_at) : '—'],
+    ].filter(Boolean);
+    body.append(h('dl', { class: 'kv' }, kv.flatMap(([k, v]) => [h('dt', null, k), h('dd', null, v)])));
+    if (s.events && s.events.length) body.append(h('h3', { style: 'margin:10px 0 6px' }, 'Наш опыт за 90 дней'), h('ul', { class: 'src-list' }, s.events.map(e => h('li', null, eventTag(e.kind), h('span', null, [e.claimant, e.note].filter(Boolean).join(' · ')), h('span', { class: 'meta' }, ago(e.ts))))));
+    const refresh = h('button', { class: 'btn btn-sm', type: 'button', title: 'спросить модель о правообладателе, перечитать страницы чужих нарезок, проверить исходники' }, 'проверить заново');
+    refresh.addEventListener('click', async () => { refresh.disabled = true; refresh.textContent = 'проверяю…'; try { draw(await post(`api/films/${titleId}/rights/refresh`)); toast('Права перепроверены'); } catch (e) { toast(e.message); refresh.disabled = false; refresh.textContent = 'проверить заново'; } });
+    const manual = h('select', { title: 'решение оператора сильнее автоматической оценки' }, [['', 'авто'], ['ok', 'проходит'], ['caution', 'с оговорками'], ['block', 'не проходит']].map(([v, l]) => h('option', { value: v, selected: (s.manual_level || '') === v }, l)));
+    manual.addEventListener('change', async () => { try { draw(await post(`api/films/${titleId}/rights/manual`, { level: manual.value || null })); toast('Решение сохранено'); } catch (e) { toast(e.message); } });
+    const evKind = h('select', null, [['claim', 'заявка Content ID'], ['block', 'ролик заблокирован'], ['strike', 'страйк'], ['ok', 'прошёл без претензий']].map(([v, l]) => h('option', { value: v }, l)));
+    const evNote = h('input', { type: 'text', placeholder: 'кто и что, необязательно' });
+    const evBtn = h('button', { class: 'btn btn-sm', type: 'button' }, 'записать');
+    evBtn.addEventListener('click', async () => { try { draw(await post('api/rights/events', { title_id: titleId, kind: evKind.value, note: evNote.value })); toast('Записано, оценка пересчитана'); } catch (e) { toast(e.message); } });
+    body.append(h('div', { class: 'rights-actions' }, refresh, h('label', { class: 'inline' }, 'решение оператора', manual), h('span', { class: 'inline-form' }, 'наш ролик:', evKind, evNote, evBtn)));
+  };
+  api(`api/films/${encodeURIComponent(titleId)}/rights`).then(draw).catch(() => draw(null));
+  return body;
+}
+
 async function renderCut(main) {
-  main.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Что резать'), h('p', { class: 'lead' }, 'На каждый день четыре произведения: исходник со ссылкой, объяснение «почему», сцены и план. Бриф уходит в нарезчик. Чужие шортсы здесь только доказательство, что тема заходит.')),
+  main.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Что резать'), h('p', { class: 'lead' }, 'На каждый день четыре произведения: исходник со ссылкой, объяснение «почему», сцены и план. Каждое проверено по авторским правам: не прошедшие в календарь не попадают. Бриф уходит в нарезчик. Чужие шортсы здесь только доказательство, что тема заходит.')),
     h('div', { class: 'actions' },
       h('a', { class: 'btn', href: abs('api/brief/today'), target: '_blank', rel: 'noopener', html: ICON.doc + ' бриф на сегодня' }),
       h('button', { class: 'btn', type: 'button', title: 'скачать на сервер исходники с Rutube для сегодняшних и завтрашних слотов', html: ICON.dl + ' подготовить mp4 на сегодня', onclick: async () => { try { const r = await post('api/schedule/prepare-files'); toast(r.queued.length ? `В очереди: ${r.queued.filter(x => x.ok).length}` : 'Все файлы уже готовы или исходники только на YouTube'); } catch (e) { toast(e.message); } } }),
@@ -856,7 +919,7 @@ async function renderCut(main) {
       if (it.title_id && it.title_id.startsWith('Q')) { posterEl = h('img', { class: 'poster', src: abs(`api/films/${it.title_id}/poster.jpg`), alt: '', loading: 'lazy' }); posterEl.addEventListener('error', () => posterEl.replaceWith(ph)); }
       const body = h('div', { class: 'cut-body' },
         h('div', { class: 'cut-title' }, h('span', { class: 'slot' }, String(idx + 1).padStart(2, '0')), it.title_id ? h('a', { href: `#/film/${it.title_id}` }, it.label || it.title_id) : h('span', { class: 'muted' }, 'пусто'),
-          it.year ? h('span', { class: 'muted' }, `(${it.year})`) : null, it.kind_ru ? h('span', { class: 'tag' }, it.kind_ru) : null,
+          it.year ? h('span', { class: 'muted' }, `(${it.year})`) : null, it.kind_ru ? h('span', { class: 'tag' }, it.kind_ru) : null, rightsTag(it.rights),
           it.locked ? h('span', { class: 'tag tag-accent', title: 'слот задан вручную, при пересборке не меняется' }, 'вручную') : null,
           it.status === 'done' ? h('span', { class: 'tag tag-good' }, 'сделано') : it.status === 'skipped' ? h('span', { class: 'tag tag-warn' }, 'пропущено') : null),
         it.title_id && it.source ? cutterLink(it) : null,
@@ -865,6 +928,7 @@ async function renderCut(main) {
         it.title_id ? explainBlock(it.explain, it.title_id, text => { it.explain = text; fill(); }) : null,
         it.reason ? h('div', { class: 'cal-reason' }, it.reason) : null,
         it.plan && (it.plan.duration || it.plan.hook || it.plan.best_time) ? planChips(it.plan) : null,
+        rightsLine(it.rights),
         it.plan && it.plan.scenes && it.plan.scenes.length ? h('div', { class: 'cal-plan' }, 'сцены: ' + it.plan.scenes.map(sc => sc.name).join('; ')) : null);
       const actions = h('div', { class: 'cut-actions' },
         h('div', { class: 'ibar' },
@@ -896,8 +960,9 @@ async function renderCut(main) {
   const recCards = rec.items.map((it, i) => h('div', { class: 'rec-card' },
     poster(it.title_id),
     h('div', { class: 'rec-body' },
-      h('div', { class: 'rec-head' }, h('span', { class: 'rank' }, i + 1), h('a', { href: `#/film/${it.title_id}`, class: 'title-link' }, it.label, it.year ? h('span', { class: 'muted' }, ` (${it.year})`) : null), h('span', { class: 'tag' }, it.kind_ru), h('span', { class: 'score', title: 'балл возможности' }, h('span', { class: 'bar' }, h('i', { style: `width:${Math.min(100, it.opportunity)}%` })), h('span', { class: 'num' }, it.opportunity))),
+      h('div', { class: 'rec-head' }, h('span', { class: 'rank' }, i + 1), h('a', { href: `#/film/${it.title_id}`, class: 'title-link' }, it.label, it.year ? h('span', { class: 'muted' }, ` (${it.year})`) : null), h('span', { class: 'tag' }, it.kind_ru), rightsTag(it.rights), h('span', { class: 'score', title: 'балл возможности' }, h('span', { class: 'bar' }, h('i', { style: `width:${Math.min(100, it.opportunity)}%` })), h('span', { class: 'num' }, it.opportunity))),
       h('ul', { class: 'why' }, it.why.slice(0, 3).map(w => h('li', null, w))),
+      rightsLine(it.rights),
       it.wiki_7d != null || it.trends_7d != null ? h('div', { class: 'interest-line' }, 'Интерес: ', it.wiki_7d != null ? `Википедия ${fmtN(it.wiki_7d)}/день${it.wiki_ratio ? ' (×' + String(it.wiki_ratio).replace('.', ',') + ')' : ''}` : '', it.trends_7d != null ? `${it.wiki_7d != null ? ' · ' : ''}Google Trends ${Math.round(it.trends_7d)}/100` : '') : null,
       planChips(it.plan),
       h('div', { class: 'ibar', style: 'margin-top:8px' },
@@ -947,17 +1012,19 @@ const HELP = {
   outliers: ['Аутлаеры', 'Доля роликов по теме, набравших в 3 и более раз больше обычного для своего канала (медиана роликов канала за период). Так считают VidIQ и Virlo: если тема бьёт норму канала, виновата тема, а не аудитория канала. Чем выше доля, тем вернее тема зайдёт и у вас.'],
   small: ['Маленькие каналы', 'Медиана просмотров у роликов с каналов до 100 тысяч подписчиков. Если она высокая, тема работает без раскрученной аудитории: лучший знак для нового канала.'],
   interest: ['Интерес аудитории', 'Независимо от наших шортсов: просмотры статьи о произведении в русской Википедии в день и поисковый интерес в Google Trends по России. Рост в полтора раза и выше добавляет балл возможности.'],
+  rights: ['Авторские права', 'Пройдёт ли произведение к нарезчику. Четыре улики: сносы чужих нарезок по жалобам (страница YouTube называет заявителя), правообладатель и его привычки (нейросеть плюс список известных студий и каналов), официальный ли и живой ли исходник, наш опыт: заявки, блокировки и страйки на наших роликах. Итог: проходит, с оговорками, не проходит. «Не проходит» в календарь не ставится. Клип не длиннее 59 с: шортс дольше 60 с с заявкой Content ID блокируется.'],
+  rights_events: ['Наш опыт', 'Что случилось с нашими роликами по произведению: заявка Content ID, блокировка, страйк или прошёл чисто. Заносит оператор на странице произведения или нарезчик запросом POST /api/rights/events. Страйк сразу выводит произведение из календаря, чистые публикации снижают риск.'],
   source: ['Исходник', 'Полный фильм или серии, найденные на YouTube и Rutube. Нейросеть проверяет каждого кандидата: не трейлер, не пересказ, не другой фильм; определяет серию, сезон, язык. Ссылка уходит в конвейер нарезки.'],
   explain: ['Почему', 'Объяснение нейросети по статистике и лучшим чужим роликам: что цепляет зрителя, что резать первым, чего избегать, риск.'],
   scenes: ['Сцены и хуки', 'Нейросеть группирует чужие ролики по сценам произведения, подсказывает, какой момент резать, даёт реплики для поиска по субтитрам и заголовки-хуки в стиле лучших роликов.'],
   references: ['Референсы', 'Чужие нарезки, которые уже зашли. Не для перезалива, а как доказательство спроса и образец подачи.'],
-  brief: ['Бриф', 'JSON для конвейера нарезки. Блок cutter: ссылка на исходник (YouTube в нарезчик как есть, для Rutube можно подготовить прямую ссылку на mp4), подсказка «что искать» из сцен и реплик, длина клипа от и до.'],
-  calendar: ['Календарь нарезки', 'Сервис сам раскладывает лучшие произведения по дням: чередует сериалы и фильмы, не повторяет тему 10 дней, достраивается после каждого сбора. Отмечайте сделанное, заменяйте и добавляйте руками: ручные слоты не трогаются.'],
+  brief: ['Бриф', 'JSON для конвейера нарезки. Блок cutter: ссылка на исходник (YouTube в нарезчик как есть, для Rutube можно подготовить прямую ссылку на mp4), подсказка «что искать» из сцен и реплик, длина клипа от и до (не больше 59 с, если права не свободны), rights_ok и уровень прав.'],
+  calendar: ['Календарь нарезки', 'Сервис сам раскладывает лучшие произведения по дням: чередует сериалы и фильмы, не повторяет тему 10 дней, достраивается после каждого сбора. Отмечайте сделанное, заменяйте и добавляйте руками: ручные слоты не трогаются. Произведения, не прошедшие проверку авторских прав, в календарь не ставятся.'],
   recognition: ['Опознание', 'Сначала словарь из 133 тысяч названий (подписи, кавычки, хэштеги, текст), потом нейросеть по кадру для оставшихся. Ручная разметка в «Роликах» учит словарь.'],
   neuro: ['Нейросеть', 'Модель со зрением через OpenRouter: опознаёт фильм по кадру, проверяет исходники, пишет объяснения и разбирает сцены. Расход виден здесь же, есть дневной потолок.'],
   dict: ['Словарь произведений', 'Фильмы, сериалы, мультфильмы, аниме и телешоу из Wikidata с ID Кинопоиска, годами, жанрами и вариантами написания. Плюс то, что добавили вы и нейросеть.'],
   sources_cfg: ['Источники сбора', 'Страницы хэштегов и вкладки Shorts каналов. Каналы с несколькими опознанными роликами берутся в слежение сами, хэштеги с высокой долей киношортсов тоже.'],
-  run: ['Прогон сбора', 'Хэштеги → каналы → детали роликов → распознавание → нейросеть → исходники и объяснения для календаря → интерес аудитории → тревоги. Идёт по расписанию, можно запустить вручную.'],
+  run: ['Прогон сбора', 'Хэштеги → каналы → детали роликов → распознавание → нейросеть → интерес аудитории → авторские права → календарь, исходники и объяснения → тревоги. Идёт по расписанию, можно запустить вручную.'],
   interests_page: ['Интересы', 'Срезы по опознанным роликам: что заходит по жанрам, типам, странам, эпохам, длительности, приёмам заголовка, времени публикации. Сравнивайте по медиане.'],
   shorts_page: ['Ролики и разметка', 'Все собранные шортсы. Неопознанным можно привязать произведение: поиск по словарю, новое произведение, «не фильм», и запрет ложной улики для всех роликов сразу.'],
   methods: ['Как опознаны', 'По каким уликам сервис понял, что это за фильм. Чем больше «подпись» и «кавычки», тем чище данные; «нейросеть по кадру» закрывает ролики без названия.'],
@@ -967,7 +1034,7 @@ const PANEL_HELP = {
   'Топ произведений по баллу': 'score', 'Мало конкурентов': 'channels', 'Набирают на этой неделе': 'fresh', 'Как опознаны ролики': 'methods',
   'Полнота данных': 'recognition', 'Календарь нарезки': 'calendar', 'Кандидаты: из чего собран календарь': 'opportunity', 'Исходник для нарезки': 'source',
   'Почему это стоит резать': 'explain', 'Какие сцены режут и какие хуки заходят': 'scenes', 'Референсы: чужие нарезки, которые зашли': 'references',
-  'Интерес аудитории': 'interest', 'Нейросеть: опознание по кадру и разбор сцен': 'neuro', 'Словарь произведений': 'dict', 'Прогон': 'run',
+  'Интерес аудитории': 'interest', 'Авторские права': 'rights', 'Наш опыт с правами': 'rights_events', 'Нейросеть: опознание по кадру и разбор сцен': 'neuro', 'Словарь произведений': 'dict', 'Прогон': 'run',
   'Telegram: дайджест и тревоги': 'telegram', 'Жанры': 'interests_page',
 };
 const FACT_HELP = { 'произведений': 'recognition', 'опознан фильм': 'recognition', 'медиана просмотров': 'median', 'просмотров в день': 'vpd', 'прирост за 7 дней': 'growth', 'словарь': 'dict' };
@@ -990,7 +1057,7 @@ $$('[data-help]').forEach(b => { const key = b.dataset.help; b.addEventListener(
 const TOUR = [
   ['Добро пожаловать в Кино-тренды', 'Сервис следит, какие фильмы и сериалы режут на YouTube Shorts для русскоязычной аудитории, и говорит, что резать вам: с исходником, сценами и объяснением. Пройдёмся по разделам за минуту.', '#/overview'],
   ['Обзор', 'Что набирает прямо сейчас: топ по баллу, свободные ниши, свежие темы недели, динамика по дням и полнота данных. Фильтры сверху действуют на все разделы.', '#/overview'],
-  ['Что резать', 'Главный экран. Календарь на неделю: на каждый день произведение, проверенный исходник, объяснение «почему», сцены и план. Кнопка «бриф» отдаёт JSON для конвейера нарезки. Отмечайте «сделано», меняйте и добавляйте руками.', '#/cut'],
+  ['Что резать', 'Главный экран. Календарь на неделю: на каждый день произведение, проверенный исходник, объяснение «почему», сцены и план. Каждое произведение проверено по авторским правам. Кнопка «бриф» отдаёт JSON для конвейера нарезки. Отмечайте «сделано», меняйте и добавляйте руками.', '#/cut'],
   ['Фильмы и сериалы', 'Вся таблица с цифрами: ролики, каналы, медиана, просмотров в день, прирост, интерес аудитории, балл. Клик по названию открывает карточку с роликами, сценами, исходниками и интересом.', '#/films'],
   ['Интересы', 'Что заходит по жанрам, типам, странам, эпохам, длительности, приёмам заголовка и времени публикации. Сравнивайте по медиане, а не по сумме.', '#/interests'],
   ['Ролики и разметка', 'Все собранные шортсы. Если фильм не опознан, подскажите его сервису один раз: он запомнит написание и больше не промахнётся. Ложную улику можно запретить для всех роликов сразу.', '#/shorts'],
@@ -1040,7 +1107,7 @@ function renderHelp(main) {
     h('h2', null, 'Что значат цифры'),
     gl(['score', 'opportunity', 'median', 'vpd', 'growth', 'channels', 'fresh', 'outliers', 'small', 'interest', 'conf']),
     h('h2', null, 'Нейросеть и исходники'),
-    gl(['source', 'explain', 'scenes', 'brief', 'neuro', 'recognition']),
+    gl(['source', 'rights', 'explain', 'scenes', 'brief', 'neuro', 'recognition']),
     h('h2', null, 'Частые вопросы'),
     h('h3', null, 'Почему в карточках чужие ролики?'), h('p', null, 'Это референсы: доказательство, что тема заходит, и образец подачи. Резать нужно из исходника по ссылке, а не перезаливать чужое.'),
     h('h3', null, 'Что значит «проверено нейросетью» у исходника?'), h('p', null, 'Модель посмотрела заголовок, канал и длительность и подтвердила, что это полный фильм или серия нужного произведения, а не трейлер, пересказ или другой фильм. Версии с тифлокомментариями исключаются.'),

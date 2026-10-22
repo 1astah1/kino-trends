@@ -217,6 +217,35 @@ CREATE TABLE IF NOT EXISTS title_explain(
   text TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS title_rights(
+  title_id TEXT PRIMARY KEY REFERENCES titles(id) ON DELETE CASCADE,
+  level TEXT NOT NULL DEFAULT 'unknown',
+  risk INTEGER,
+  reasons TEXT NOT NULL DEFAULT '[]',
+  signals TEXT NOT NULL DEFAULT '{}',
+  rule TEXT,
+  clip_max_s INTEGER,
+  holder TEXT,
+  holder_policy TEXT,
+  llm_json TEXT,
+  llm_at TEXT,
+  manual_level TEXT,
+  manual_note TEXT,
+  checked_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS rights_events(
+  id INTEGER PRIMARY KEY,
+  ts TEXT NOT NULL,
+  title_id TEXT REFERENCES titles(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  source TEXT NOT NULL DEFAULT 'operator',
+  claimant TEXT,
+  video_url TEXT,
+  note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_rights_events_title ON rights_events(title_id);
+
 CREATE TABLE IF NOT EXISTS schedule(
   id INTEGER PRIMARY KEY,
   day TEXT NOT NULL,
@@ -270,6 +299,10 @@ MIGRATIONS = [
     ("titles", "poster", "TEXT"),
     ("titles", "ruwiki", "TEXT"),
     ("videos", "comments_text", "TEXT"),
+    ("videos", "removed_at", "TEXT"),
+    ("videos", "removed_reason", "TEXT"),
+    ("title_sources", "alive", "INTEGER"),
+    ("title_sources", "checked_at", "TEXT"),
 ]
 
 

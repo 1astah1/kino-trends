@@ -174,7 +174,8 @@ class Collector:
             conn.execute("UPDATE videos SET details_fail = details_fail + 1 WHERE video_id = ?", (d.video_id,))
             return
         if d.status == "removed":
-            conn.execute("UPDATE videos SET status = 'removed', details_at = ?, details_source = ? WHERE video_id = ?", (ts, d.source, d.video_id))
+            conn.execute("""UPDATE videos SET status = 'removed', details_at = ?, details_source = ?, removed_at = COALESCE(removed_at, ?),
+                            removed_reason = COALESCE(?, removed_reason) WHERE video_id = ?""", (ts, d.source, ts, d.error or None, d.video_id))
             return
         status = "not_short" if d.is_short is False or d.status == "not_short" else "ok"
         tags = hashtags(d.title, d.description)
@@ -600,6 +601,19 @@ class Collector:
             self.log(f"подготовлено файлов исходников: {n}")
         self.stats["files_prepared"] = n
 
+    def rights_phase(self) -> None:
+        """Авторские права: сносы чужих нарезок, правообладатель, живость исходников; оценка для кандидатов календаря."""
+        self.phase("авторские права")
+        from . import rights
+        try:
+            res = rights.run_phase(self.conn, self.settings, log=self.log, should_stop=self.cancelled)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"проверка прав не удалась: {e}", "warn")
+            return
+        self.stats.update({"rights_titles": res["titles"], "rights_rechecked": res["rechecked"], "rights_removed": res["removed"],
+                           "rights_llm": res["llm"], "rights_block": res.get("block", 0), "rights_caution": res.get("caution", 0),
+                           "rights_sources_dead": res["sources_dead"]})
+
     def notify_phase(self) -> None:
         """Календарь на неделю вперёд и тревоги в Telegram."""
         self.phase("календарь и тревоги")
@@ -710,6 +724,8 @@ class Collector:
                 self.title_hashtags()
             if not self.cancelled():
                 self.interest_phase()
+            if not self.cancelled():
+                self.rights_phase()
             if not self.cancelled():
                 self.notify_phase()
             if self.cancelled():

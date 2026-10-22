@@ -51,6 +51,19 @@ def extract_player_response(html: str) -> dict | None:
     return obj if isinstance(obj, dict) else None
 
 
+def _runs_text(obj) -> str:
+    """Текст из simpleText или runs[].text разметки YouTube."""
+    if not obj:
+        return ""
+    if isinstance(obj, str):
+        return obj
+    if isinstance(obj, dict):
+        if obj.get("simpleText"):
+            return str(obj["simpleText"])
+        return "".join(str(r.get("text", "")) for r in obj.get("runs") or [] if isinstance(r, dict))
+    return ""
+
+
 def parse_page(video_id: str, html: str, final_url: str = "") -> VideoDetails:
     d = VideoDetails(video_id=video_id, source="page")
     pr = extract_player_response(html)
@@ -64,6 +77,9 @@ def parse_page(video_id: str, html: str, final_url: str = "") -> VideoDetails:
     if not vd:
         status = ps.get("status")
         reason = (ps.get("reason") or "")[:200]
+        sub = _runs_text(((ps.get("errorScreen") or {}).get("playerErrorMessageRenderer") or {}).get("subreason"))
+        if sub and sub not in reason:
+            reason = f"{reason} · {sub}"[:300]  # в подпричине YouTube называет заявителя жалобы
         if status == "LOGIN_REQUIRED":
             d.status = "bot"
         elif status in ("ERROR", "UNPLAYABLE") or not status:
