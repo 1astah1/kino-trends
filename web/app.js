@@ -772,9 +772,10 @@ async function renderCollect(main) {
       sf('storage_dir', 'каталог файлов на хранилище', 'text'),
       sf('storage_url', 'публичный адрес каталога', 'text', 'например http://1.2.3.4/files'),
       sf('storage_max_gb', 'потолок, ГБ', 'number'),
-      sf('storage_ttl_hours', 'хранить файлы, часов', 'number')),
+      sf('storage_ttl_hours', 'хранить файлы, часов', 'number'),
+      sf('storage_proxy', 'прокси для yt-dlp на хранилище', 'text', 'если YouTube метит IP хранилища как бота: http://user:pass@host:port или socks5://…')),
     h('div', { class: 'actions', style: 'margin-top:10px' },
-      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['storage_host', 'storage_user', 'storage_key', 'storage_dir', 'storage_url', 'storage_max_gb', 'storage_ttl_hours'], 'Настройки хранилища сохранены') }, 'Сохранить'))), 'отдельный сервер качает исходники (YouTube и Rutube) и раздаёт mp4');
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['storage_host', 'storage_user', 'storage_key', 'storage_dir', 'storage_url', 'storage_max_gb', 'storage_ttl_hours', 'storage_proxy'], 'Настройки хранилища сохранены') }, 'Сохранить'))), 'отдельный сервер качает исходники (YouTube и Rutube) и раздаёт mp4');
   const calPanel = panel('Календарь нарезки', h('div', null,
     h('div', { class: 'form' },
       sf('schedule_days', 'дней вперёд', 'number'),

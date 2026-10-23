@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import shlex
 import sqlite3
+import time
 import subprocess
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -213,7 +214,7 @@ def frames_remote(st: dict, video_id: str, duration_s: int | None) -> dict:
     d = shlex.quote(st["dir"])
     url = shlex.quote(f"https://www.youtube.com/watch?v={video_id}")
     script = ("set -e; id=" + vid + "; D=" + str(dur) + "; mkdir -p " + d + "/frames; "
-              "u=$(yt-dlp --no-warnings -q --js-runtimes node -f 'bv*[height<=480][ext=mp4]/b[height<=480]/bv*[height<=720]/b' -g " + url + " | head -1); "
+              "u=$(yt-dlp --no-warnings -q --js-runtimes node " + (("--proxy " + shlex.quote(st["proxy"]) + " ") if st.get("proxy") else "") + "-f 'bv*[height<=480][ext=mp4]/b[height<=480]/bv*[height<=720]/b' -g " + url + " | head -1); "
               "test -n \"$u\"; for i in $(seq 1 " + str(n) + "); do t=$((D*i/" + str(n + 1) + ")); ffmpeg -loglevel error -y -ss $t -i \"$u\" -frames:v 1 -q:v 3 -vf scale=480:-2 /tmp/fr_${id}_$i.jpg; done; "
               "ffmpeg -loglevel error -y -start_number 1 -i /tmp/fr_${id}_%d.jpg -filter_complex 'tile=" + tile + ":padding=4:margin=4' -q:v 4 " + d + "/frames/$id.jpg; "
               "chown www-data:www-data " + d + "/frames/$id.jpg; "
@@ -728,6 +729,8 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
             a = v.get("analysis") or {}
             if a.get("is_reupload") or a.get("has_sponsor") or float(a.get("reuse_fit") or 0) < 0.4 or rights.match_holder(v.get("channel_name") or ""):
                 continue  # уже не чистое: кадры не тратим
+            if done:
+                time.sleep(4)  # щадим IP хранилища: YouTube метит частые запросы как бота
             fr = frames_remote(st, v["video_id"], v.get("duration_s"))
             if not fr["image"]:
                 out["frames_failed"] += 1
