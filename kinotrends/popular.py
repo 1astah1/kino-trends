@@ -162,6 +162,8 @@ def _hydrate(d: dict) -> dict:
     for k, default in (("tags", []), ("topics", []), ("regions", {}), ("cats", {}), ("analysis", None), ("frames", None), ("reasons", [])):
         d[k] = loads(d.get(k), default)
     d["url"] = f"https://www.youtube.com/watch?v={d['video_id']}"
+    if isinstance(d.get("frames"), dict) and d["frames"].get("free_zones"):
+        d["frames"]["free_zones"] = [_zone_ru(z) for z in d["frames"]["free_zones"]]
     d["level_ru"] = LEVEL_RU.get(d.get("level") or "unknown", d.get("level"))
     d["frames_available"] = (FRAMES_DIR / f"{files._safe(d['video_id'])}.jpg").exists()
     return d
@@ -201,8 +203,9 @@ def analyze_text(conn: sqlite3.Connection, llm: LLM, v: dict, audience: str = DE
 
 
 # ---------- кадры ----------
-def frames_remote(st: dict, video_id: str, duration_s: int | None) -> tuple[bytes | None, str]:
-    """На хранилище: прямой URL потока через yt-dlp, 6 кадров ffmpeg по времени, лист 3×2; файл забираем по HTTP и кладём в var/frames."""
+def frames_remote(st: dict, video_id: str, duration_s: int | None) -> dict:
+    """На хранилище: прямой URL потока через yt-dlp, 6 кадров ffmpeg по времени, лист 3×2; файл забираем по HTTP и кладём в var/frames.
+    Возвращает {"image": bytes|None, "error": str, "width": int|None, "height": int|None} (размер одного кадра, по нему ориентация)."""
     vid = files._safe(video_id)
     dur = max(6, int(duration_s or 60))
     d = shlex.quote(st["dir"])
@@ -211,22 +214,33 @@ def frames_remote(st: dict, video_id: str, duration_s: int | None) -> tuple[byte
               "u=$(yt-dlp --no-warnings -q --js-runtimes node -f 'bv*[height<=480][ext=mp4]/b[height<=480]/bv*[height<=720]/b' -g " + url + " | head -1); "
               "test -n \"$u\"; for i in 1 2 3 4 5 6; do t=$((D*i/7)); ffmpeg -loglevel error -y -ss $t -i \"$u\" -frames:v 1 -q:v 3 -vf scale=480:-2 /tmp/fr_${id}_$i.jpg; done; "
               "ffmpeg -loglevel error -y -start_number 1 -i /tmp/fr_${id}_%d.jpg -filter_complex 'tile=3x2:padding=4:margin=4' -q:v 4 " + d + "/frames/$id.jpg; "
-              "chown www-data:www-data " + d + "/frames/$id.jpg; rm -f /tmp/fr_${id}_*.jpg; echo FRAMES_OK")
+              "chown www-data:www-data " + d + "/frames/$id.jpg; "
+              "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/fr_${id}_1.jpg | sed 's/^/DIM /'; "
+              "rm -f /tmp/fr_${id}_*.jpg; echo FRAMES_OK")
+    out: dict = {"image": None, "error": "", "width": None, "height": None}
     try:
         res = files._ssh(st, script, timeout=180)
     except subprocess.TimeoutExpired:
-        return None, "таймаут на хранилище"
+        return dict(out, error="таймаут на хранилище")
     if res.returncode != 0 or "FRAMES_OK" not in res.stdout:
-        return None, (res.stderr or res.stdout or "ошибка ffmpeg").strip()[-240:]
+        return dict(out, error=(res.stderr or res.stdout or "ошибка ffmpeg").strip()[-240:])
+    for line in res.stdout.splitlines():
+        if line.startswith("DIM "):
+            try:
+                w, h = line[4:].strip().split(",")[:2]
+                out["width"], out["height"] = int(w), int(h)
+            except ValueError:
+                pass
     try:
         with httpx.Client(timeout=30) as c:
             r = c.get(f"{st['url']}/frames/{vid}.jpg")
     except httpx.HTTPError as e:
-        return None, f"лист кадров не скачался: {e}"
+        return dict(out, error=f"лист кадров не скачался: {e}")
     if r.status_code != 200 or len(r.content) < 5000:
-        return None, f"лист кадров не отдался: HTTP {r.status_code}"
+        return dict(out, error=f"лист кадров не отдался: HTTP {r.status_code}")
     (FRAMES_DIR / f"{vid}.jpg").write_bytes(r.content)
-    return r.content, ""
+    out["image"] = r.content
+    return out
 
 
 _ZONES = {"top": "верх", "bottom": "низ", "left": "лево", "right": "право", "center": "центр", "top left": "левый верх", "top right": "правый верх",
@@ -238,7 +252,7 @@ def _zone_ru(z) -> str:
     return _ZONES.get(s.lower().replace("-", " ").replace("_", " "), s)
 
 
-def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes) -> dict:
+def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes, width: int | None = None, height: int | None = None) -> dict:
     user = (
         f"Ролик «{v.get('title') or ''}» ({v.get('duration_s') or '?'} с, канал {v.get('channel_name') or ''}). "
         "На картинке 6 кадров 3×2: слева направо, сверху вниз, равномерно по длительности.\n"
@@ -253,10 +267,12 @@ def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes) ->
     data, usage = llm.ask_json(SYSTEM_FRAMES, user, image=image, max_tokens=400)
     record_usage(conn, "popular_frames", llm.model, usage, ok=True, note=v["video_id"])
     orient = str(data.get("orientation") or "").lower()
+    if width and height:  # размер кадра надёжнее мнения модели
+        orient = "vertical" if height > width * 1.1 else "horizontal" if width > height * 1.1 else "square"
     ans = {k: bool(data.get(k)) for k in ("watermark", "text_overlay", "subtitles", "subscribe_cta", "banner", "borders", "faces", "screen_recording", "clean")}
     ans.update({"watermark_where": str(data.get("watermark_where") or "")[:80], "orientation": orient if orient in ("vertical", "horizontal", "square") else "",
                 "quality": str(data.get("quality") or "")[:20], "free_zones": [_zone_ru(z) for z in (data.get("free_zones") or []) if z][:6],
-                "note": str(data.get("note") or "")[:200], "model": llm.model})
+                "note": str(data.get("note") or "")[:200], "model": llm.model, "width": width, "height": height})
     conn.execute("UPDATE pop_videos SET frames = ?, frames_at = ? WHERE video_id = ?", (dumps(ans), now_iso(), v["video_id"]))
     conn.commit()
     return ans
@@ -537,14 +553,14 @@ def analyze_one(conn: sqlite3.Connection, llm: LLM | None, video_id: str, c: dic
             notes.append(f"текст: модель не ответила: {e}")
         st = files.storage(conn)
         if with_frames and st["remote"] and st["url"]:
-            image, err = frames_remote(st, video_id, v.get("duration_s"))
-            if image:
+            fr = frames_remote(st, video_id, v.get("duration_s"))
+            if fr["image"]:
                 try:
-                    analyze_frames(conn, llm, _row(conn, video_id), image)
+                    analyze_frames(conn, llm, _row(conn, video_id), fr["image"], fr["width"], fr["height"])
                 except LLMError as e:
                     notes.append(f"кадры: модель не ответила: {e}")
             else:
-                notes.append(f"кадры не вынулись: {err}")
+                notes.append(f"кадры не вынулись: {fr['error']}")
         elif with_frames:
             notes.append("кадры: нужен сервер-хранилище (storage_host и storage_url)")
     else:
@@ -557,7 +573,9 @@ def analyze_one(conn: sqlite3.Connection, llm: LLM | None, video_id: str, c: dic
 
 # ---------- фаза прогона ----------
 def _eligible_where(c: dict) -> tuple[str, list]:
-    w = "status = 'ok' AND COALESCE(views, 0) >= ? AND COALESCE(duration_s, 0) <= ? AND made_for_kids = 0 AND licensed_content = 0 AND COALESCE(manual_level, '') != 'no'"
+    # Creative Commons пускаем в разбор с меньшим порогом просмотров: это главный источник чистых роликов
+    w = ("status = 'ok' AND (COALESCE(views, 0) >= ? OR (license = 'creativeCommon' AND COALESCE(views, 0) >= 3000)) AND COALESCE(duration_s, 0) <= ? "
+         "AND made_for_kids = 0 AND licensed_content = 0 AND COALESCE(manual_level, '') != 'no'")
     p: list = [c["min_views"], c["max_duration"]]
     if c["lang"] and c["lang"] != "all":
         w += " AND lang = ?"
@@ -664,7 +682,7 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
     # 5. нейросеть по тексту
     w, p = _eligible_where(c)
     if llm and llm.configured and c["llm_max"] > 0:
-        for r in conn.execute(f"SELECT video_id FROM pop_videos WHERE {w} AND analysis IS NULL ORDER BY COALESCE(growth, vpd, 0) DESC LIMIT ?", p + [c["llm_max"]]).fetchall():
+        for r in conn.execute(f"SELECT video_id FROM pop_videos WHERE {w} AND analysis IS NULL ORDER BY (license = 'creativeCommon') DESC, COALESCE(growth, vpd, 0) DESC LIMIT ?", p + [c["llm_max"]]).fetchall():
             if stop():
                 break
             v = _row(conn, r[0])
@@ -678,7 +696,8 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
     st = files.storage(conn)
     if llm and llm.configured and c["frames_max"] > 0 and st["remote"] and st["url"]:
         rows = conn.execute(f"""SELECT video_id FROM pop_videos WHERE {w} AND frames IS NULL AND analysis IS NOT NULL AND category_id != '10'
-                                ORDER BY COALESCE(growth, vpd, 0) DESC LIMIT ?""", p + [c["frames_max"] * 3]).fetchall()
+                                ORDER BY (license = 'creativeCommon') DESC, COALESCE(json_extract(analysis, '$.audience_fit'), 0) DESC, COALESCE(growth, vpd, 0) DESC LIMIT ?""",
+                            p + [c["frames_max"] * 3]).fetchall()
         done = 0
         for r in rows:
             if done >= c["frames_max"] or stop():
@@ -687,16 +706,16 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
             a = v.get("analysis") or {}
             if a.get("is_reupload") or float(a.get("reuse_fit") or 0) < 0.4 or rights.match_holder(v.get("channel_name") or ""):
                 continue
-            image, err = frames_remote(st, v["video_id"], v.get("duration_s"))
-            if not image:
+            fr = frames_remote(st, v["video_id"], v.get("duration_s"))
+            if not fr["image"]:
                 out["frames_failed"] += 1
-                log(f"кадры «{(v.get('title') or '')[:40]}»: {err}", "warn")
-                conn.execute("UPDATE pop_videos SET frames = ?, frames_at = ? WHERE video_id = ?", (dumps({"error": err[:200]}), now_iso(), v["video_id"]))
+                log(f"кадры «{(v.get('title') or '')[:40]}»: {fr['error']}", "warn")
+                conn.execute("UPDATE pop_videos SET frames = ?, frames_at = ? WHERE video_id = ?", (dumps({"error": fr["error"][:200]}), now_iso(), v["video_id"]))
                 conn.commit()
                 done += 1
                 continue
             try:
-                analyze_frames(conn, llm, v, image)
+                analyze_frames(conn, llm, v, fr["image"], fr["width"], fr["height"])
                 out["frames"] += 1
             except LLMError as e:
                 record_usage(conn, "popular_frames", llm.model, None, ok=False, note=str(e)[:200])

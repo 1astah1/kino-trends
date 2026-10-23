@@ -38,6 +38,51 @@ class Usage:
 
 
 def parse_json(text: str):
+    """JSON из ответа модели: снимает ограждения ```, терпит текст до и после объекта (берёт первый полный объект или массив)."""
+    t = (text or "").strip()
+    if t.startswith("```"):
+        t = t.strip("`")
+        if t.lower().startswith("json"):
+            t = t[4:]
+        t = t.strip()
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        pass
+    dec = json.JSONDecoder()
+    for i, ch in enumerate(t):
+        if ch in "{[":
+            try:
+                obj, _ = dec.raw_decode(t, i)
+                return obj
+            except json.JSONDecodeError:
+                continue
+    raise LLMError(f"не JSON: {t[:120]}")
+
+
+class LLMError(RuntimeError):
+    pass
+
+
+def image_mime(data: bytes) -> str:
+    """YouTube отдаёт WebP под именем .jpg; провайдеры сверяют тип с байтами."""
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"GIF":
+        return "image/gif"
+    return "image/jpeg"
+
+
+@dataclass
+class Usage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    cost_usd: float | None = None
+
+
+def parse_json(text: str):
     """Достаёт JSON из ответа модели: с ограждением ``` или без, с мусором вокруг."""
     if not text:
         raise LLMError("пустой ответ модели")
