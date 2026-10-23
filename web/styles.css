@@ -276,3 +276,12 @@ details.fold > summary::before { content: "▸"; color: var(--ink-3); font-size:
 .rights-actions { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; margin-top: 12px; font-size: .85rem; }
 .rights-actions label.inline, .rights-actions .inline-form { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .rights-actions select, .rights-actions input { padding: 4px 8px; font-size: .85rem; } .rights-actions input { max-width: 240px; }
+
+/* видео под перезалив */
+.thumb-wide { width: 72px; height: 44px; border-radius: 6px; }
+.frames { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; background: var(--surface-3); }
+.fit { display: inline-flex; align-items: center; gap: 6px; font-size: .82rem; } .fit .bar { width: 64px; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; display: inline-block; }
+.fit .bar i { display: block; height: 100%; border-radius: 3px; } .fit .bar i.good { background: var(--good); } .fit .bar i.mid { background: var(--warn); } .fit .bar i.low { background: var(--ink-3); }
+.chips-sm .tag { font-size: .68rem; margin-right: 0; }
+.src-line code.url { font-size: .8rem; background: var(--surface-3); padding: 3px 8px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.form textarea { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--ink); font: inherit; font-size: .88rem; resize: vertical; }

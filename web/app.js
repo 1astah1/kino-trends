@@ -328,6 +328,13 @@ async function renderOverview(main) {
         h('h3', { style: 'margin:12px 0 6px' }, 'Кто сносит чужие нарезки'), claimList), rv.last_checked ? `обновлено ${ago(rv.last_checked)}` : 'ещё не проверялось', h('a', { class: 'btn btn-sm', href: '#/collect' }, 'политика')),
       panel('Наш опыт с правами', evList, 'заявки, блокировки и страйки на наших роликах')));
   }).catch(() => {});
+  api('api/videos/overview').then(pv => {
+    const lv = pv.levels || {};
+    const list = pv.top_picks.length ? h('ul', { class: 'src-list' }, pv.top_picks.map(p => h('li', null, h('div', null, h('a', { href: `#/video/${p.video_id}`, class: 'title-link' }, p.title), h('span', { class: 'sub' }, [p.topic, p.audience_fit != null ? `аудитория ${Math.round(p.audience_fit * 100)} %` : null, p.direct_file_url ? 'mp4 готов' : null].filter(Boolean).join(' · '))), h('span', { class: 'meta num', title: 'балл чистоты' }, p.score)))) : empty('Подборка пуста', pv.total ? 'Чистых роликов с баллом от порога пока нет: посмотрите «проверить» в разделе «Видео».' : 'Нужен ключ YouTube Data API в «Сборе», потом «обновить чарты и анализ» в разделе «Видео».');
+    box.append(h('div', { style: 'margin-top:18px' }, panel('Видео под перезалив', h('div', null,
+      h('div', { class: 'status-line' }, h('span', null, 'в чартах: ', h('b', null, fmtFull(pv.total))), h('span', null, 'чистых: ', h('b', null, fmtFull(lv.clean || 0))), h('span', null, 'проверить: ', h('b', null, fmtFull(lv.check || 0))), h('span', null, 'не брать: ', h('b', null, fmtFull(lv.no || 0))), h('span', null, 'в подборке: ', h('b', null, fmtFull(pv.picks))), h('span', null, 'Creative Commons: ', h('b', null, fmtFull(pv.cc))), h('span', null, 'квота Data API сегодня: ', h('b', null, fmtFull(pv.quota_today)))),
+      h('h3', { style: 'margin:12px 0 6px' }, 'Подборка'), list), pv.last_run ? `обновлено ${ago(pv.last_run.ts)}` : 'ещё не собиралось', h('a', { class: 'btn btn-sm', href: '#/videos' }, 'все видео'))));
+  }).catch(() => {});
 }
 const periodLabel = () => ({ '7': '7 дней', '30': '30 дней', '90': '90 дней', all: 'всё время' })[state.filters.period];
 
@@ -645,6 +652,7 @@ async function renderCollect(main) {
       h('dt', null, 'распознано'), h('dd', { class: 'num' }, `${fmtFull(st.recognized_new || 0)} из ${fmtFull(st.recognized_checked || 0)} проверенных`),
       h('dt', null, 'каналов в слежение'), h('dd', { class: 'num' }, `+${fmtFull(st.auto_channels_added || 0)}`),
       h('dt', null, 'нейросеть'), h('dd', { class: 'num' }, `проверено ${fmtFull(st.neuro_checked || 0)}, опознано ${fmtFull(st.neuro_recognized || 0)}, ${(st.neuro_cost_usd || 0).toFixed(3)} $`),
+      h('dt', null, 'популярные видео'), h('dd', { class: 'num' }, st.pop_seen != null ? `в чартах ${fmtFull(st.pop_seen)} · новых ${fmtFull(st.pop_new || 0)} · разбор ${fmtFull(st.pop_text || 0)} · кадров ${fmtFull(st.pop_frames || 0)} · чистых ${fmtFull(st.pop_clean || 0)} · в подборку +${fmtFull(st.pop_picked || 0)}` : '—'),
       h('dt', null, 'авторские права'), h('dd', { class: 'num' }, st.rights_titles != null ? `${fmtFull(st.rights_titles)} произведений · снесено нарезок ${fmtFull(st.rights_removed || 0)} · не проходит ${fmtFull(st.rights_block || 0)} · с оговорками ${fmtFull(st.rights_caution || 0)}` : '—'),
     ));
     logBox.innerHTML = '';
@@ -776,7 +784,28 @@ async function renderCollect(main) {
       h('a', { class: 'btn', href: '#/cut' }, 'открыть календарь'))), 'строится после каждого прогона');
   box.append(h('div', { class: 'grid grid-2' }, statusPanel, dictPanel));
   box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px' }, neuroPanel, h('div', { class: 'grid', style: 'align-content:start' }, tgPanel, calPanel)));
+  const popTa = h('textarea', { rows: 3 }, s.pop_audience || ''); inputs.pop_audience = popTa;
+  const popPanel = panel('Видео под перезалив', h('div', null,
+    h('div', { class: 'form' },
+      sel('pop_enabled', 'собирать популярные видео в каждом прогоне', [['1', 'да'], ['0', 'нет']], 'нужен ключ YouTube Data API выше'),
+      sf('pop_regions', 'страны чарта', 'text', 'коды через запятую: RU,KZ,BY,AZ,AM,MD,GE,UA'),
+      sf('pop_pages', 'страниц по 50 роликов на страну', 'number', '1 единица квоты за страницу'),
+      sf('pop_categories', 'чарты России по категориям', 'text', 'id категорий YouTube через запятую; 20 игры, 28 наука и техника, 24 развлечения'),
+      sf('pop_cc_queries', 'поиск Creative Commons: запросы', 'text', '100 единиц квоты за запрос, раз в pop_cc_hours'),
+      sf('pop_cc_hours', 'искать Creative Commons раз в, часов', 'number'),
+      sel('pop_lang', 'язык роликов', [['ru', 'русский'], ['all', 'все']]),
+      sf('pop_min_views', 'анализировать от просмотров', 'number'),
+      sf('pop_max_duration', 'не длиннее, секунд', 'number'),
+      sf('pop_llm_max', 'разборов текста за прогон', 'number'),
+      sf('pop_frames_max', 'проверок кадров за прогон', 'number', '15–30 с на ролик на хранилище'),
+      sel('pop_auto_pick', 'чистые сами в подборку', [['1', 'да'], ['0', 'нет']]),
+      sf('pop_pick_min_score', 'порог балла для подборки', 'number'),
+      h('label', { style: 'grid-column:1/-1' }, 'наша аудитория (для оценки совпадения)', popTa, h('small', null, 'кому продаём: модель сравнивает зрителей ролика с этим описанием'))),
+    h('div', { class: 'actions', style: 'margin-top:10px' },
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pop_enabled', 'pop_regions', 'pop_pages', 'pop_categories', 'pop_cc_queries', 'pop_cc_hours', 'pop_lang', 'pop_min_views', 'pop_max_duration', 'pop_llm_max', 'pop_frames_max', 'pop_auto_pick', 'pop_pick_min_score', 'pop_audience'], 'Настройки видео сохранены') }, 'Сохранить'),
+      h('a', { class: 'btn', href: '#/videos' }, 'открыть видео'))), 'чарты YouTube по странам, Creative Commons, разбор моделью, кадры с хранилища');
   box.append(h('div', { style: 'margin-top:18px' }, storagePanel));
+  box.append(h('div', { style: 'margin-top:18px' }, popPanel));
   box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px' }, hashPanel, chanPanel));
   box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px' }, settingsPanel, panel('История прогонов', runs.items.length ? histTbl : empty('Прогонов ещё не было'))));
   // живое обновление, пока идёт прогон
@@ -838,6 +867,121 @@ const explainBlock = (text, titleId, onDone) => {
   return h('div', { class: 'explain muted' }, btn);
 };
 const planLine = p => [p.duration ? `длительность ${p.duration}` : null, p.hook ? `хук: ${p.hook}` : null, p.best_time ? `время: ${p.best_time}` : null, p.hashtags && p.hashtags.length ? p.hashtags.slice(0, 4).map(t => '#' + t).join(' ') : null].filter(Boolean).join(' · ');
+
+// ---------- популярные видео СНГ под перезалив ----------
+const POP_RU = { clean: 'чистое', check: 'проверить', no: 'не брать', unknown: 'не проверено' };
+const POP_CLS = { clean: 'tag-good', check: 'tag-warn', no: 'tag-bad', unknown: '' };
+const POP_REGIONS = { RU: 'Россия', KZ: 'Казахстан', BY: 'Беларусь', AZ: 'Азербайджан', AM: 'Армения', MD: 'Молдова', GE: 'Грузия', UA: 'Украина' };
+const POP_CATS = { '1': 'кино и анимация', '2': 'авто', '10': 'музыка', '15': 'животные', '17': 'спорт', '19': 'путешествия', '20': 'игры', '22': 'люди и блоги', '23': 'юмор', '24': 'развлечения', '25': 'новости', '26': 'как сделать и стиль', '27': 'образование', '28': 'наука и техника', '29': 'общество' };
+const popTag = (v, short = false) => { const lvl = v.level || 'unknown'; return h('span', { class: 'tag ' + POP_CLS[lvl], title: (v.reasons || []).join('\n') || 'оценка чистоты для перезалива' }, POP_RU[lvl] + (v.score != null && !short ? ` · ${v.score}` : '')); };
+const licTag = (v) => v.license === 'creativeCommon' ? h('span', { class: 'tag tag-good', title: 'Creative Commons: перезалив разрешён с указанием автора' }, 'CC') : v.licensed_content ? h('span', { class: 'tag tag-bad', title: 'контент заявлен партнёром YouTube: перезалив получит заявку Content ID или блок' }, 'заявлен') : h('span', { class: 'tag', title: 'обычная лицензия YouTube, заявок партнёра нет' }, 'без заявок');
+const fitCell = (v) => { const a = v.analysis; if (!a || a.audience_fit == null) return h('span', { class: 'muted' }, '—'); const p = Math.round(a.audience_fit * 100); return h('span', { class: 'fit', title: a.audience_why || '' }, h('span', { class: 'bar' }, h('i', { class: p >= 60 ? 'good' : p >= 35 ? 'mid' : 'low', style: `width:${p}%` })), h('span', { class: 'num' }, p + ' %')); };
+const regionChips = (v) => { const r = Object.entries(v.regions || {}); const c = Object.entries(v.cats || {}); if (!r.length && !c.length) return h('span', { class: 'muted' }, v.origin === 'cc' ? 'поиск CC' : '—'); return h('div', { class: 'chips chips-sm' }, r.map(([k, rank]) => h('span', { class: 'tag', title: (POP_REGIONS[k] || k) + (rank ? `, место ${rank}` : '') }, k + (rank ? ' ' + rank : ''))), c.slice(0, 2).map(([k, rank]) => h('span', { class: 'tag', title: 'чарт России по категории' }, (POP_CATS[k] || k) + ' ' + rank))); };
+const pickButton = (v, onChange) => { const b = h('button', { class: 'btn btn-sm' + (v.pick ? ' btn-primary' : ''), type: 'button', title: v.pick ? 'убрать из подборки' : 'взять в подборку для перезалива' }, v.pick ? '✓ в подборке' : 'в подборку'); b.addEventListener('click', async () => { try { const d = await post(`api/videos/${v.video_id}/pick`, { pick: !v.pick }); Object.assign(v, { pick: d.pick, pick_auto: d.pick_auto }); toast(v.pick ? 'Взято в подборку' : 'Убрано из подборки'); onChange(); } catch (e) { toast(e.message); } }); return b; };
+const popFileButton = (v, onChange) => {
+  const f = v.file;
+  if (f && f.file_url) return h('button', { class: 'btn btn-sm', type: 'button', title: 'прямая ссылка на mp4 из хранилища: скопировать', onclick: async () => { try { await navigator.clipboard.writeText(f.file_url); toast('Ссылка на mp4 скопирована'); } catch (e) { toast(f.file_url); } } }, 'mp4 · скопировать');
+  if (f && f.status === 'running') return h('button', { class: 'btn btn-sm', type: 'button', disabled: true }, 'качается…');
+  return h('button', { class: 'btn btn-sm', type: 'button', title: 'скачать 720p на хранилище и получить прямую ссылку', onclick: async e => { e.target.disabled = true; try { await post(`api/videos/${v.video_id}/file`); v.file = { status: 'running' }; toast('Поставлено на скачивание, ссылка появится через пару минут'); onChange(); } catch (x) { toast(x.message); e.target.disabled = false; } } }, f && f.status === 'error' ? 'mp4: повторить' : 'подготовить mp4');
+};
+const flagChips = (f) => { const items = [['watermark', 'водяной знак' + (f.watermark_where ? ' (' + f.watermark_where + ')' : '')], ['banner', 'чужая реклама или плашка'], ['subscribe_cta', 'призыв подписаться'], ['text_overlay', 'надписи'], ['subtitles', 'субтитры'], ['borders', 'рамки']].filter(([k]) => f[k]).map(([, l]) => h('span', { class: 'tag tag-bad' }, l)); if (!items.length) items.push(h('span', { class: 'tag tag-good' }, f.clean ? 'чисто: чужого брендинга нет' : 'явных помех нет')); if (f.orientation) items.push(h('span', { class: 'tag' }, { vertical: 'вертикальное', horizontal: 'горизонтальное', square: 'квадратное' }[f.orientation] || f.orientation)); if (f.quality === 'низкое') items.push(h('span', { class: 'tag tag-warn' }, 'низкое качество')); return items; };
+const cutterBox = (url, label) => h('div', { class: 'src-line' }, h('b', null, 'ссылка для заливщика'), h('span', { class: 'muted' }, label), h('code', { class: 'url' }, url), h('button', { class: 'btn btn-sm btn-primary', type: 'button', onclick: async () => { try { await navigator.clipboard.writeText(url); toast('Скопировано'); } catch (e) { toast(url); } } }, 'скопировать'));
+
+async function renderVideos(main) {
+  const q = state.query; const level = q.level || 'all';
+  main.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Видео под перезалив'), h('p', { class: 'lead' }, 'Чарты YouTube по странам СНГ и ролики с лицензией Creative Commons. Каждый проверяется: лицензия и заявки Content ID, канал правообладателя, нейросеть по тексту (тема, хук, совпадение с нашей аудиторией VPN) и по кадрам (водяные знаки, плашки, призывы подписаться, свободные зоны под баннер). Чистые с высоким баллом сами попадают в подборку.')),
+    h('div', { class: 'actions' },
+      h('a', { class: 'btn', href: abs('api/videos/picks'), target: '_blank', rel: 'noopener', html: ICON.doc + ' подборка JSON' }),
+      h('button', { class: 'btn', type: 'button', title: 'скачать mp4 на хранилище для всех роликов подборки без файла', html: ICON.dl + ' mp4 для подборки', onclick: async () => { try { const r = await post('api/videos/picks/prepare-files'); toast(r.queued.length ? `В очереди: ${r.queued.filter(x => x.ok).length}` : 'Файлы подборки уже готовы'); } catch (e) { toast(e.message); } } }),
+      h('button', { class: 'btn', type: 'button', html: ICON.refresh + ' обновить чарты и анализ', title: 'собрать чарты, замеры, разбор текста и кадров прямо сейчас (в фоне, 5–15 минут)', onclick: async () => { try { await post('api/videos/refresh', {}); toast('Запущено в фоне: чарты, замеры, разбор текста и кадров'); } catch (e) { toast(e.message); } } }))));
+  const chips = h('div', { class: 'chips' }, [['all', 'все'], ['pick', 'подборка'], ['fit', 'под нашу аудиторию'], ['clean', 'чистые'], ['check', 'проверить'], ['no', 'не брать']].map(([v, l]) => h('button', { type: 'button', class: 'chip', 'aria-pressed': String(level === v), onclick: () => setQuery({ level: v === 'all' ? null : v, offset: null }) }, l)));
+  const sel = (name, opts, cur, label) => { const el = h('select', { 'aria-label': label }, opts.map(([v, l]) => h('option', { value: v, selected: (cur || '') === v }, l))); el.addEventListener('change', () => setQuery({ [name]: el.value || null, offset: null })); return el; };
+  const regionSel = sel('region', [['', 'все страны'], ...Object.entries(POP_REGIONS)], q.region, 'Страна');
+  const catSel = sel('category', [['', 'все категории'], ...Object.entries(POP_CATS)], q.category, 'Категория');
+  const durSel = sel('dur', [['', 'любая длина'], ['60', 'до 60 с'], ['180', 'до 3 мин'], ['600', 'до 10 мин'], ['1800', 'до 30 мин']], q.dur, 'Длительность');
+  const langSel = sel('lang', [['ru', 'русский'], ['all', 'все языки']], q.lang || 'ru', 'Язык');
+  const sortSel = sel('sort', [['score', 'по баллу'], ['audience', 'по совпадению с аудиторией'], ['growth', 'по приросту в день'], ['views', 'по просмотрам'], ['published', 'по дате'], ['seen', 'по появлению']], q.sort || 'score', 'Сортировка');
+  const search = h('input', { type: 'search', placeholder: 'поиск по названию, каналу, описанию', value: q.q || '', 'aria-label': 'Поиск по видео' });
+  search.addEventListener('input', debounce(() => setQuery({ q: search.value || null, offset: null }), 350));
+  main.append(h('div', { class: 'toolbar' }, chips, h('div', { class: 'grow' }, search), regionSel, catSel, durSel, langSel, sortSel));
+  const box = h('div'); main.append(box); box.append(skeleton(10));
+  const limit = 50, offset = +(q.offset || 0);
+  const params = { region: q.region, category: q.category, dur: q.dur, lang: q.lang || 'ru', q: q.q, sort: q.sort || 'score', limit, offset };
+  if (level === 'pick') params.pick = 1; else if (level === 'fit') params.fit = 0.6; else if (level !== 'all') params.level = level;
+  const d = await api('api/videos', params);
+  box.innerHTML = '';
+  const lv = d.levels || {};
+  box.append(h('div', { class: 'status-line' }, h('span', null, 'всего: ', h('b', null, fmtFull(d.total))), h('span', null, 'чистых: ', h('b', null, fmtFull(lv.clean || 0))), h('span', null, 'проверить: ', h('b', null, fmtFull(lv.check || 0))), h('span', null, 'не брать: ', h('b', null, fmtFull(lv.no || 0))), h('span', null, 'не проверено: ', h('b', null, fmtFull(lv.unknown || 0))), h('span', null, 'в подборке: ', h('b', null, fmtFull(d.picks || 0)), helpIcon('picks'))));
+  if (!d.items.length) { box.append(panel('Пусто', empty('Роликов с такими фильтрами нет', 'Нажми «обновить чарты и анализ» или дождись прогона сбора. Нужен ключ YouTube Data API в разделе «Сбор».'))); return; }
+  const rows = d.items.map(v => {
+    const tr = h('tr');
+    const fill = () => {
+      const a = v.analysis || {};
+      tr.innerHTML = '';
+      tr.append(
+        h('td', null, h('a', { href: `#/video/${v.video_id}` }, h('img', { class: 'thumb thumb-wide', src: abs(`thumb/${v.video_id}.jpg`), alt: '', loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } }))),
+        h('td', { class: 'row-title' }, h('div', null, h('a', { href: `#/video/${v.video_id}`, class: 'title-link' }, h('span', { class: 't', title: v.title || v.video_id }, v.title || v.video_id)), h('span', { class: 'sub' }, [v.channel_name, v.channel_subs ? fmtN(v.channel_subs) + ' подп.' : null, fmtDate(v.published_at), fmtDur(v.duration_s), v.category, v.lang].filter(Boolean).join(' · ')), a.topic ? h('span', { class: 'sub' }, [a.topic, a.format].filter(Boolean).join(' · ')) : null)),
+        h('td', null, regionChips(v)),
+        h('td', { class: 'num' }, h('span', { title: fmtFull(v.views) }, fmtN(v.views)), h('span', { class: 'sub' }, v.growth != null ? '+' + fmtN(v.growth) + '/дн' : v.vpd != null ? fmtN(v.vpd) + '/дн' : '')),
+        h('td', null, fitCell(v)),
+        h('td', null, popTag(v), ' ', licTag(v), v.made_for_kids ? h('span', { class: 'tag tag-warn' }, 'детское') : null),
+        h('td', null, h('div', { class: 'ibar', style: 'flex-wrap:wrap;gap:6px' }, pickButton(v, fill), popFileButton(v, fill), iconLink('ext', 'открыть на YouTube', v.url))));
+    };
+    fill();
+    return tr;
+  });
+  const tbl = h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th'), h('th', null, 'Ролик'), h('th', null, 'Чарты'), h('th', { class: 'num' }, 'Просмотры'), h('th', null, 'Наша аудитория', helpIcon('videos')), h('th', null, 'Чистота', helpIcon('clean')), h('th', null, ''))), h('tbody', null, rows)));
+  const pager = h('div', { class: 'pager' }, h('span', null, `${offset + 1}–${Math.min(offset + limit, d.total)} из ${fmtFull(d.total)}`), h('div', { class: 'actions' }, h('button', { class: 'btn btn-sm', type: 'button', disabled: offset === 0, onclick: () => setQuery({ offset: Math.max(0, offset - limit) || null }) }, 'назад'), h('button', { class: 'btn btn-sm', type: 'button', disabled: offset + limit >= d.total, onclick: () => setQuery({ offset: offset + limit }) }, 'дальше')));
+  const pnl = panel(`${fmtFull(d.total)} ${plural(d.total, 'ролик', 'ролика', 'роликов')}`, tbl, 'чарты YouTube по странам СНГ и поиск Creative Commons');
+  pnl.append(pager);
+  box.append(pnl);
+}
+
+async function renderVideo(main, id) {
+  main.append(h('a', { href: '#/videos', class: 'back', html: ICON.back + ' к видео' }));
+  const box = h('div'); main.append(box); box.append(skeleton(8));
+  let v;
+  try { v = await api(`api/videos/${encodeURIComponent(id)}`); } catch (e) { box.innerHTML = ''; box.append(panel('Нет такого ролика', empty(e.message, 'Ролик не из чартов или удалён.'))); return; }
+  const draw = () => {
+    box.innerHTML = '';
+    const a = v.analysis || {}, f = v.frames || {}, cu = v.cutter || {};
+    const manual = h('select', { title: 'решение оператора сильнее автоматической оценки' }, [['', 'авто'], ['clean', 'чистое'], ['check', 'проверить'], ['no', 'не брать']].map(([val, l]) => h('option', { value: val, selected: (v.manual_level || '') === val }, l)));
+    manual.addEventListener('change', async () => { try { v = await post(`api/videos/${id}/level`, { level: manual.value || null }); v.cutter = cu; toast('Решение сохранено'); draw(); } catch (e) { toast(e.message); } });
+    box.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, v.title), h('p', { class: 'lead' }, [v.channel_name + (v.channel_subs ? ` · ${fmtN(v.channel_subs)} подписчиков` : ''), fmtDate(v.published_at), fmtDur(v.duration_s), v.category, v.lang, v.holder ? 'канал правообладателя: ' + v.holder : null].filter(Boolean).join(' · '))),
+      h('div', { class: 'actions' }, extLink(v.url, 'YouTube'), pickButton(v, draw),
+        h('button', { class: 'btn btn-sm', type: 'button', title: 'разобрать заново: текст, 6 кадров с хранилища, оценка (до минуты)', onclick: async e => { e.target.disabled = true; e.target.textContent = 'разбираю…'; try { v = await post(`api/videos/${id}/analyze`); toast((v.notes || []).join(' · ') || 'Разобрано'); draw(); } catch (x) { toast(x.message); e.target.disabled = false; e.target.textContent = 'разобрать заново'; } } }, 'разобрать заново'),
+        popFileButton(v, draw))));
+    box.append(facts([
+      ['просмотров', fmtN(v.views), v.likes ? `лайков ${fmtN(v.likes)} (${(v.likes / Math.max(1, v.views) * 100).toFixed(1).replace('.', ',')} %)` : null],
+      ['прирост в день', v.growth != null ? '+' + fmtN(v.growth) : '—', 'по замерам между прогонами'],
+      ['просмотров в день', fmtN(v.vpd), 'с момента публикации'],
+      ['комментариев', fmtN(v.comments)],
+      ['балл', v.score != null ? String(v.score) : '—', POP_RU[v.level || 'unknown']],
+      ['наша аудитория', a.audience_fit != null ? Math.round(a.audience_fit * 100) + ' %' : '—', 'совпадение по модели'],
+    ]));
+    box.append(cu.direct_file_url ? cutterBox(cu.direct_file_url, 'прямой mp4 из хранилища') : cutterBox(v.url, 'ссылка YouTube, файл ещё не готов'));
+    const lvlCls = { clean: 'ok', check: 'caution', no: 'block' }[v.level] || 'unknown';
+    const verdict = h('div', null,
+      h('div', { class: 'rights-head' }, h('span', { class: 'tag tag-lg ' + POP_CLS[v.level || 'unknown'] }, POP_RU[v.level || 'unknown']), h('span', { class: 'risk', title: 'балл 0–100: от 45 проверить, от 70 чистое' }, h('span', { class: 'bar' }, h('i', { class: lvlCls, style: `width:${v.score || 0}%` })), h('span', { class: 'num' }, `балл ${v.score != null ? v.score : '—'}`)), licTag(v), v.made_for_kids ? h('span', { class: 'tag tag-warn' }, 'детское') : null, v.blocked_ru ? h('span', { class: 'tag tag-warn' }, 'закрыт для РФ') : null, v.pick ? h('span', { class: 'tag tag-accent' }, v.pick_auto ? 'в подборке (авто)' : 'в подборке') : null),
+      h('ul', { class: 'why' }, (v.reasons || []).map(x => h('li', null, x))),
+      v.notes && v.notes.length ? h('p', { class: 'rule' }, v.notes.join(' · ')) : null,
+      h('div', { class: 'rights-actions' }, h('label', { class: 'inline' }, 'решение оператора', manual)));
+    const framesBody = v.frames_available
+      ? h('div', null, h('img', { class: 'frames', src: abs(`api/videos/${id}/frames.jpg`) + '?t=' + encodeURIComponent(v.frames_at || ''), alt: 'шесть кадров ролика' }), f.error ? h('p', { class: 'muted' }, f.error) : h('div', { class: 'chips', style: 'margin-top:8px' }, flagChips(f)), f.free_zones && f.free_zones.length ? h('p', { class: 'rule' }, 'свободно под наш баннер: ' + f.free_zones.join(', ')) : null, f.note ? h('p', { class: 'muted' }, f.note) : null)
+      : h('p', { class: 'muted' }, f.error ? 'кадры не вынулись: ' + f.error : 'Кадры ещё не проверялись. «Разобрать заново» вынет 6 кадров с хранилища и покажет, что в картинке.');
+    const kv = (pairs) => h('dl', { class: 'kv' }, pairs.filter(x => x && x[1]).flatMap(([k, val]) => [h('dt', null, k), h('dd', null, val)]));
+    const analysisBody = Object.keys(a).length ? kv([['тема', a.topic], ['формат', a.format], ['ниша', a.niche], ['кто смотрит', a.audience], ['наша аудитория', a.audience_fit != null ? `${Math.round(a.audience_fit * 100)} %${a.audience_why ? ' · ' + a.audience_why : ''}` : null], ['почему зашло', a.why_popular], ['хук', a.hook], ['совет по баннеру', a.banner_advice], ['пригодность под баннер', a.reuse_fit != null ? Math.round(a.reuse_fit * 100) + ' %' : null], ['флаги', [a.is_reupload ? 'уже перезалив или компиляция' : null, a.has_sponsor ? 'спонсор в ролике' : null, a.music_heavy ? 'музыка в основе' : null, a.film_title ? 'кадры из «' + a.film_title + '»' : null].filter(Boolean).join(', ') || 'нет']]) : h('p', { class: 'muted' }, 'Нейросеть ещё не разбирала ролик.');
+    box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px' }, panel('Кадры: что в картинке', framesBody, '6 кадров с хранилища, вердикт модели'), panel('Оценка чистоты', verdict, 'лицензия, канал, текст, кадры, аудитория')));
+    box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px' },
+      panel('Разбор нейросети', analysisBody, 'по названию, описанию, тегам и цифрам'),
+      h('div', { class: 'grid', style: 'align-content:start' },
+        panel('Где в чартах', regionChips(v), 'место в чарте «самое популярное» по стране и категории'),
+        panel('Карточка YouTube', kv([['лицензия', v.license === 'creativeCommon' ? 'Creative Commons' : 'стандартная YouTube'], ['заявлен партнёром', v.licensed_content ? 'да: Content ID' : 'нет'], ['встраивание', v.embeddable ? 'разрешено' : 'запрещено'], ['субтитры', v.caption ? 'есть' : 'нет'], ['качество', v.definition], ['темы', (v.topics || []).join(', ')], ['теги', (v.tags || []).slice(0, 12).join(', ')], ['источник', v.origin === 'cc' ? 'поиск Creative Commons' : 'чарт'], ['id', v.video_id]])),
+        v.series && v.series.length > 1 ? panel('Просмотры по замерам', columns(v.series.map(s => ({ day: s.ts.slice(5, 16).replace('T', ' '), value: s.views })), { tipLabel: 'просмотров', height: 120 }), 'между прогонами') : null)));
+    if (v.description) box.append(h('details', { class: 'fold', style: 'margin-top:18px' }, h('summary', null, 'Описание ролика'), h('p', { class: 'muted', style: 'white-space:pre-wrap;margin-top:8px' }, v.description.slice(0, 3000))));
+  };
+  draw();
+}
 
 // ---------- авторские права ----------
 const RIGHTS_RU = { ok: 'проходит', caution: 'с оговорками', block: 'не проходит', unknown: 'не проверено' };
@@ -1012,6 +1156,9 @@ const HELP = {
   outliers: ['Аутлаеры', 'Доля роликов по теме, набравших в 3 и более раз больше обычного для своего канала (медиана роликов канала за период). Так считают VidIQ и Virlo: если тема бьёт норму канала, виновата тема, а не аудитория канала. Чем выше доля, тем вернее тема зайдёт и у вас.'],
   small: ['Маленькие каналы', 'Медиана просмотров у роликов с каналов до 100 тысяч подписчиков. Если она высокая, тема работает без раскрученной аудитории: лучший знак для нового канала.'],
   interest: ['Интерес аудитории', 'Независимо от наших шортсов: просмотры статьи о произведении в русской Википедии в день и поисковый интерес в Google Trends по России. Рост в полтора раза и выше добавляет балл возможности.'],
+  videos: ['Видео под перезалив', 'Чарты «самое популярное» YouTube по странам СНГ (Data API, 1 единица квоты за 50 роликов) и поиск роликов с лицензией Creative Commons. У каждого ролика: замеры просмотров между прогонами, язык, лицензия, флаг «заявлен партнёром» (Content ID), подписчики канала, разбор нейросети: тема, формат, хук, спонсор, совпадение с нашей аудиторией VPN (профиль задаётся в «Сборе»).'],
+  clean: ['Чистота ролика', 'Балл 0–100 и уровень: чистое (от 70, кадры проверены, нет логотипов и плашек, нет заявок партнёра), проверить (от 45), не брать. Снижают: заявка партнёра, канал правообладателя, музыка, водяной знак, чужая реклама, призыв подписаться, спонсор, не наш язык. Поднимают: Creative Commons, совпадение с аудиторией, пригодность под баннер, прирост просмотров, чистые кадры, свободные зоны. Кадры: 6 штук вынимаются на хранилище без скачивания всего видео.'],
+  picks: ['Подборка', 'Чистые ролики с баллом от порога попадают в подборку сами; любой ролик можно взять или убрать руками. «Подборка JSON» (GET /api/videos/picks) отдаёт заливщику ссылку, прямой mp4 из хранилища, кадры, свободные зоны под баннер и совет, где его ставить. «mp4 для подборки» скачивает все файлы разом.'],
   rights: ['Авторские права', 'Пройдёт ли произведение к нарезчику. Четыре улики: сносы чужих нарезок по жалобам (страница YouTube называет заявителя), правообладатель и его привычки (нейросеть плюс список известных студий и каналов), официальный ли и живой ли исходник, наш опыт: заявки, блокировки и страйки на наших роликах. Итог: проходит, с оговорками, не проходит. «Не проходит» в календарь не ставится. Клип не длиннее 59 с: шортс дольше 60 с с заявкой Content ID блокируется.'],
   rights_events: ['Наш опыт', 'Что случилось с нашими роликами по произведению: заявка Content ID, блокировка, страйк или прошёл чисто. Заносит оператор на странице произведения или нарезчик запросом POST /api/rights/events. Страйк сразу выводит произведение из календаря, чистые публикации снижают риск.'],
   source: ['Исходник', 'Полный фильм или серии, найденные на YouTube и Rutube. Нейросеть проверяет каждого кандидата: не трейлер, не пересказ, не другой фильм; определяет серию, сезон, язык. Ссылка уходит в конвейер нарезки.'],
@@ -1034,7 +1181,7 @@ const PANEL_HELP = {
   'Топ произведений по баллу': 'score', 'Мало конкурентов': 'channels', 'Набирают на этой неделе': 'fresh', 'Как опознаны ролики': 'methods',
   'Полнота данных': 'recognition', 'Календарь нарезки': 'calendar', 'Кандидаты: из чего собран календарь': 'opportunity', 'Исходник для нарезки': 'source',
   'Почему это стоит резать': 'explain', 'Какие сцены режут и какие хуки заходят': 'scenes', 'Референсы: чужие нарезки, которые зашли': 'references',
-  'Интерес аудитории': 'interest', 'Авторские права': 'rights', 'Наш опыт с правами': 'rights_events', 'Нейросеть: опознание по кадру и разбор сцен': 'neuro', 'Словарь произведений': 'dict', 'Прогон': 'run',
+  'Интерес аудитории': 'interest', 'Видео под перезалив': 'videos', 'Оценка чистоты': 'clean', 'Кадры: что в картинке': 'clean', 'Авторские права': 'rights', 'Наш опыт с правами': 'rights_events', 'Нейросеть: опознание по кадру и разбор сцен': 'neuro', 'Словарь произведений': 'dict', 'Прогон': 'run',
   'Telegram: дайджест и тревоги': 'telegram', 'Жанры': 'interests_page',
 };
 const FACT_HELP = { 'произведений': 'recognition', 'опознан фильм': 'recognition', 'медиана просмотров': 'median', 'просмотров в день': 'vpd', 'прирост за 7 дней': 'growth', 'словарь': 'dict' };
@@ -1058,6 +1205,7 @@ const TOUR = [
   ['Добро пожаловать в Кино-тренды', 'Сервис следит, какие фильмы и сериалы режут на YouTube Shorts для русскоязычной аудитории, и говорит, что резать вам: с исходником, сценами и объяснением. Пройдёмся по разделам за минуту.', '#/overview'],
   ['Обзор', 'Что набирает прямо сейчас: топ по баллу, свободные ниши, свежие темы недели, динамика по дням и полнота данных. Фильтры сверху действуют на все разделы.', '#/overview'],
   ['Что резать', 'Главный экран. Календарь на неделю: на каждый день произведение, проверенный исходник, объяснение «почему», сцены и план. Каждое произведение проверено по авторским правам. Кнопка «бриф» отдаёт JSON для конвейера нарезки. Отмечайте «сделано», меняйте и добавляйте руками.', '#/cut'],
+  ['Видео', 'Популярные ролики СНГ под перезалив с нашим баннером: чарты по странам, лицензия и заявки, кадры без чужих логотипов, совпадение с аудиторией VPN. Чистые попадают в подборку сами, «подборка JSON» уходит заливщику.', '#/videos'],
   ['Фильмы и сериалы', 'Вся таблица с цифрами: ролики, каналы, медиана, просмотров в день, прирост, интерес аудитории, балл. Клик по названию открывает карточку с роликами, сценами, исходниками и интересом.', '#/films'],
   ['Интересы', 'Что заходит по жанрам, типам, странам, эпохам, длительности, приёмам заголовка и времени публикации. Сравнивайте по медиане, а не по сумме.', '#/interests'],
   ['Ролики и разметка', 'Все собранные шортсы. Если фильм не опознан, подскажите его сервису один раз: он запомнит написание и больше не промахнётся. Ложную улику можно запретить для всех роликов сразу.', '#/shorts'],
@@ -1108,6 +1256,8 @@ function renderHelp(main) {
     gl(['score', 'opportunity', 'median', 'vpd', 'growth', 'channels', 'fresh', 'outliers', 'small', 'interest', 'conf']),
     h('h2', null, 'Нейросеть и исходники'),
     gl(['source', 'rights', 'explain', 'scenes', 'brief', 'neuro', 'recognition']),
+    h('h2', null, 'Видео под перезалив'),
+    gl(['videos', 'clean', 'picks']),
     h('h2', null, 'Частые вопросы'),
     h('h3', null, 'Почему в карточках чужие ролики?'), h('p', null, 'Это референсы: доказательство, что тема заходит, и образец подачи. Резать нужно из исходника по ссылке, а не перезаливать чужое.'),
     h('h3', null, 'Что значит «проверено нейросетью» у исходника?'), h('p', null, 'Модель посмотрела заголовок, канал и длительность и подтвердила, что это полный фильм или серия нужного произведения, а не трейлер, пересказ или другой фильм. Версии с тифлокомментариями исключаются.'),
@@ -1134,13 +1284,15 @@ let renderSeq = 0;
 async function render() {
   parseHash();
   const seq = ++renderSeq;
-  $$('.nav a').forEach(a => a.setAttribute('aria-current', (a.dataset.route === state.route || (state.route === 'film' && a.dataset.route === 'films') || (state.route === 'channel' && a.dataset.route === 'channels')) ? 'page' : 'false'));
+  $$('.nav a').forEach(a => a.setAttribute('aria-current', (a.dataset.route === state.route || (state.route === 'film' && a.dataset.route === 'films') || (state.route === 'channel' && a.dataset.route === 'channels') || (state.route === 'video' && a.dataset.route === 'videos')) ? 'page' : 'false'));
   const main = $('#main');
   const fresh = h('div');
   main.classList.add('loading');
   try {
     if (state.route === 'help') renderHelp(fresh);
     else if (state.route === 'cut') await renderCut(fresh);
+    else if (state.route === 'videos') await renderVideos(fresh);
+    else if (state.route === 'video' && state.param) await renderVideo(fresh, state.param);
     else if (state.route === 'films') await renderFilms(fresh);
     else if (state.route === 'film' && state.param) await renderFilm(fresh, state.param);
     else if (state.route === 'interests') await renderInterests(fresh);
@@ -1156,7 +1308,7 @@ async function render() {
   main.innerHTML = '';
   main.append(...fresh.childNodes);
   main.classList.remove('loading');
-  document.title = ({ help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
+  document.title = ({ help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
 }
 addEventListener('hashchange', render);
 renderFilters();

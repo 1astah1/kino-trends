@@ -246,6 +246,30 @@ CREATE TABLE IF NOT EXISTS rights_events(
 );
 CREATE INDEX IF NOT EXISTS idx_rights_events_title ON rights_events(title_id);
 
+CREATE TABLE IF NOT EXISTS pop_videos(
+  video_id TEXT PRIMARY KEY,
+  title TEXT, description TEXT, channel_id TEXT, channel_name TEXT, channel_subs INTEGER,
+  duration_s INTEGER, published_at TEXT, category_id TEXT, category TEXT, tags TEXT NOT NULL DEFAULT '[]', lang TEXT, lang_hint TEXT,
+  views INTEGER, likes INTEGER, comments INTEGER, stats_at TEXT,
+  regions TEXT NOT NULL DEFAULT '{}', cats TEXT NOT NULL DEFAULT '{}',
+  origin TEXT NOT NULL DEFAULT 'chart', first_seen_at TEXT NOT NULL, last_seen_at TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'ok',
+  license TEXT, licensed_content INTEGER NOT NULL DEFAULT 0, embeddable INTEGER, made_for_kids INTEGER NOT NULL DEFAULT 0, caption INTEGER,
+  definition TEXT, topics TEXT NOT NULL DEFAULT '[]', thumb TEXT, blocked_ru INTEGER NOT NULL DEFAULT 0, is_short INTEGER,
+  vpd REAL, growth REAL,
+  analysis TEXT, analysis_at TEXT, frames TEXT, frames_at TEXT,
+  level TEXT NOT NULL DEFAULT 'unknown', score INTEGER, reasons TEXT NOT NULL DEFAULT '[]', assessed_at TEXT, manual_level TEXT,
+  pick INTEGER NOT NULL DEFAULT 0, pick_auto INTEGER NOT NULL DEFAULT 0, pick_at TEXT, pick_note TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pop_level ON pop_videos(level, score);
+CREATE INDEX IF NOT EXISTS idx_pop_seen ON pop_videos(last_seen_at);
+
+CREATE TABLE IF NOT EXISTS pop_video_stats(
+  video_id TEXT NOT NULL REFERENCES pop_videos(video_id) ON DELETE CASCADE,
+  ts TEXT NOT NULL,
+  views INTEGER, likes INTEGER, comments INTEGER,
+  PRIMARY KEY(video_id, ts)
+);
+
 CREATE TABLE IF NOT EXISTS schedule(
   id INTEGER PRIMARY KEY,
   day TEXT NOT NULL,

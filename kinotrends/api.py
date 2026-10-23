@@ -12,7 +12,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, files, neuro, notify, posters, recommend, rights, schedule, sources, stats
+from . import db, files, neuro, notify, popular, posters, recommend, rights, schedule, sources, stats
 from .collector import STATE, Collector
 from .llm import LLMError, llm_from_settings, usage_today
 from .config import DEFAULT_SETTINGS, THUMB_DIR, USER_AGENT, WEB_DIR
@@ -24,9 +24,11 @@ from .yt import flat
 
 app = FastAPI(title="Kino Trends", docs_url="/api/docs", openapi_url="/api/openapi.json")
 REC = Recognizer()
-JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None}}
+JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None},
+                         "popular": {"running": False, "last": None}}
 SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token")
-TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy")
+TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy",
+             "pop_regions", "pop_categories", "pop_cc_queries", "pop_lang", "pop_audience")
 _bg_lock = threading.Lock()
 _SCHED_STOP = threading.Event()
 
@@ -478,6 +480,169 @@ def titles_create(payload: dict = Body(...)) -> dict:
         REC.meta[tid] = (year, 0, kind, label)
     REC.add_alias(tid, label)
     return {"title_id": tid, "label": label, "year": year, "kind": kind}
+
+
+# ---------- популярные видео СНГ ----------
+def _popular_job(charts_only: bool) -> None:
+    with _bg_lock:
+        if JOBS["popular"]["running"]:
+            return
+        JOBS["popular"]["running"] = True
+    c = _conn()
+    try:
+        s = db.all_settings(c)
+        res = popular.run_phase(c, s, llm_from_settings(s), log=lambda m, level="info": None, charts_only=charts_only)
+        JOBS["popular"]["last"] = {"ok": True, "ts": db.now_iso(), **res}
+    except Exception as e:  # noqa: BLE001
+        JOBS["popular"]["last"] = {"ok": False, "ts": db.now_iso(), "error": str(e)[:300]}
+    finally:
+        c.close()
+        JOBS["popular"]["running"] = False
+
+
+@app.post("/api/videos/refresh")
+def api_videos_refresh(payload: dict = Body(default={})) -> dict:
+    """Собрать чарты и прогнать анализ прямо сейчас, в фоне. charts_only: без нейросети и кадров."""
+    c = _conn()
+    try:
+        if not (db.get_setting(c, "youtube_api_key") or "").strip():
+            raise HTTPException(400, "нет ключа YouTube Data API: задайте youtube_api_key в настройках сбора")
+    finally:
+        c.close()
+    if JOBS["popular"]["running"]:
+        return {"ok": True, "running": True}
+    threading.Thread(target=_popular_job, args=(bool(payload.get("charts_only")),), name="popular", daemon=True).start()
+    return {"ok": True, "running": True}
+
+
+@app.get("/api/videos/overview")
+def api_videos_overview() -> dict:
+    c = _conn()
+    try:
+        out = popular.overview(c)
+        out["job"] = JOBS["popular"]
+        return out
+    finally:
+        c.close()
+
+
+@app.get("/api/videos/picks")
+def api_videos_picks() -> dict:
+    """Подборка для перезалива: ролик, ссылка, прямой mp4 из хранилища, кадры, уровень чистоты, совет по баннеру."""
+    c = _conn()
+    try:
+        return {"items": popular.picks(c), "generated_at": db.now_iso()}
+    finally:
+        c.close()
+
+
+@app.post("/api/videos/picks/prepare-files")
+def api_videos_picks_files() -> dict:
+    """Поставить на скачивание mp4 для всех роликов подборки без файла."""
+    c = _conn()
+    try:
+        files.init(c)
+        queued = []
+        for it in popular.picks(c):
+            if it.get("direct_file_url") or it.get("file_status") == "running":
+                continue
+            r = files.request(c, None, it["video_id"], it["source_url"])
+            queued.append({"video_id": it["video_id"], "ok": r["ok"], "error": r.get("error")})
+        return {"queued": queued}
+    finally:
+        c.close()
+
+
+@app.get("/api/videos")
+def api_videos(level: str | None = None, region: str | None = None, category: str | None = None, dur: int | None = None, lang: str | None = None,
+               q: str | None = None, sort: str = "score", pick: int = 0, fit: float | None = None, limit: int = 50, offset: int = 0) -> dict:
+    c = _conn()
+    try:
+        return popular.list_videos(c, level=level, region=region, category=category, dur=dur, lang=lang, q=q, sort=sort, pick=bool(pick), fit=fit,
+                                   limit=min(limit, 200), offset=max(0, offset))
+    finally:
+        c.close()
+
+
+@app.get("/api/videos/{video_id}/frames.jpg", include_in_schema=False)
+def api_video_frames(video_id: str) -> Response:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{6,20}", video_id):
+        raise HTTPException(404)
+    path = popular.FRAMES_DIR / f"{video_id}.jpg"
+    if not path.exists():
+        raise HTTPException(404, "кадры ещё не вынимались")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/api/videos/{video_id}")
+def api_video(video_id: str) -> dict:
+    c = _conn()
+    try:
+        d = popular.detail(c, video_id)
+        if d is None:
+            raise HTTPException(404, "нет такого ролика в популярных")
+        d["cutter"] = popular.cutter_block(c, d)
+        return d
+    finally:
+        c.close()
+
+
+@app.post("/api/videos/{video_id}/pick")
+def api_video_pick(video_id: str, payload: dict = Body(default={})) -> dict:
+    c = _conn()
+    try:
+        d = popular.set_pick(c, video_id, bool(payload.get("pick", True)), (payload.get("note") or "").strip() or None)
+        if d is None:
+            raise HTTPException(404, "нет такого ролика")
+        return d
+    finally:
+        c.close()
+
+
+@app.post("/api/videos/{video_id}/level")
+def api_video_level(video_id: str, payload: dict = Body(default={})) -> dict:
+    c = _conn()
+    try:
+        try:
+            d = popular.set_level(c, video_id, payload.get("level") or None, popular.cfg(db.all_settings(c)))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        if d is None:
+            raise HTTPException(404, "нет такого ролика")
+        return d
+    finally:
+        c.close()
+
+
+@app.post("/api/videos/{video_id}/analyze")
+def api_video_analyze(video_id: str, payload: dict = Body(default={})) -> dict:
+    """Разобрать один ролик сейчас: текст, кадры с хранилища, оценка."""
+    c = _conn()
+    try:
+        s = db.all_settings(c)
+        d = popular.analyze_one(c, llm_from_settings(s), video_id, popular.cfg(s), with_frames=payload.get("frames", True) is not False)
+        if d is None:
+            raise HTTPException(404, "нет такого ролика")
+        d["cutter"] = popular.cutter_block(c, d)
+        return d
+    finally:
+        c.close()
+
+
+@app.post("/api/videos/{video_id}/file")
+def api_video_file(video_id: str) -> dict:
+    c = _conn()
+    try:
+        d = popular.detail(c, video_id)
+        if d is None:
+            raise HTTPException(404, "нет такого ролика")
+        files.init(c)
+        r = files.request(c, None, video_id, d["url"])
+        if not r["ok"]:
+            raise HTTPException(400, r["error"])
+        return r
+    finally:
+        c.close()
 
 
 @app.post("/api/videos/{video_id}/assign")

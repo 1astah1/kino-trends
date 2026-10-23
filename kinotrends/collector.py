@@ -601,6 +601,24 @@ class Collector:
             self.log(f"подготовлено файлов исходников: {n}")
         self.stats["files_prepared"] = n
 
+    def popular_phase(self) -> None:
+        """Популярные видео СНГ: чарты Data API, замеры, разбор моделью по тексту и кадрам, оценка чистоты, подборка."""
+        if self.settings.get("pop_enabled", "1") != "1":
+            return
+        if not (self.settings.get("youtube_api_key") or "").strip():
+            self.log("популярные видео: нет ключа YouTube Data API", "warn")
+            return
+        self.phase("популярные видео СНГ")
+        from . import popular
+        try:
+            res = popular.run_phase(self.conn, self.settings, llm_from_settings(self.settings), log=self.log, should_stop=self.cancelled)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"популярные видео: {e}", "warn")
+            return
+        self.stats["api_quota_used"] += res.get("quota", 0)
+        self.stats.update({"pop_seen": res["seen"], "pop_new": res["new"] + res["cc_new"], "pop_text": res["text"], "pop_frames": res["frames"],
+                           "pop_clean": res["clean"], "pop_picked": res["picked"]})
+
     def rights_phase(self) -> None:
         """Авторские права: сносы чужих нарезок, правообладатель, живость исходников; оценка для кандидатов календаря."""
         self.phase("авторские права")
@@ -724,6 +742,8 @@ class Collector:
                 self.title_hashtags()
             if not self.cancelled():
                 self.interest_phase()
+            if not self.cancelled():
+                self.popular_phase()
             if not self.cancelled():
                 self.rights_phase()
             if not self.cancelled():
