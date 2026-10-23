@@ -128,8 +128,20 @@ class AutoShorts:
         return (self.get("/api/v1/channels") or {}).get("items") or []
 
 
+_CLIENTS: dict[tuple, AutoShorts] = {}
+_CLIENTS_LOCK = threading.Lock()
+
+
 def client_from_settings(settings: dict) -> AutoShorts:
-    return AutoShorts(settings.get("autoshorts_url") or "", settings.get("autoshorts_login") or "", settings.get("autoshorts_password") or "")
+    """Один клиент на адрес и логин: сессия живёт между шагами, иначе auto-shorts режет частые входы (429)."""
+    key = (settings.get("autoshorts_url") or "", settings.get("autoshorts_login") or "", settings.get("autoshorts_password") or "")
+    with _CLIENTS_LOCK:
+        c = _CLIENTS.get(key)
+        if c is None:
+            c = AutoShorts(*key)
+            _CLIENTS.clear()
+            _CLIENTS[key] = c
+        return c
 
 
 # ---------- очередь ----------
