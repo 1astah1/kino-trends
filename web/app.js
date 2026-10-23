@@ -1239,7 +1239,7 @@ function renderHelp(main) {
   const gl = (keys) => h('dl', null, keys.flatMap(k => [h('dt', null, HELP[k][0]), h('dd', null, HELP[k][1])]));
   main.append(h('div', { class: 'helpdoc' },
     h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Как пользоваться'), h('p', { class: 'lead' }, 'Сервис промежуточный: он не режет и не заливает, а находит, что резать, и отдаёт исходник, сцены и бриф в конвейер.')),
-      h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: startTour }, 'показать тур заново'))),
+      h('div', { class: 'actions' }, h('a', { class: 'btn', href: abs('static/plan.html') }, 'план единого конвейера'), h('button', { class: 'btn', type: 'button', onclick: startTour }, 'показать тур заново'))),
     h('h2', null, 'Рабочий цикл на день'),
     h('ol', null,
       h('li', null, 'Откройте «Что резать». В слоте сегодняшнего дня: произведение, исходник со ссылкой, «почему», план (длительность, хук, время, хэштеги).'),
