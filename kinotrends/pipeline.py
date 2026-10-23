@@ -332,7 +332,15 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 n = max(1, int(settings.get("pipeline_clips_per_source") or 3))
                 items = [{"candidate_id": c["id"], "start_sec": c["start_sec"], "end_sec": c["end_sec"], **jopts} for c in cands[:n]]
                 if not items:
-                    _set(conn, iid, status="failed", last_error="auto-shorts не нашёл ни одного момента для клипа")
+                    # модель не нашла моментов (мало речи): один раз пробуем эвристику по паузам и темпу, потом сдаёмся
+                    m = dict(item.get("metrics") or {})
+                    if not m.get("heuristic_retry"):
+                        opts = dict(_options(item, settings), selector="heuristic")
+                        asc.post(f"/api/v1/sources/{item['as_source_id']}/select", {"options": opts})
+                        m["heuristic_retry"] = now_iso()
+                        _set(conn, iid, metrics=dumps(m), last_error="модель не нашла моментов, запущен подбор эвристикой")
+                        return st
+                    _set(conn, iid, status="failed", last_error="auto-shorts не нашёл ни одного момента для клипа (ни модель, ни эвристика): добавьте момент вручную в auto-shorts и повторите")
                     return "failed"
             jobs = asc.clips(item["as_source_id"], items)
             ids = [j.get("id") for j in jobs if j.get("id") is not None]
