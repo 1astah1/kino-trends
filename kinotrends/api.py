@@ -515,6 +515,38 @@ def api_videos_refresh(payload: dict = Body(default={})) -> dict:
     return {"ok": True, "running": True}
 
 
+@app.get("/api/today")
+def api_today() -> dict:
+    """Рабочий экран дня: кино по календарю на сегодня и завтра, подборка видео, кандидаты на проверку, счётчики."""
+    c = _conn()
+    try:
+        v = schedule.view(c, days=2, back=0)
+        today = [it for it in v["days"][0]["items"]] if v["days"] else []
+        tomorrow = [it for it in v["days"][1]["items"]] if len(v["days"]) > 1 else []
+        pv = popular.overview(c)
+        lr = c.execute("SELECT started_at, finished_at, status FROM runs ORDER BY id DESC LIMIT 1").fetchone()
+        return {"today": v["today"], "schedule": {"today": today, "tomorrow": tomorrow},
+                "picks": popular.picks(c, limit=40), "candidates": popular.candidates_to_check(c),
+                "counts": {"film_total": len([i for i in today if i["title_id"]]), "film_done": len([i for i in today if i["status"] == "done"]),
+                           "picks": pv["picks"], "used": pv["used"], "clean": pv["levels"].get("clean", 0), "check": pv["levels"].get("check", 0), "videos": pv["total"]},
+                "run": STATE.snapshot(), "last_run": dict(lr) if lr else None, "videos_job": JOBS["popular"]}
+    finally:
+        c.close()
+
+
+@app.post("/api/videos/{video_id}/used")
+def api_video_used(video_id: str, payload: dict = Body(default={})) -> dict:
+    """Отметить ролик залитым (уходит из подборки) или вернуть."""
+    c = _conn()
+    try:
+        d = popular.set_used(c, video_id, bool(payload.get("used", True)))
+        if d is None:
+            raise HTTPException(404, "нет такого ролика")
+        return d
+    finally:
+        c.close()
+
+
 @app.get("/api/videos/overview")
 def api_videos_overview() -> dict:
     c = _conn()

@@ -327,6 +327,7 @@ MIGRATIONS = [
     ("videos", "removed_reason", "TEXT"),
     ("title_sources", "alive", "INTEGER"),
     ("title_sources", "checked_at", "TEXT"),
+    ("pop_videos", "used_at", "TEXT"),
 ]
 
 

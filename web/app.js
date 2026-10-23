@@ -78,7 +78,7 @@ const toast = msg => { const t = $('#toast'); t.textContent = msg; t.classList.a
 // ---------- состояние и маршрутизация ----------
 const state = {
   filters: Object.assign({ period: '90', lang: 'ru', min_conf: '0.6', min_views: '0' }, JSON.parse(localStorage.getItem('kt.filters') || '{}')),
-  route: 'overview', param: null, query: {},
+  route: 'today', param: null, query: {},
   sorts: JSON.parse(localStorage.getItem('kt.sorts') || '{}'),
   run: null,
 };
@@ -96,10 +96,10 @@ const withFilters = (p = {}) => Object.assign({}, state.filters, p);
 const post = (path, body, method = 'POST') => api(path, {}, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
 
 function parseHash() {
-  const raw = location.hash.replace(/^#\/?/, '') || 'overview';
+  const raw = location.hash.replace(/^#\/?/, '') || 'today';
   const [pathPart, q] = raw.split('?');
   const [route, ...rest] = pathPart.split('/');
-  state.route = route || 'overview';
+  state.route = route || 'today';
   state.param = rest.length ? decodeURIComponent(rest.join('/')) : null;
   state.query = Object.fromEntries(new URLSearchParams(q || ''));
 }
@@ -123,9 +123,12 @@ function renderFilters() {
   $('#f-views').value = state.filters.min_views;
   const p = state.filters.period;
   $('#filters-note').textContent = p === 'all' ? 'все собранные ролики' : `ролики, опубликованные за последние ${p} ${plural(+p, 'день', 'дня', 'дней')}`;
+  const ft = $('#filters-toggle');
+  if (ft) ft.textContent = `фильтры: ${({ '7': '7 дней', '30': '30 дней', '90': '90 дней', all: 'всё' })[p] || p} · ${({ all: 'все языки', ru: 'русский', en: 'английский' })[state.filters.lang] || state.filters.lang} · от ${state.filters.min_conf.replace('.', ',')}`;
 }
+$('#filters-toggle').addEventListener('click', () => { const f = $('#filters'); f.classList.toggle('open'); $('#filters-toggle').setAttribute('aria-expanded', String(f.classList.contains('open'))); });
 $('#filters').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
+  const b = e.target.closest('button'); if (!b || b.id === 'filters-toggle' || b.classList.contains('help')) return;
   if (b.dataset.period) state.filters.period = b.dataset.period;
   if (b.dataset.lang) state.filters.lang = b.dataset.lang;
   saveFilters(); renderFilters(); render();
@@ -633,6 +636,8 @@ async function renderCollect(main) {
   const box = h('div'); main.append(box); box.append(skeleton(6));
   const [runs, sources, settings, dict, neuroSt, notifs] = await Promise.all([api('/api/runs', { limit: 20 }), api('/api/sources'), api('/api/settings'), api('/api/dict/status'), api('api/neuro/status').catch(() => null), api('api/notifications', { limit: 8 }).catch(() => ({ items: [] }))]);
   box.innerHTML = '';
+  const secs = [['sec-run', 'Прогон'], ['sec-neuro', 'Нейросеть'], ['sec-tg', 'Telegram и календарь'], ['sec-storage', 'Хранилище'], ['sec-video', 'Видео'], ['sec-src', 'Источники'], ['sec-settings', 'Настройки и история']];
+  box.append(h('div', { class: 'sec-nav' }, secs.map(([id, l]) => h('button', { class: 'chip', type: 'button', onclick: () => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, l))));
   // состояние
   const cur = runs.current;
   const statusBox = h('div');
@@ -782,8 +787,8 @@ async function renderCollect(main) {
     h('div', { class: 'actions', style: 'margin-top:10px' },
       h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['schedule_days', 'schedule_per_day', 'schedule_cooldown_days', 'auto_hashtags_max', 'rights_policy', 'rights_llm_max', 'rights_recheck_max'], 'Сохранено') }, 'Сохранить'),
       h('a', { class: 'btn', href: '#/cut' }, 'открыть календарь'))), 'строится после каждого прогона');
-  box.append(h('div', { class: 'grid grid-2' }, statusPanel, dictPanel));
-  box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px' }, neuroPanel, h('div', { class: 'grid', style: 'align-content:start' }, tgPanel, calPanel)));
+  box.append(h('div', { class: 'grid grid-2', id: 'sec-run' }, statusPanel, dictPanel));
+  box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px', id: 'sec-neuro' }, neuroPanel, h('div', { class: 'grid', style: 'align-content:start', id: 'sec-tg' }, tgPanel, calPanel)));
   const popTa = h('textarea', { rows: 3 }, s.pop_audience || ''); inputs.pop_audience = popTa;
   const popPanel = panel('Видео под перезалив', h('div', null,
     h('div', { class: 'form' },
@@ -804,10 +809,10 @@ async function renderCollect(main) {
     h('div', { class: 'actions', style: 'margin-top:10px' },
       h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pop_enabled', 'pop_regions', 'pop_pages', 'pop_categories', 'pop_cc_queries', 'pop_cc_hours', 'pop_lang', 'pop_min_views', 'pop_max_duration', 'pop_llm_max', 'pop_frames_max', 'pop_auto_pick', 'pop_pick_min_score', 'pop_audience'], 'Настройки видео сохранены') }, 'Сохранить'),
       h('a', { class: 'btn', href: '#/videos' }, 'открыть видео'))), 'чарты YouTube по странам, Creative Commons, разбор моделью, кадры с хранилища');
-  box.append(h('div', { style: 'margin-top:18px' }, storagePanel));
-  box.append(h('div', { style: 'margin-top:18px' }, popPanel));
-  box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px' }, hashPanel, chanPanel));
-  box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px' }, settingsPanel, panel('История прогонов', runs.items.length ? histTbl : empty('Прогонов ещё не было'))));
+  box.append(h('div', { style: 'margin-top:18px', id: 'sec-storage' }, storagePanel));
+  box.append(h('div', { style: 'margin-top:18px', id: 'sec-video' }, popPanel));
+  box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px', id: 'sec-src' }, hashPanel, chanPanel));
+  box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px', id: 'sec-settings' }, settingsPanel, panel('История прогонов', runs.items.length ? histTbl : empty('Прогонов ещё не было'))));
   // живое обновление, пока идёт прогон
   const tick = async () => { if (state.route !== 'collect') return; try { const r = await api('/api/runs', { limit: 1 }); renderStatus(r.current); if (r.current.running) setTimeout(tick, 3000); else if (cur.running) render(); } catch (_) {} };
   if (cur.running) setTimeout(tick, 3000);
@@ -868,6 +873,93 @@ const explainBlock = (text, titleId, onDone) => {
 };
 const planLine = p => [p.duration ? `длительность ${p.duration}` : null, p.hook ? `хук: ${p.hook}` : null, p.best_time ? `время: ${p.best_time}` : null, p.hashtags && p.hashtags.length ? p.hashtags.slice(0, 4).map(t => '#' + t).join(' ') : null].filter(Boolean).join(' · ');
 
+// ---------- сегодня: рабочий экран ----------
+const FILM_ROUTES = new Set(['cut', 'overview', 'films', 'film', 'interests', 'channels', 'channel', 'shorts']);
+const SUBNAV = [['cut', 'Что резать'], ['overview', 'Обзор'], ['films', 'Фильмы и сериалы'], ['interests', 'Интересы'], ['channels', 'Каналы'], ['shorts', 'Ролики']];
+const subnav = () => h('nav', { class: 'subnav', 'aria-label': 'Разделы кино' }, SUBNAV.map(([r, l]) => h('a', { href: `#/${r}`, 'aria-current': (state.route === r || (state.route === 'film' && r === 'films') || (state.route === 'channel' && r === 'channels')) ? 'page' : 'false' }, l)));
+const copyBtn = (url, label = 'скопировать') => h('button', { class: 'btn btn-sm btn-primary', type: 'button', html: ICON.copy + ' ' + label, onclick: async () => { try { await navigator.clipboard.writeText(url); toast('Ссылка скопирована'); } catch (_) { toast('Выделите и скопируйте вручную'); } } });
+const workCardFilm = (it) => {
+  const card = h('article');
+  const fill = () => {
+    card.innerHTML = '';
+    card.className = 'work-card' + (it.status === 'done' ? ' done' : it.status === 'skipped' ? ' skipped' : '');
+    const ph = h('div', { class: 'poster-ph' }, (it.label || '?').slice(0, 1).toUpperCase());
+    let img = null;
+    if (it.title_id && it.title_id.startsWith('Q')) { img = h('img', { class: 'poster', src: abs(`api/films/${it.title_id}/poster.jpg`), alt: '', loading: 'lazy' }); img.addEventListener('error', () => img.replaceWith(ph)); }
+    const body = h('div', { class: 'work-body' },
+      h('div', { class: 'work-title' }, it.title_id ? h('a', { href: `#/film/${it.title_id}` }, it.label || it.title_id) : h('span', { class: 'muted' }, 'пусто'), it.year ? h('span', { class: 'muted' }, `(${it.year})`) : null, it.kind_ru ? h('span', { class: 'tag' }, it.kind_ru) : null, rightsTag(it.rights),
+        it.status === 'done' ? h('span', { class: 'tag tag-good' }, 'сделано') : it.status === 'skipped' ? h('span', { class: 'tag tag-warn' }, 'пропущено') : null),
+      it.title_id && it.source ? cutterLink(it) : it.title_id ? h('div', { class: 'work-sub' }, 'исходник ещё не найден: появится после прогона или кнопкой «найти исходники» на странице произведения') : null,
+      it.plan && it.plan.scenes && it.plan.scenes.length ? h('div', { class: 'work-sub' }, 'сцены: ' + it.plan.scenes.map(sc => sc.name).join('; ')) : null,
+      rightsLine(it.rights),
+      h('div', { class: 'work-actions' },
+        it.status !== 'done' ? h('button', { class: 'btn btn-sm', type: 'button', html: ICON.check + ' сделано', onclick: async () => { try { await post(`api/schedule/${it.id}/status`, { status: 'done' }); it.status = 'done'; fill(); toast('Отмечено: сделано'); } catch (e) { toast(e.message); } } })
+          : h('button', { class: 'btn btn-sm', type: 'button', html: ICON.undo + ' вернуть', onclick: async () => { try { await post(`api/schedule/${it.id}/status`, { status: 'planned' }); it.status = 'planned'; fill(); } catch (e) { toast(e.message); } } }),
+        it.status === 'planned' ? h('button', { class: 'btn btn-sm', type: 'button', html: ICON.x + ' пропустить', onclick: async () => { try { await post(`api/schedule/${it.id}/status`, { status: 'skipped' }); it.status = 'skipped'; fill(); } catch (e) { toast(e.message); } } }) : null,
+        it.title_id ? copyHint(it.title_id) : null,
+        it.title_id ? h('a', { class: 'btn btn-sm', href: abs(`api/brief/${it.title_id}`), target: '_blank', rel: 'noopener', html: ICON.doc + ' бриф' }) : null,
+        it.kinopoisk_url ? h('a', { class: 'btn btn-sm', href: it.kinopoisk_url, target: '_blank', rel: 'noopener' }, 'Кинопоиск') : null));
+    card.append(img || ph, body);
+  };
+  fill();
+  return card;
+};
+const workCardVideo = (p, candidate = false) => {
+  const card = h('article');
+  const fill = () => {
+    card.innerHTML = '';
+    card.className = 'work-card' + (p.used_at ? ' used' : '');
+    const url = p.direct_file_url ? absFile(p.direct_file_url) : p.source_url;
+    const body = h('div', { class: 'work-body' },
+      h('div', { class: 'work-title' }, h('a', { href: `#/video/${p.video_id}` }, p.title), popTag({ level: p.level, score: p.score, reasons: p.reasons }), p.license === 'creativeCommon' ? h('span', { class: 'tag tag-good', title: 'Creative Commons' }, 'CC') : null, p.used_at ? h('span', { class: 'tag tag-accent' }, 'залито') : null),
+      h('div', { class: 'work-sub' }, [p.channel, fmtDur(p.duration_s) + (p.is_short === 1 ? ' · шортс: резать не надо' : p.is_short === 0 ? ' · длинное: в нарезку' : ''), p.audience_fit != null ? `аудитория ${Math.round(p.audience_fit * 100)} %` : null, p.topic].filter(Boolean).join(' · ')),
+      h('div', { class: 'cutter-link' }, h('b', null, candidate ? 'Ссылка' : 'Ссылка для заливщика'), h('span', { class: 'muted' }, p.direct_file_url ? ' · прямой mp4 из хранилища' : ' · YouTube, файл ещё не готов'),
+        h('div', { class: 'cutter-row' }, h('input', { type: 'text', readonly: true, value: url, onclick: e => e.target.select() }), copyBtn(url))),
+      p.banner_advice ? h('div', { class: 'work-sub' }, 'баннер: ' + p.banner_advice + (p.free_zones && p.free_zones.length ? ' · свободно: ' + p.free_zones.join(', ') : '')) : null,
+      h('div', { class: 'work-actions' },
+        candidate ? h('button', { class: 'btn btn-sm', type: 'button', html: ICON.plus + ' в подборку', onclick: async () => { try { await post(`api/videos/${p.video_id}/pick`, { pick: true }); toast('Взято в подборку'); render(); } catch (e) { toast(e.message); } } })
+          : p.used_at ? h('button', { class: 'btn btn-sm', type: 'button', html: ICON.undo + ' вернуть в подборку', onclick: async () => { try { await post(`api/videos/${p.video_id}/used`, { used: false }); p.used_at = null; fill(); } catch (e) { toast(e.message); } } })
+          : h('button', { class: 'btn btn-sm', type: 'button', html: ICON.check + ' залито', title: 'ролик использован: уходит из подборки', onclick: async () => { try { await post(`api/videos/${p.video_id}/used`, { used: true }); p.used_at = 'now'; fill(); toast('Отмечено: залито'); } catch (e) { toast(e.message); } } }),
+        !p.direct_file_url ? popFileButton({ video_id: p.video_id, file: p.file_status ? { status: p.file_status } : null }, () => render()) : null,
+        h('a', { class: 'btn btn-sm', href: `#/video/${p.video_id}` }, p.frames_url ? 'кадры и разбор' : 'разбор'),
+        !candidate && !p.used_at ? h('button', { class: 'btn btn-sm', type: 'button', title: 'убрать из подборки', html: ICON.x + ' убрать', onclick: async () => { try { await post(`api/videos/${p.video_id}/pick`, { pick: false }); card.remove(); toast('Убрано из подборки'); } catch (e) { toast(e.message); } } }) : null,
+        iconLink('ext', 'открыть на YouTube', p.source_url)));
+    card.append(h('a', { href: `#/video/${p.video_id}` }, h('img', { class: 'thumb thumb-wide', src: abs(`thumb/${p.video_id}.jpg`), alt: '', loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } })), body);
+  };
+  fill();
+  return card;
+};
+async function renderToday(main) {
+  const box = h('div'); main.append(box); box.append(skeleton(8));
+  const d = await api('api/today');
+  box.innerHTML = '';
+  const dt = parseIso(d.today + 'T12:00:00Z');
+  const WDF = ['воскресенье', 'понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота'];
+  const c = d.counts;
+  box.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, `Сегодня, ${WDF[dt.getDay()]}, ${fmtDate(d.today)}`), h('p', { class: 'lead' }, 'Что отдать в нарезку и на залив: кино по календарю и чистые видео под нашу аудиторию. Скопируй ссылку, отметь «сделано» или «залито».')),
+    h('div', { class: 'actions' },
+      h('a', { class: 'btn', href: abs('api/brief/today'), target: '_blank', rel: 'noopener', html: ICON.doc + ' бриф кино' }),
+      h('a', { class: 'btn', href: abs('api/videos/picks'), target: '_blank', rel: 'noopener', html: ICON.doc + ' подборка видео JSON' }),
+      h('button', { class: 'btn', type: 'button', html: ICON.refresh + ' обновить видео', title: 'чарты, замеры, разбор текста и кадров: в фоне, 5–15 минут', onclick: async () => { try { await post('api/videos/refresh', {}); toast('Запущено в фоне'); } catch (e) { toast(e.message); } } }))));
+  box.append(h('div', { class: 'status-line today-status' },
+    h('span', null, 'кино сегодня: ', h('b', null, `${c.film_done} из ${c.film_total} сделано`)),
+    h('span', null, 'видео в подборке: ', h('b', null, fmtFull(c.picks))), h('span', null, 'залито всего: ', h('b', null, fmtFull(c.used))),
+    h('span', null, 'на проверку: ', h('b', null, fmtFull(c.check))),
+    d.run && d.run.running ? h('span', { class: 'tag tag-accent' }, 'идёт сбор: ' + d.run.phase) : d.last_run ? h('span', null, 'последний сбор: ', h('b', null, ago(d.last_run.started_at))) : null,
+    d.videos_job && d.videos_job.running ? h('span', { class: 'tag tag-accent' }, 'идёт разбор видео') : null));
+  const filmCol = h('div', { class: 'work-col' }, h('h2', null, 'Кино: режем сегодня', helpIcon('calendar')));
+  if (!d.schedule.today.length) filmCol.append(empty('На сегодня слотов нет', 'Календарь строится после прогона сбора; добавить руками можно в «Кино → Что резать».'));
+  d.schedule.today.forEach(it => filmCol.append(workCardFilm(it)));
+  if (d.schedule.tomorrow.length) filmCol.append(h('div', { class: 'tomorrow' }, h('h3', null, 'Завтра'), h('ul', { class: 'src-list' }, d.schedule.tomorrow.filter(it => it.title_id).map(it => h('li', null, h('a', { href: `#/film/${it.title_id}`, class: 'title-link' }, it.label), rightsTag(it.rights, true), h('span', { class: 'meta' }, it.kind_ru || ''))))));
+  filmCol.append(h('p', { class: 'work-sub', style: 'margin-top:8px' }, h('a', { href: '#/cut' }, 'календарь на неделю, замены и кандидаты')));
+  const vidCol = h('div', { class: 'work-col' }, h('h2', null, 'Видео: подборка под перезалив', helpIcon('picks')));
+  if (!d.picks.length) vidCol.append(empty('Подборка пуста', c.check ? 'Ниже ролики под аудиторию, которые ещё не подтверждены: посмотри кадры и возьми подходящие.' : c.videos ? 'Чистых с баллом от порога пока нет; разбор продолжается с каждым прогоном.' : 'Нужен ключ YouTube Data API в «Сборе», потом «обновить видео».'));
+  d.picks.forEach(p => vidCol.append(workCardVideo(p)));
+  if (d.candidates.length) { vidCol.append(h('h3', null, 'На проверку: под аудиторию, но не подтверждены')); d.candidates.forEach(p => vidCol.append(workCardVideo(p, true))); }
+  vidCol.append(h('p', { class: 'work-sub', style: 'margin-top:8px' }, h('a', { href: '#/videos' }, 'все видео, фильтры и чарты')));
+  box.append(h('div', { class: 'work-grid' }, filmCol, vidCol));
+}
+
 // ---------- популярные видео СНГ под перезалив ----------
 const POP_RU = { clean: 'чистое', check: 'проверить', no: 'не брать', unknown: 'не проверено' };
 const POP_CLS = { clean: 'tag-good', check: 'tag-warn', no: 'tag-bad', unknown: '' };
@@ -904,7 +996,9 @@ async function renderVideos(main) {
   const sortSel = sel('sort', [['score', 'по баллу'], ['audience', 'по совпадению с аудиторией'], ['growth', 'по приросту в день'], ['views', 'по просмотрам'], ['published', 'по дате'], ['seen', 'по появлению']], q.sort || 'score', 'Сортировка');
   const search = h('input', { type: 'search', placeholder: 'поиск по названию, каналу, описанию', value: q.q || '', 'aria-label': 'Поиск по видео' });
   search.addEventListener('input', debounce(() => setQuery({ q: search.value || null, offset: null }), 350));
-  main.append(h('div', { class: 'toolbar' }, chips, h('div', { class: 'grow' }, search), kindSel, regionSel, catSel, durSel, langSel, sortSel));
+  const active = [q.short === '1' ? 'шортсы' : q.short === '0' ? 'длинные' : null, q.region ? POP_REGIONS[q.region] || q.region : null, q.category ? POP_CATS[q.category] : null, q.dur ? 'до ' + fmtDur(+q.dur) : null, (q.lang || 'ru') === 'all' ? 'все языки' : null, q.sort && q.sort !== 'score' ? 'своя сортировка' : null].filter(Boolean);
+  main.append(h('div', { class: 'toolbar' }, chips, h('div', { class: 'grow' }, search)));
+  main.append(h('details', { class: 'fold filters-fold', open: active.length ? true : null }, h('summary', null, 'фильтры' + (active.length ? ': ' + active.join(' · ') : '')), h('div', { class: 'toolbar' }, kindSel, regionSel, catSel, durSel, langSel, sortSel)));
   const box = h('div'); main.append(box); box.append(skeleton(10));
   const limit = 50, offset = +(q.offset || 0);
   const params = { region: q.region, category: q.category, dur: q.dur, lang: q.lang || 'ru', q: q.q, sort: q.sort || 'score', short: q.short, limit, offset };
@@ -920,18 +1014,18 @@ async function renderVideos(main) {
       const a = v.analysis || {};
       tr.innerHTML = '';
       tr.append(
-        h('td', null, h('a', { href: `#/video/${v.video_id}` }, h('img', { class: 'thumb thumb-wide', src: abs(`thumb/${v.video_id}.jpg`), alt: '', loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } }))),
+        h('td', { class: 'col-opt' }, h('a', { href: `#/video/${v.video_id}` }, h('img', { class: 'thumb thumb-wide', src: abs(`thumb/${v.video_id}.jpg`), alt: '', loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } }))),
         h('td', { class: 'row-title' }, h('div', null, h('a', { href: `#/video/${v.video_id}`, class: 'title-link' }, h('span', { class: 't', title: v.title || v.video_id }, v.title || v.video_id)), h('span', { class: 'sub' }, [v.channel_name, v.channel_subs ? fmtN(v.channel_subs) + ' подп.' : null, fmtDate(v.published_at), fmtDur(v.duration_s) + (v.is_short === 1 ? ' · шортс' : v.is_short === 0 ? ' · длинное' : ''), v.category, v.lang].filter(Boolean).join(' · ')), a.topic ? h('span', { class: 'sub' }, [a.topic, a.format].filter(Boolean).join(' · ')) : null)),
-        h('td', null, regionChips(v)),
-        h('td', { class: 'num' }, h('span', { title: fmtFull(v.views) }, fmtN(v.views)), h('span', { class: 'sub' }, v.growth != null ? '+' + fmtN(v.growth) + '/дн' : v.vpd != null ? fmtN(v.vpd) + '/дн' : '')),
+        h('td', { class: 'col-opt' }, regionChips(v)),
+        h('td', { class: 'num col-opt' }, h('span', { title: fmtFull(v.views) }, fmtN(v.views)), h('span', { class: 'sub' }, v.growth != null ? '+' + fmtN(v.growth) + '/дн' : v.vpd != null ? fmtN(v.vpd) + '/дн' : '')),
         h('td', null, fitCell(v)),
-        h('td', null, popTag(v), ' ', licTag(v), v.made_for_kids ? h('span', { class: 'tag tag-warn' }, 'детское') : null),
+        h('td', null, popTag(v), ' ', licTag(v), v.made_for_kids ? h('span', { class: 'tag tag-warn' }, 'детское') : null, v.used_at ? h('span', { class: 'tag tag-accent' }, 'залито') : null),
         h('td', null, h('div', { class: 'ibar', style: 'flex-wrap:wrap;gap:6px' }, pickButton(v, fill), popFileButton(v, fill), iconLink('ext', 'открыть на YouTube', v.url))));
     };
     fill();
     return tr;
   });
-  const tbl = h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th'), h('th', null, 'Ролик'), h('th', null, 'Чарты'), h('th', { class: 'num' }, 'Просмотры'), h('th', null, 'Наша аудитория', helpIcon('videos')), h('th', null, 'Чистота', helpIcon('clean')), h('th', null, ''))), h('tbody', null, rows)));
+  const tbl = h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', { class: 'col-opt' }), h('th', null, 'Ролик'), h('th', { class: 'col-opt' }, 'Чарты'), h('th', { class: 'num col-opt' }, 'Просмотры'), h('th', null, 'Наша аудитория', helpIcon('videos')), h('th', null, 'Чистота', helpIcon('clean')), h('th', null, ''))), h('tbody', null, rows)));
   const pager = h('div', { class: 'pager' }, h('span', null, `${offset + 1}–${Math.min(offset + limit, d.total)} из ${fmtFull(d.total)}`), h('div', { class: 'actions' }, h('button', { class: 'btn btn-sm', type: 'button', disabled: offset === 0, onclick: () => setQuery({ offset: Math.max(0, offset - limit) || null }) }, 'назад'), h('button', { class: 'btn btn-sm', type: 'button', disabled: offset + limit >= d.total, onclick: () => setQuery({ offset: offset + limit }) }, 'дальше')));
   const pnl = panel(`${fmtFull(d.total)} ${plural(d.total, 'ролик', 'ролика', 'роликов')}`, tbl, 'чарты YouTube по странам СНГ и поиск Creative Commons');
   pnl.append(pager);
@@ -1206,6 +1300,7 @@ const TOUR = [
   ['Добро пожаловать в Кино-тренды', 'Сервис следит, какие фильмы и сериалы режут на YouTube Shorts для русскоязычной аудитории, и говорит, что резать вам: с исходником, сценами и объяснением. Пройдёмся по разделам за минуту.', '#/overview'],
   ['Обзор', 'Что набирает прямо сейчас: топ по баллу, свободные ниши, свежие темы недели, динамика по дням и полнота данных. Фильтры сверху действуют на все разделы.', '#/overview'],
   ['Что резать', 'Главный экран. Календарь на неделю: на каждый день произведение, проверенный исходник, объяснение «почему», сцены и план. Каждое произведение проверено по авторским правам. Кнопка «бриф» отдаёт JSON для конвейера нарезки. Отмечайте «сделано», меняйте и добавляйте руками.', '#/cut'],
+  ['Сегодня', 'Рабочий экран дня: слева кино из календаря, справа подборка видео под перезалив. Скопируй ссылку, отметь «сделано» или «залито». Остальное живёт в разделах.', '#/today'],
   ['Видео', 'Популярные ролики СНГ под перезалив с нашим баннером: чарты по странам, лицензия и заявки, кадры без чужих логотипов, совпадение с аудиторией VPN. Чистые попадают в подборку сами, «подборка JSON» уходит заливщику.', '#/videos'],
   ['Фильмы и сериалы', 'Вся таблица с цифрами: ролики, каналы, медиана, просмотров в день, прирост, интерес аудитории, балл. Клик по названию открывает карточку с роликами, сценами, исходниками и интересом.', '#/films'],
   ['Интересы', 'Что заходит по жанрам, типам, странам, эпохам, длительности, приёмам заголовка и времени публикации. Сравнивайте по медиане, а не по сумме.', '#/interests'],
@@ -1242,7 +1337,7 @@ function renderHelp(main) {
       h('div', { class: 'actions' }, h('a', { class: 'btn', href: abs('static/plan.html') }, 'план единого конвейера'), h('button', { class: 'btn', type: 'button', onclick: startTour }, 'показать тур заново'))),
     h('h2', null, 'Рабочий цикл на день'),
     h('ol', null,
-      h('li', null, 'Откройте «Что резать». В слоте сегодняшнего дня: произведение, исходник со ссылкой, «почему», план (длительность, хук, время, хэштеги).'),
+      h('li', null, 'Откройте «Сегодня»: слева кино из календаря с исходником и ссылкой, справа подборка видео под перезалив. Неделя вперёд, замены и кандидаты: «Кино → Что резать».'),
       h('li', null, 'Нажмите «бриф»: JSON с исходником, сценами, репликами для поиска по субтитрам, хуками и референсами уходит в админку нарезки. «Бриф на сегодня» отдаёт все слоты дня разом. В нарезчик: ссылку YouTube вставляйте как есть; для Rutube нажмите «подготовить файл» и вставьте прямую ссылку на mp4; «подсказка для нарезчика» копирует текст в поле «Что искать».'),
       h('li', null, 'Не нравится слот: «заменить на…» подставит другое произведение, «пропустить» уберёт, «добавить произведение в этот день» вставит своё. Ручные слоты при пересборке не трогаются.'),
       h('li', null, 'Сделали ролик: «сделано». Это учитывается, чтобы не повторять тему 10 дней.'),
@@ -1285,12 +1380,16 @@ let renderSeq = 0;
 async function render() {
   parseHash();
   const seq = ++renderSeq;
-  $$('.nav a').forEach(a => a.setAttribute('aria-current', (a.dataset.route === state.route || (state.route === 'film' && a.dataset.route === 'films') || (state.route === 'channel' && a.dataset.route === 'channels') || (state.route === 'video' && a.dataset.route === 'videos')) ? 'page' : 'false'));
+  const navKey = FILM_ROUTES.has(state.route) ? 'kino' : state.route === 'video' ? 'videos' : state.route;
+  $$('.nav a').forEach(a => a.setAttribute('aria-current', a.dataset.route === navKey ? 'page' : 'false'));
+  $('#filters').hidden = !FILM_ROUTES.has(state.route);
   const main = $('#main');
   const fresh = h('div');
+  if (FILM_ROUTES.has(state.route)) fresh.append(subnav());
   main.classList.add('loading');
   try {
-    if (state.route === 'help') renderHelp(fresh);
+    if (state.route === 'today') await renderToday(fresh);
+    else if (state.route === 'help') renderHelp(fresh);
     else if (state.route === 'cut') await renderCut(fresh);
     else if (state.route === 'videos') await renderVideos(fresh);
     else if (state.route === 'video' && state.param) await renderVideo(fresh, state.param);
@@ -1301,7 +1400,8 @@ async function render() {
     else if (state.route === 'channel' && state.param) await renderChannel(fresh, state.param);
     else if (state.route === 'shorts') await renderShorts(fresh);
     else if (state.route === 'collect') await renderCollect(fresh);
-    else await renderOverview(fresh);
+    else if (state.route === 'overview') await renderOverview(fresh);
+    else await renderToday(fresh);
   } catch (e) {
     fresh.append(panel('Не удалось загрузить', empty('Ошибка: ' + e.message, 'Сервис ещё поднимается или сбор занял базу. Попробуй обновить страницу.')));
   }
@@ -1309,7 +1409,7 @@ async function render() {
   main.innerHTML = '';
   main.append(...fresh.childNodes);
   main.classList.remove('loading');
-  document.title = ({ help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
+  document.title = ({ today: 'Сегодня', help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
 }
 addEventListener('hashchange', render);
 renderFilters();

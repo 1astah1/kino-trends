@@ -48,6 +48,10 @@ def test_assess():
     assert e["level"] == "no" and e["auto_level"] == "clean"
     f = popular.assess(base(lang="en", analysis={"reuse_fit": 0.7, "audience_fit": 0.6}))
     assert any("язык ролика" in r for r in f["reasons"])
+    g = popular.assess(base(license="creativeCommon", analysis={"reuse_fit": 0.9, "audience_fit": 0.9}, frames={"banner": True, "clean": False}))
+    assert g["level"] == "no" and g["reasons"][0].startswith("чужая реклама в кадре")  # реклама в кадре = не брать
+    s2 = popular.assess(base(license="creativeCommon", analysis={"reuse_fit": 0.9, "audience_fit": 0.9, "has_sponsor": True}, frames={"clean": True}))
+    assert s2["level"] != "clean"  # спонсорская интеграция никогда не «чистое"
 
 
 def test_cfg_parses_lists():

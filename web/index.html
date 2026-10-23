@@ -19,13 +19,9 @@
     <span class="brand-name">Кино-тренды <span class="brand-sub">Shorts · СНГ</span></span>
   </div>
   <nav class="nav" aria-label="Разделы">
-    <a href="#/cut" data-route="cut">Что резать</a>
+    <a href="#/today" data-route="today">Сегодня</a>
     <a href="#/videos" data-route="videos">Видео</a>
-    <a href="#/overview" data-route="overview">Обзор</a>
-    <a href="#/films" data-route="films">Фильмы и сериалы</a>
-    <a href="#/interests" data-route="interests">Интересы</a>
-    <a href="#/channels" data-route="channels">Каналы</a>
-    <a href="#/shorts" data-route="shorts">Ролики</a>
+    <a href="#/cut" data-route="kino">Кино</a>
     <a href="#/collect" data-route="collect">Сбор</a>
   </nav>
   <div class="top-right">
@@ -40,7 +36,8 @@
   </div>
 </header>
 
-<div class="filters" id="filters" role="region" aria-label="Фильтры">
+<div class="filters" id="filters" role="region" aria-label="Фильтры кино" hidden>
+  <button class="btn btn-sm filters-toggle" id="filters-toggle" type="button" aria-expanded="false">фильтры</button>
   <button class="help" type="button" data-help="period" aria-label="Что такое период">?</button>
   <div class="seg" role="group" aria-label="Период">
     <button type="button" data-period="7">7 дней</button>

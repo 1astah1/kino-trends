@@ -208,16 +208,18 @@ def frames_remote(st: dict, video_id: str, duration_s: int | None) -> dict:
     Возвращает {"image": bytes|None, "error": str, "width": int|None, "height": int|None} (размер одного кадра, по нему ориентация)."""
     vid = files._safe(video_id)
     dur = max(6, int(duration_s or 60))
+    n = 9 if dur > 120 else 6  # у длинных роликов реклама может быть в середине: берём 9 кадров
+    tile = "3x3" if n == 9 else "3x2"
     d = shlex.quote(st["dir"])
     url = shlex.quote(f"https://www.youtube.com/watch?v={video_id}")
     script = ("set -e; id=" + vid + "; D=" + str(dur) + "; mkdir -p " + d + "/frames; "
               "u=$(yt-dlp --no-warnings -q --js-runtimes node -f 'bv*[height<=480][ext=mp4]/b[height<=480]/bv*[height<=720]/b' -g " + url + " | head -1); "
-              "test -n \"$u\"; for i in 1 2 3 4 5 6; do t=$((D*i/7)); ffmpeg -loglevel error -y -ss $t -i \"$u\" -frames:v 1 -q:v 3 -vf scale=480:-2 /tmp/fr_${id}_$i.jpg; done; "
-              "ffmpeg -loglevel error -y -start_number 1 -i /tmp/fr_${id}_%d.jpg -filter_complex 'tile=3x2:padding=4:margin=4' -q:v 4 " + d + "/frames/$id.jpg; "
+              "test -n \"$u\"; for i in $(seq 1 " + str(n) + "); do t=$((D*i/" + str(n + 1) + ")); ffmpeg -loglevel error -y -ss $t -i \"$u\" -frames:v 1 -q:v 3 -vf scale=480:-2 /tmp/fr_${id}_$i.jpg; done; "
+              "ffmpeg -loglevel error -y -start_number 1 -i /tmp/fr_${id}_%d.jpg -filter_complex 'tile=" + tile + ":padding=4:margin=4' -q:v 4 " + d + "/frames/$id.jpg; "
               "chown www-data:www-data " + d + "/frames/$id.jpg; "
               "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/fr_${id}_1.jpg | sed 's/^/DIM /'; "
               "rm -f /tmp/fr_${id}_*.jpg; echo FRAMES_OK")
-    out: dict = {"image": None, "error": "", "width": None, "height": None}
+    out: dict = {"image": None, "error": "", "width": None, "height": None, "n": n, "tile": tile}
     try:
         res = files._ssh(st, script, timeout=180)
     except subprocess.TimeoutExpired:
@@ -252,15 +254,17 @@ def _zone_ru(z) -> str:
     return _ZONES.get(s.lower().replace("-", " ").replace("_", " "), s)
 
 
-def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes, width: int | None = None, height: int | None = None) -> dict:
+def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes, width: int | None = None, height: int | None = None, n: int = 6, tile: str = "3x2") -> dict:
     user = (
         f"Ролик «{v.get('title') or ''}» ({v.get('duration_s') or '?'} с, канал {v.get('channel_name') or ''}). "
-        "На картинке 6 кадров 3×2: слева направо, сверху вниз, равномерно по длительности.\n"
+        f"На картинке {n} кадров {tile.replace('x', '×')}: слева направо, сверху вниз, равномерно по длительности.\n"
         'Ответь JSON: {"watermark": false, "watermark_where": "", "text_overlay": false, "subtitles": false, "subscribe_cta": false, "banner": false, '
         '"borders": false, "orientation": "vertical|horizontal|square", "faces": false, "screen_recording": false, "quality": "ок|низкое", '
         '"free_zones": [], "clean": false, "note": "одна фраза"}.\n'
         "watermark: постоянный логотип канала, телеканала или водяной знак (где именно в watermark_where). text_overlay: наложенные надписи и плашки, кроме субтитров. "
-        "subtitles: вшитые субтитры. subscribe_cta: призыв подписаться, лайк, колокольчик, стрелки. banner: реклама, промокод, QR, ссылка, чужой баннер. "
+        "subtitles: вшитые субтитры. subscribe_cta: призыв подписаться, лайк, колокольчик, стрелки. "
+        "banner: ЛЮБАЯ чужая реклама: промокод, название сайта или домен (например warthunder.ru), реклама игры или приложения, QR, ссылка, телеграм-ник, "
+        "рекламная плашка, второй ролик с игрой или рекламой в половине кадра (сплит-экран). Если реклама занимает часть кадра на нескольких кадрах, banner = true обязательно. "
         "borders: чёрные или размытые поля, рамка. free_zones: где можно поставить наш баннер, не закрывая важное (верх, низ, левый верхний угол и т.п.). "
         "clean: чужого брендинга и плашек нет."
     )
@@ -332,8 +336,8 @@ def assess(v: dict, lang_ok: str = "ru") -> dict:
             score -= 15
             reasons.append("это уже чужой перезалив или компиляция: оригинал может пожаловаться")
         if a.get("has_sponsor"):
-            score -= 10
-            reasons.append("в ролике спонсорская интеграция")
+            score -= 25
+            reasons.append("спонсорская интеграция: чужая реклама внутри ролика")
         if a.get("music_heavy"):
             score -= 10
             reasons.append("музыка в основе ролика: риск заявок лейблов")
@@ -353,8 +357,9 @@ def assess(v: dict, lang_ok: str = "ru") -> dict:
             score -= 30
             reasons.append("водяной знак или логотип в кадре" + (f" ({f['watermark_where']})" if f.get("watermark_where") else ""))
         if f.get("banner"):
-            score -= 20
-            reasons.append("чужая реклама, плашка или QR в кадре")
+            score -= 40
+            hard_no = True
+            reasons.insert(0, "чужая реклама в кадре (промокод, сайт, игра, QR): не берём")
         if f.get("subscribe_cta"):
             score -= 15
             reasons.append("призыв подписаться в кадре")
@@ -394,7 +399,7 @@ def assess(v: dict, lang_ok: str = "ru") -> dict:
     elif not f:
         auto = "check" if score >= CHECK_AT and not hard_no else "no"
     else:
-        visual_bad = f.get("watermark") or f.get("banner")
+        visual_bad = f.get("watermark") or f.get("banner") or bool(a.get("has_sponsor"))
         auto = "clean" if score >= CLEAN_AT and not hard_no and not visual_bad else "check" if score >= CHECK_AT and not hard_no else "no"
     level = auto
     manual = v.get("manual_level")
@@ -428,7 +433,7 @@ def auto_pick(conn: sqlite3.Connection, c: dict) -> tuple[int, int]:
 
 
 # ---------- выборки ----------
-SORTS = {"score": "COALESCE(v.score, 0) DESC, COALESCE(v.views, 0) DESC", "growth": "COALESCE(v.growth, v.vpd, 0) DESC", "views": "COALESCE(v.views, 0) DESC",
+SORTS = {"score": "(v.level = 'unknown') ASC, COALESCE(v.score, 0) DESC, COALESCE(v.views, 0) DESC",  # сначала разобранные "growth": "COALESCE(v.growth, v.vpd, 0) DESC", "views": "COALESCE(v.views, 0) DESC",
          "vpd": "COALESCE(v.vpd, 0) DESC", "published": "v.published_at DESC", "seen": "v.first_seen_at DESC, COALESCE(v.views, 0) DESC",
          "audience": "COALESCE(json_extract(v.analysis, '$.audience_fit'), 0) DESC, COALESCE(v.score, 0) DESC"}
 
@@ -510,12 +515,29 @@ def cutter_block(conn: sqlite3.Connection, d: dict) -> dict:
             "topic": a.get("topic"), "format": a.get("format"), "hook": a.get("hook"), "banner_advice": a.get("banner_advice"),
             "audience_fit": a.get("audience_fit"), "audience_why": a.get("audience_why"),
             "free_zones": f.get("free_zones") or [], "orientation": f.get("orientation") or None, "is_short": d.get("is_short"),
-            "views": d.get("views"), "growth_per_day": d.get("growth"), "regions": d.get("regions") or {}, "picked_at": d.get("pick_at"), "pick_note": d.get("pick_note")}
+            "views": d.get("views"), "growth_per_day": d.get("growth"), "regions": d.get("regions") or {}, "picked_at": d.get("pick_at"), "pick_note": d.get("pick_note"),
+            "used_at": d.get("used_at"), "pick": d.get("pick"), "thumb": d.get("thumb"), "channel_subs": d.get("channel_subs"), "published_at": d.get("published_at")}
 
 
-def picks(conn: sqlite3.Connection) -> list[dict]:
-    rows = conn.execute("SELECT * FROM pop_videos WHERE pick = 1 AND status = 'ok' ORDER BY COALESCE(score, 0) DESC, COALESCE(views, 0) DESC").fetchall()
+def picks(conn: sqlite3.Connection, include_used: bool = False, limit: int = 200) -> list[dict]:
+    extra = "" if include_used else " AND used_at IS NULL"
+    rows = conn.execute(f"SELECT * FROM pop_videos WHERE pick = 1 AND status = 'ok'{extra} ORDER BY COALESCE(score, 0) DESC, COALESCE(views, 0) DESC LIMIT ?", (limit,)).fetchall()
     return [cutter_block(conn, _hydrate(dict(r))) for r in rows]
+
+
+def candidates_to_check(conn: sqlite3.Connection, fit: float = 0.6, limit: int = 6) -> list[dict]:
+    """Под нашу аудиторию, но ещё не подтверждены как чистые: на ручной просмотр."""
+    rows = conn.execute("""SELECT * FROM pop_videos WHERE status = 'ok' AND pick = 0 AND level = 'check' AND COALESCE(json_extract(analysis, '$.audience_fit'), 0) >= ?
+                           ORDER BY COALESCE(score, 0) DESC LIMIT ?""", (fit, limit)).fetchall()
+    return [cutter_block(conn, _hydrate(dict(r))) for r in rows]
+
+
+def set_used(conn: sqlite3.Connection, video_id: str, used: bool) -> dict | None:
+    if not conn.execute("SELECT 1 FROM pop_videos WHERE video_id = ?", (video_id,)).fetchone():
+        return None
+    conn.execute("UPDATE pop_videos SET used_at = ? WHERE video_id = ?", (now_iso() if used else None, video_id))
+    conn.commit()
+    return detail(conn, video_id)
 
 
 def set_pick(conn: sqlite3.Connection, video_id: str, pick: bool, note: str | None = None) -> dict | None:
@@ -556,7 +578,7 @@ def analyze_one(conn: sqlite3.Connection, llm: LLM | None, video_id: str, c: dic
             fr = frames_remote(st, video_id, v.get("duration_s"))
             if fr["image"]:
                 try:
-                    analyze_frames(conn, llm, _row(conn, video_id), fr["image"], fr["width"], fr["height"])
+                    analyze_frames(conn, llm, _row(conn, video_id), fr["image"], fr["width"], fr["height"], fr["n"], fr["tile"])
                 except LLMError as e:
                     notes.append(f"кадры: модель не ответила: {e}")
             else:
@@ -704,8 +726,8 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
                 break
             v = _row(conn, r[0])
             a = v.get("analysis") or {}
-            if a.get("is_reupload") or float(a.get("reuse_fit") or 0) < 0.4 or rights.match_holder(v.get("channel_name") or ""):
-                continue
+            if a.get("is_reupload") or a.get("has_sponsor") or float(a.get("reuse_fit") or 0) < 0.4 or rights.match_holder(v.get("channel_name") or ""):
+                continue  # уже не чистое: кадры не тратим
             fr = frames_remote(st, v["video_id"], v.get("duration_s"))
             if not fr["image"]:
                 out["frames_failed"] += 1
@@ -715,7 +737,7 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
                 done += 1
                 continue
             try:
-                analyze_frames(conn, llm, v, fr["image"], fr["width"], fr["height"])
+                analyze_frames(conn, llm, v, fr["image"], fr["width"], fr["height"], fr["n"], fr["tile"])
                 out["frames"] += 1
             except LLMError as e:
                 record_usage(conn, "popular_frames", llm.model, None, ok=False, note=str(e)[:200])
@@ -756,7 +778,8 @@ def overview(conn: sqlite3.Connection) -> dict:
     levels = {r["level"]: r["n"] for r in conn.execute("SELECT level, COUNT(*) n FROM pop_videos WHERE status = 'ok' GROUP BY level")}
     day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     top = [cutter_block(conn, _hydrate(dict(r))) for r in conn.execute("SELECT * FROM pop_videos WHERE pick = 1 AND status = 'ok' ORDER BY COALESCE(score, 0) DESC LIMIT 6")]
-    return {"levels": levels, "total": sum(levels.values()), "picks": conn.execute("SELECT COUNT(*) FROM pop_videos WHERE pick = 1 AND status = 'ok'").fetchone()[0],
+    return {"levels": levels, "total": sum(levels.values()), "picks": conn.execute("SELECT COUNT(*) FROM pop_videos WHERE pick = 1 AND status = 'ok' AND used_at IS NULL").fetchone()[0],
+            "used": conn.execute("SELECT COUNT(*) FROM pop_videos WHERE used_at IS NOT NULL").fetchone()[0],
             "last_run": loads(get_meta(conn, "pop_last_run", ""), None), "quota_today": int(get_meta(conn, f"pop_quota:{day}", "0") or 0), "top_picks": top,
             "cc": conn.execute("SELECT COUNT(*) FROM pop_videos WHERE status = 'ok' AND license = 'creativeCommon'").fetchone()[0],
             "unclaimed": conn.execute("SELECT COUNT(*) FROM pop_videos WHERE status = 'ok' AND licensed_content = 0").fetchone()[0]}
