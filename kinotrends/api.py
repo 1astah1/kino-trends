@@ -12,7 +12,7 @@ from fastapi import Body, FastAPI, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, files, neuro, notify, popular, posters, recommend, rights, schedule, sources, stats
+from . import db, files, neuro, notify, pipeline, popular, posters, recommend, rights, schedule, sources, stats
 from .collector import STATE, Collector
 from .llm import LLMError, llm_from_settings, usage_today
 from .config import DEFAULT_SETTINGS, THUMB_DIR, USER_AGENT, WEB_DIR
@@ -26,9 +26,11 @@ app = FastAPI(title="Kino Trends", docs_url="/api/docs", openapi_url="/api/opena
 REC = Recognizer()
 JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None},
                          "popular": {"running": False, "last": None}}
-SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token")
+SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token", "autoshorts_password")
 TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy",
-             "pop_regions", "pop_categories", "pop_cc_queries", "pop_lang", "pop_audience")
+             "pop_regions", "pop_categories", "pop_cc_queries", "pop_lang", "pop_audience",
+             "autoshorts_url", "autoshorts_login", "pipeline_channel_film", "pipeline_channel_video", "pipeline_niche_film", "pipeline_niche_video",
+             "pipeline_rights_default", "pipeline_rights_note", "pipeline_privacy")
 _bg_lock = threading.Lock()
 _SCHED_STOP = threading.Event()
 
@@ -176,6 +178,7 @@ def _scheduler() -> None:
 def _startup() -> None:
     c = _conn()
     db.init_db(c)
+    threading.Thread(target=pipeline.loop, args=(db.connect, lambda m, level="info": print(f"[конвейер:{level}] {m}", flush=True)), name="pipeline", daemon=True).start()
     files.init(c)
     c.execute("UPDATE downloads SET status = 'error', error = 'процесс прерван' WHERE status = 'running'")
     try:
@@ -513,6 +516,97 @@ def api_videos_refresh(payload: dict = Body(default={})) -> dict:
         return {"ok": True, "running": True}
     threading.Thread(target=_popular_job, args=(bool(payload.get("charts_only")),), name="popular", daemon=True).start()
     return {"ok": True, "running": True}
+
+
+# ---------- конвейер: Кино-тренды → auto-shorts ----------
+@app.get("/api/pipeline")
+def api_pipeline(status: str | None = None, limit: int = 100) -> dict:
+    c = _conn()
+    try:
+        out = pipeline.list_items(c, status=status, limit=min(limit, 500))
+        out["status"] = pipeline.status(c, db.all_settings(c))
+        return out
+    finally:
+        c.close()
+
+
+@app.get("/api/pipeline/status")
+def api_pipeline_status() -> dict:
+    c = _conn()
+    try:
+        return pipeline.status(c, db.all_settings(c))
+    finally:
+        c.close()
+
+
+@app.post("/api/pipeline/enqueue")
+def api_pipeline_enqueue(payload: dict = Body(...)) -> dict:
+    c = _conn()
+    try:
+        try:
+            return pipeline.enqueue(c, str(payload.get("kind") or ""), str(payload.get("ref_id") or ""), db.all_settings(c), note=(payload.get("note") or None))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    finally:
+        c.close()
+
+
+@app.post("/api/pipeline/enqueue-today")
+def api_pipeline_enqueue_today() -> dict:
+    c = _conn()
+    try:
+        return pipeline.enqueue_today(c, db.all_settings(c))
+    finally:
+        c.close()
+
+
+@app.post("/api/pipeline/tick")
+def api_pipeline_tick() -> dict:
+    """Сдвинуть очередь на шаг прямо сейчас."""
+    c = _conn()
+    try:
+        return pipeline.tick(c, db.all_settings(c), log=lambda m, level="info": None)
+    finally:
+        c.close()
+
+
+@app.post("/api/pipeline/{item_id}/retry")
+def api_pipeline_retry(item_id: int) -> dict:
+    c = _conn()
+    try:
+        d = pipeline.retry(c, item_id)
+        if d is None:
+            raise HTTPException(404, "нет такого задания")
+        return d
+    finally:
+        c.close()
+
+
+@app.post("/api/pipeline/{item_id}/cancel")
+def api_pipeline_cancel(item_id: int) -> dict:
+    c = _conn()
+    try:
+        d = pipeline.cancel(c, item_id)
+        if d is None:
+            raise HTTPException(404, "нет такого задания")
+        return d
+    finally:
+        c.close()
+
+
+@app.post("/api/pipeline/{item_id}/rights")
+def api_pipeline_rights(item_id: int, payload: dict = Body(...)) -> dict:
+    c = _conn()
+    try:
+        try:
+            d = pipeline.set_rights(c, item_id, str(payload.get("rights_type") or ""))
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        if d is None:
+            raise HTTPException(404, "нет такого задания")
+        return d
+    finally:
+        c.close()
 
 
 @app.get("/api/today")

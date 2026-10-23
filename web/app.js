@@ -636,7 +636,7 @@ async function renderCollect(main) {
   const box = h('div'); main.append(box); box.append(skeleton(6));
   const [runs, sources, settings, dict, neuroSt, notifs] = await Promise.all([api('/api/runs', { limit: 20 }), api('/api/sources'), api('/api/settings'), api('/api/dict/status'), api('api/neuro/status').catch(() => null), api('api/notifications', { limit: 8 }).catch(() => ({ items: [] }))]);
   box.innerHTML = '';
-  const secs = [['sec-run', 'Прогон'], ['sec-neuro', 'Нейросеть'], ['sec-tg', 'Telegram и календарь'], ['sec-storage', 'Хранилище'], ['sec-video', 'Видео'], ['sec-src', 'Источники'], ['sec-settings', 'Настройки и история']];
+  const secs = [['sec-run', 'Прогон'], ['sec-neuro', 'Нейросеть'], ['sec-tg', 'Telegram и календарь'], ['sec-storage', 'Хранилище'], ['sec-video', 'Видео'], ['sec-pipeline', 'Конвейер'], ['sec-src', 'Источники'], ['sec-settings', 'Настройки и история']];
   box.append(h('div', { class: 'sec-nav' }, secs.map(([id, l]) => h('button', { class: 'chip', type: 'button', onclick: () => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, l))));
   // состояние
   const cur = runs.current;
@@ -811,6 +811,28 @@ async function renderCollect(main) {
       h('a', { class: 'btn', href: '#/videos' }, 'открыть видео'))), 'чарты YouTube по странам, Creative Commons, разбор моделью, кадры с хранилища');
   box.append(h('div', { style: 'margin-top:18px', id: 'sec-storage' }, storagePanel));
   box.append(h('div', { style: 'margin-top:18px', id: 'sec-video' }, popPanel));
+  const pipePanel = panel('Конвейер auto-shorts', h('div', null,
+    h('div', { class: 'form' },
+      sel('pipeline_enabled', 'фоновый цикл очереди', [['1', 'включён'], ['0', 'выключен']], 'раз в pipeline_tick_min минут двигает задания'),
+      sf('pipeline_tick_min', 'шаг цикла, минут', 'number'),
+      sf('autoshorts_url', 'адрес API auto-shorts', 'text', 'например http://127.0.0.1:18300'),
+      sf('autoshorts_login', 'логин оператора', 'text'),
+      sf('autoshorts_password', 'пароль оператора', 'password', 'хранится только в базе сервиса'),
+      sel('pipeline_auto_enqueue', 'после прогона самому ставить в очередь слоты дня и подборку', [['1', 'да'], ['0', 'нет']]),
+      sf('pipeline_channel_film', 'канал auto-shorts для кино', 'text'),
+      sf('pipeline_channel_video', 'канал auto-shorts для видео', 'text'),
+      sf('pipeline_niche_film', 'ниша для кино', 'text'),
+      sf('pipeline_niche_video', 'ниша для видео', 'text'),
+      sel('pipeline_rights_default', 'права для источников без CC', RIGHTS_OPTS.filter(([v]) => v !== 'cc_by'), 'пусто: такие задания ждут твоего выбора в конвейере'),
+      sf('pipeline_rights_note', 'основание прав (proof_note)', 'text'),
+      sf('pipeline_clips_per_source', 'клипов из длинного исходника', 'number'),
+      sel('pipeline_auto_review', 'одобрять без ручного ревью', [['0', 'нет: ревью в auto-shorts'], ['1', 'да: QC и оригинальность решают']]),
+      sel('pipeline_autopublish', 'ставить на автозалив сразу', [['0', 'нет'], ['1', 'да']]),
+      sel('pipeline_privacy', 'доступ при заливе', [['public', 'публично'], ['unlisted', 'по ссылке'], ['private', 'приватно']])),
+    h('div', { class: 'actions', style: 'margin-top:10px' },
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pipeline_enabled', 'pipeline_tick_min', 'autoshorts_url', 'autoshorts_login', 'autoshorts_password', 'pipeline_auto_enqueue', 'pipeline_channel_film', 'pipeline_channel_video', 'pipeline_niche_film', 'pipeline_niche_video', 'pipeline_rights_default', 'pipeline_rights_note', 'pipeline_clips_per_source', 'pipeline_auto_review', 'pipeline_autopublish', 'pipeline_privacy'], 'Настройки конвейера сохранены') }, 'Сохранить'),
+      h('a', { class: 'btn', href: '#/pipeline' }, 'открыть конвейер'))), 'Кино-тренды ставят задания, auto-shorts режет, оформляет, проводит ревью и заливает');
+  box.append(h('div', { style: 'margin-top:18px', id: 'sec-pipeline' }, pipePanel));
   box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px', id: 'sec-src' }, hashPanel, chanPanel));
   box.append(h('div', { class: 'grid grid-2', style: 'margin-top:18px', id: 'sec-settings' }, settingsPanel, panel('История прогонов', runs.items.length ? histTbl : empty('Прогонов ещё не было'))));
   // живое обновление, пока идёт прогон
@@ -898,7 +920,8 @@ const workCardFilm = (it) => {
         it.status === 'planned' ? h('button', { class: 'btn btn-sm', type: 'button', html: ICON.x + ' пропустить', onclick: async () => { try { await post(`api/schedule/${it.id}/status`, { status: 'skipped' }); it.status = 'skipped'; fill(); } catch (e) { toast(e.message); } } }) : null,
         it.title_id ? copyHint(it.title_id) : null,
         it.title_id ? h('a', { class: 'btn btn-sm', href: abs(`api/brief/${it.title_id}`), target: '_blank', rel: 'noopener', html: ICON.doc + ' бриф' }) : null,
-        it.kinopoisk_url ? h('a', { class: 'btn btn-sm', href: it.kinopoisk_url, target: '_blank', rel: 'noopener' }, 'Кинопоиск') : null));
+        it.kinopoisk_url ? h('a', { class: 'btn btn-sm', href: it.kinopoisk_url, target: '_blank', rel: 'noopener' }, 'Кинопоиск') : null,
+        it.title_id && it.source ? enqueueBtn('film', it.title_id) : null));
     card.append(img || ph, body);
   };
   fill();
@@ -923,6 +946,7 @@ const workCardVideo = (p, candidate = false) => {
         !p.direct_file_url ? popFileButton({ video_id: p.video_id, file: p.file_status ? { status: p.file_status } : null }, () => render()) : null,
         h('a', { class: 'btn btn-sm', href: `#/video/${p.video_id}` }, p.frames_url ? 'кадры и разбор' : 'разбор'),
         !candidate && !p.used_at ? h('button', { class: 'btn btn-sm', type: 'button', title: 'убрать из подборки', html: ICON.x + ' убрать', onclick: async () => { try { await post(`api/videos/${p.video_id}/pick`, { pick: false }); card.remove(); toast('Убрано из подборки'); } catch (e) { toast(e.message); } } }) : null,
+        !candidate ? enqueueBtn('video', p.video_id) : null,
         iconLink('ext', 'открыть на YouTube', p.source_url)));
     card.append(h('a', { href: `#/video/${p.video_id}` }, h('img', { class: 'thumb thumb-wide', src: abs(`thumb/${p.video_id}.jpg`), alt: '', loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } })), body);
   };
@@ -946,7 +970,8 @@ async function renderToday(main) {
     h('span', null, 'видео в подборке: ', h('b', null, fmtFull(c.picks))), h('span', null, 'залито всего: ', h('b', null, fmtFull(c.used))),
     h('span', null, 'на проверку: ', h('b', null, fmtFull(c.check))),
     d.run && d.run.running ? h('span', { class: 'tag tag-accent' }, 'идёт сбор: ' + d.run.phase) : d.last_run ? h('span', null, 'последний сбор: ', h('b', null, ago(d.last_run.started_at))) : null,
-    d.videos_job && d.videos_job.running ? h('span', { class: 'tag tag-accent' }, 'идёт разбор видео') : null));
+    d.videos_job && d.videos_job.running ? h('span', { class: 'tag tag-accent' }, 'идёт разбор видео') : null,
+    h('a', { href: '#/pipeline' }, 'конвейер')));
   const filmCol = h('div', { class: 'work-col' }, h('h2', null, 'Кино: режем сегодня', helpIcon('calendar')));
   if (!d.schedule.today.length) filmCol.append(empty('На сегодня слотов нет', 'Календарь строится после прогона сбора; добавить руками можно в «Кино → Что резать».'));
   d.schedule.today.forEach(it => filmCol.append(workCardFilm(it)));
@@ -958,6 +983,51 @@ async function renderToday(main) {
   if (d.candidates.length) { vidCol.append(h('h3', null, 'На проверку: под аудиторию, но не подтверждены')); d.candidates.forEach(p => vidCol.append(workCardVideo(p, true))); }
   vidCol.append(h('p', { class: 'work-sub', style: 'margin-top:8px' }, h('a', { href: '#/videos' }, 'все видео, фильтры и чарты')));
   box.append(h('div', { class: 'work-grid' }, filmCol, vidCol));
+}
+
+// ---------- конвейер: Кино-тренды → auto-shorts ----------
+const PIPE_CLS = { new: 'tag-accent', file_pending: 'tag-accent', needs_rights: 'tag-warn', sent: 'tag-accent', cutting: 'tag-accent', review: 'tag-warn', qc_failed: 'tag-bad', approved: 'tag-good', publishing: 'tag-accent', published: 'tag-good', failed: 'tag-bad', cancelled: '' };
+const RIGHTS_OPTS = [['', 'ждать решения'], ['licensed_platform', 'лицензия платформы'], ['licensed_written', 'письменная лицензия'], ['own', 'своё'], ['public_domain', 'общественное достояние'], ['cc_by', 'CC BY']];
+const enqueueBtn = (kind, refId) => h('button', { class: 'btn btn-sm', type: 'button', title: 'поставить в очередь auto-shorts: нарезка, оформление, ревью, залив', html: ICON.play + ' в конвейер', onclick: async e => { e.target.disabled = true; try { const r = await post('api/pipeline/enqueue', { kind, ref_id: refId }); toast(`В конвейере: ${r.status_ru}`); } catch (x) { toast(x.message); e.target.disabled = false; } } });
+async function renderPipeline(main) {
+  main.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Конвейер'), h('p', { class: 'lead' }, 'Очередь в auto-shorts: источник → нарезка (шортс без нарезки) → авторский слой и баннер → ревью → автозалив → статистика. Кино-тренды ставят задания и следят за ними, auto-shorts делает работу.')),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn btn-primary', type: 'button', html: ICON.plus + ' взять сегодняшнее', title: 'слоты календаря кино на сегодня и подборка видео', onclick: async () => { try { const r = await post('api/pipeline/enqueue-today'); toast(`В очередь: ${r.queued.length}, пропущено: ${r.skipped.length}${r.skipped.length ? ' (' + r.skipped.slice(0, 2).map(s => s.why).join('; ') + ')' : ''}`); render(); } catch (e) { toast(e.message); } } }),
+      h('button', { class: 'btn', type: 'button', html: ICON.refresh + ' прогнать сейчас', title: 'сдвинуть очередь на шаг, не дожидаясь цикла', onclick: async () => { try { const r = await post('api/pipeline/tick'); toast(r.skipped ? r.skipped : `Обработано ${r.processed}, изменилось ${r.changed}`); render(); } catch (e) { toast(e.message); } } }),
+      h('a', { class: 'btn', href: '#/collect' }, 'настройки'))));
+  const box = h('div'); main.append(box); box.append(skeleton(6));
+  const d = await api('api/pipeline', { limit: 200 });
+  box.innerHTML = '';
+  const st = d.status, hl = st.health || {};
+  box.append(h('div', { class: 'status-line' },
+    h('span', null, 'auto-shorts: ', h('b', { class: hl.status === 'ok' ? '' : 'muted' }, st.configured ? (hl.status === 'ok' ? 'готов' : String(hl.status || 'нет ответа')) : 'не настроен')),
+    st.channels && st.channels.length ? h('span', null, 'каналы: ', h('b', null, st.channels.map(c => c.title || c.id).join(', '))) : null,
+    h('span', null, 'цикл: ', h('b', null, st.enabled ? 'включён' : 'выключен')), h('span', null, 'автоодобрение: ', h('b', null, st.auto_review ? 'да' : 'нет')), h('span', null, 'автозалив: ', h('b', null, st.autopublish ? 'да' : 'нет')),
+    h('span', null, 'права по умолчанию: ', h('b', null, st.rights_default || 'только CC и свободные'))));
+  const counts = d.counts || {};
+  box.append(h('div', { class: 'chips', style: 'margin-bottom:12px' }, Object.entries(d.states_ru).filter(([k]) => counts[k]).map(([k, l]) => h('span', { class: 'tag ' + (PIPE_CLS[k] || '') }, `${l}: ${counts[k]}`))));
+  if (!d.items.length) { box.append(panel('Очередь пуста', empty('Пока ничего не отправляли', 'Нажми «взять сегодняшнее» или «в конвейер» на карточке в «Сегодня». Нужен настроенный auto-shorts в «Сборе».'))); return; }
+  const rows = d.items.map(it => {
+    const tr = h('tr');
+    const fill = () => {
+      tr.innerHTML = '';
+      const asUrl = (st.configured && (localStorage.getItem('kt.asweb') || '')) || '';
+      tr.append(
+        h('td', null, h('span', { class: 'tag' }, it.kind === 'film' ? 'кино' : 'видео')),
+        h('td', { class: 'row-title' }, h('div', null, h('a', { href: it.kind === 'film' ? `#/film/${it.ref_id}` : `#/video/${it.ref_id}`, class: 'title-link' }, h('span', { class: 't', title: it.label || it.ref_id }, it.label || it.ref_id)), h('span', { class: 'sub' }, [it.channel, it.is_short === 1 ? 'шортс, без нарезки' : it.duration_s ? fmtDur(it.duration_s) : null, it.license === 'creativeCommon' ? 'CC' : null, it.rights_type ? 'права: ' + it.rights_type : null, it.note].filter(Boolean).join(' · ')))),
+        h('td', null, h('span', { class: 'tag ' + (PIPE_CLS[it.status] || ''), title: it.last_error || '' }, it.status_ru), it.last_error ? h('span', { class: 'sub', style: 'color:var(--bad-ink);max-width:320px;white-space:normal' }, it.last_error) : null,
+          it.status === 'needs_rights' ? h('div', { style: 'margin-top:6px' }, (() => { const sel = h('select', null, RIGHTS_OPTS.filter(([v]) => v && v !== 'cc_by').map(([v, l]) => h('option', { value: v }, l))); const b = h('button', { class: 'btn btn-sm', type: 'button', style: 'margin-left:6px', onclick: async () => { try { Object.assign(it, await post(`api/pipeline/${it.id}/rights`, { rights_type: sel.value })); fill(); toast('Тип прав задан, задание продолжит путь'); } catch (e) { toast(e.message); } } }, 'задать права'); return h('span', null, sel, b); })()) : null),
+        h('td', null, h('span', { class: 'sub' }, [it.as_source_id ? 'источник ' + it.as_source_id : null, it.as_jobs.length ? 'клипов ' + it.as_jobs.length : null, it.as_packages.length ? 'пакетов ' + it.as_packages.length : null, it.as_publications.length ? 'публикаций ' + it.as_publications.length : null].filter(Boolean).join(' · ') || '—'),
+          it.metrics && it.metrics.publications && it.metrics.publications.length ? h('span', { class: 'sub' }, it.metrics.publications.map(p => `${p.url || p.id}: ${fmtN(p.views)} просм.${p.retention_3s != null ? ', 3 с ' + Math.round(p.retention_3s * 100) + ' %' : ''}`).join('; ')) : null),
+        h('td', { class: 'num' }, h('span', { class: 'sub' }, ago(it.updated_at))),
+        h('td', null, h('div', { class: 'ibar' },
+          ['failed', 'qc_failed', 'cancelled'].includes(it.status) ? h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { try { Object.assign(it, await post(`api/pipeline/${it.id}/retry`)); fill(); } catch (e) { toast(e.message); } } }, 'повторить') : null,
+          !['published', 'cancelled'].includes(it.status) ? h('button', { class: 'btn btn-sm', type: 'button', onclick: async () => { try { Object.assign(it, await post(`api/pipeline/${it.id}/cancel`)); fill(); } catch (e) { toast(e.message); } } }, 'отменить') : null)));
+    };
+    fill();
+    return tr;
+  });
+  box.append(panel(`${fmtFull(d.items.length)} ${plural(d.items.length, 'задание', 'задания', 'заданий')}`, h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, 'Тип'), h('th', null, 'Что'), h('th', null, 'Статус'), h('th', null, 'В auto-shorts'), h('th', { class: 'num' }, 'Обновлено'), h('th'))), h('tbody', null, rows))), 'ревью и редактор клипов: в интерфейсе auto-shorts'));
 }
 
 // ---------- популярные видео СНГ под перезалив ----------
@@ -1254,6 +1324,7 @@ const HELP = {
   videos: ['Видео под перезалив', 'Чарты «самое популярное» YouTube по странам СНГ (Data API, 1 единица квоты за 50 роликов) и поиск роликов с лицензией Creative Commons, в том числе коротких. Шортс распознаётся по странице youtube.com/shorts: если она не уходит на /watch, это шортс, и резать его не нужно: заливщик берёт как есть. У каждого ролика: замеры просмотров между прогонами, язык, лицензия, флаг «заявлен партнёром» (Content ID), подписчики канала, разбор нейросети: тема, формат, хук, спонсор, совпадение с нашей аудиторией VPN (профиль задаётся в «Сборе»).'],
   clean: ['Чистота ролика', 'Балл 0–100 и уровень: чистое (от 70, кадры проверены, нет логотипов и плашек, нет заявок партнёра), проверить (от 45), не брать. Снижают: заявка партнёра, канал правообладателя, музыка, водяной знак, чужая реклама, призыв подписаться, спонсор, не наш язык. Поднимают: Creative Commons, совпадение с аудиторией, пригодность под баннер, прирост просмотров, чистые кадры, свободные зоны. Кадры: 6 штук вынимаются на хранилище без скачивания всего видео.'],
   picks: ['Подборка', 'Чистые ролики с баллом от порога попадают в подборку сами; любой ролик можно взять или убрать руками. «Подборка JSON» (GET /api/videos/picks) отдаёт заливщику ссылку, прямой mp4 из хранилища, кадры, свободные зоны под баннер и совет, где его ставить. «mp4 для подборки» скачивает все файлы разом.'],
+  pipeline: ['Конвейер', 'Очередь заданий в auto-shorts. Источник уходит прямым mp4 из хранилища с типом прав (CC как cc_by с указанием автора, остальное по настройке или после твоего выбора), auto-shorts транскрибирует, выбирает моменты, режет (шортс идёт одним клипом без нарезки), делает авторский слой, баннер, QC и оригинальность, ревью, пакет и автозалив по слотам. Кино-тренды следят за статусами и подтягивают просмотры и удержание публикаций.'],
   rights: ['Авторские права', 'Пройдёт ли произведение к нарезчику. Четыре улики: сносы чужих нарезок по жалобам (страница YouTube называет заявителя), правообладатель и его привычки (нейросеть плюс список известных студий и каналов), официальный ли и живой ли исходник, наш опыт: заявки, блокировки и страйки на наших роликах. Итог: проходит, с оговорками, не проходит. «Не проходит» в календарь не ставится. Клип не длиннее 59 с: шортс дольше 60 с с заявкой Content ID блокируется.'],
   rights_events: ['Наш опыт', 'Что случилось с нашими роликами по произведению: заявка Content ID, блокировка, страйк или прошёл чисто. Заносит оператор на странице произведения или нарезчик запросом POST /api/rights/events. Страйк сразу выводит произведение из календаря, чистые публикации снижают риск.'],
   source: ['Исходник', 'Полный фильм или серии, найденные на YouTube и Rutube. Нейросеть проверяет каждого кандидата: не трейлер, не пересказ, не другой фильм; определяет серию, сезон, язык. Ссылка уходит в конвейер нарезки.'],
@@ -1301,6 +1372,7 @@ const TOUR = [
   ['Обзор', 'Что набирает прямо сейчас: топ по баллу, свободные ниши, свежие темы недели, динамика по дням и полнота данных. Фильтры сверху действуют на все разделы.', '#/overview'],
   ['Что резать', 'Главный экран. Календарь на неделю: на каждый день произведение, проверенный исходник, объяснение «почему», сцены и план. Каждое произведение проверено по авторским правам. Кнопка «бриф» отдаёт JSON для конвейера нарезки. Отмечайте «сделано», меняйте и добавляйте руками.', '#/cut'],
   ['Сегодня', 'Рабочий экран дня: слева кино из календаря, справа подборка видео под перезалив. Скопируй ссылку, отметь «сделано» или «залито». Остальное живёт в разделах.', '#/today'],
+  ['Конвейер', 'Очередь в auto-shorts: что отправлено, где застряло, что опубликовано и сколько набрало. Кнопка «в конвейер» есть на каждой карточке дня.', '#/pipeline'],
   ['Видео', 'Популярные ролики СНГ под перезалив с нашим баннером: чарты по странам, лицензия и заявки, кадры без чужих логотипов, совпадение с аудиторией VPN. Чистые попадают в подборку сами, «подборка JSON» уходит заливщику.', '#/videos'],
   ['Фильмы и сериалы', 'Вся таблица с цифрами: ролики, каналы, медиана, просмотров в день, прирост, интерес аудитории, балл. Клик по названию открывает карточку с роликами, сценами, исходниками и интересом.', '#/films'],
   ['Интересы', 'Что заходит по жанрам, типам, странам, эпохам, длительности, приёмам заголовка и времени публикации. Сравнивайте по медиане, а не по сумме.', '#/interests'],
@@ -1353,7 +1425,7 @@ function renderHelp(main) {
     h('h2', null, 'Нейросеть и исходники'),
     gl(['source', 'rights', 'explain', 'scenes', 'brief', 'neuro', 'recognition']),
     h('h2', null, 'Видео под перезалив'),
-    gl(['videos', 'clean', 'picks']),
+    gl(['videos', 'clean', 'picks', 'pipeline']),
     h('h2', null, 'Частые вопросы'),
     h('h3', null, 'Почему в карточках чужие ролики?'), h('p', null, 'Это референсы: доказательство, что тема заходит, и образец подачи. Резать нужно из исходника по ссылке, а не перезаливать чужое.'),
     h('h3', null, 'Что значит «проверено нейросетью» у исходника?'), h('p', null, 'Модель посмотрела заголовок, канал и длительность и подтвердила, что это полный фильм или серия нужного произведения, а не трейлер, пересказ или другой фильм. Версии с тифлокомментариями исключаются.'),
@@ -1391,6 +1463,7 @@ async function render() {
     if (state.route === 'today') await renderToday(fresh);
     else if (state.route === 'help') renderHelp(fresh);
     else if (state.route === 'cut') await renderCut(fresh);
+    else if (state.route === 'pipeline') await renderPipeline(fresh);
     else if (state.route === 'videos') await renderVideos(fresh);
     else if (state.route === 'video' && state.param) await renderVideo(fresh, state.param);
     else if (state.route === 'films') await renderFilms(fresh);
@@ -1409,7 +1482,7 @@ async function render() {
   main.innerHTML = '';
   main.append(...fresh.childNodes);
   main.classList.remove('loading');
-  document.title = ({ today: 'Сегодня', help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
+  document.title = ({ today: 'Сегодня', pipeline: 'Конвейер', help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
 }
 addEventListener('hashchange', render);
 renderFilters();

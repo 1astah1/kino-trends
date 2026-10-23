@@ -79,6 +79,23 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "pop_frames_max": "25",         # проверок кадров за прогон (по 15–30 с на ролик на хранилище)
     "pop_audience": "аудитория VPN-сервиса в России и СНГ: людям нужен YouTube без замедления, Discord, Instagram, Roblox, зарубежные игры, стримы и сервисы; "
                     "геймеры, молодёжь 16–35, интересующиеся техникой, играми, зарубежным контентом, путешествиями, крипто",  # под кого подбираем
+    "autoshorts_url": "",           # API auto-shorts, например http://127.0.0.1:18300
+    "autoshorts_login": "",         # оператор auto-shorts (роль operator), под ним конвейер пишет в API
+    "autoshorts_password": "",
+    "pipeline_enabled": "0",        # фоновый цикл: двигать очередь раз в pipeline_tick_min минут
+    "pipeline_tick_min": "5",
+    "pipeline_auto_enqueue": "0",   # после прогона самому ставить в очередь слоты дня и подборку видео
+    "pipeline_channel_film": "kadr-dnya",   # канал auto-shorts для кино
+    "pipeline_channel_video": "kadr-dnya",  # канал auto-shorts для видео под перезалив
+    "pipeline_niche_film": "kino",
+    "pipeline_niche_video": "vpn",
+    "pipeline_rights_default": "",  # тип прав для не-CC источников: пусто = ждать решения оператора; own|licensed_written|licensed_platform|public_domain
+    "pipeline_rights_note": "",     # proof_note для таких источников
+    "pipeline_clips_per_source": "3",  # сколько клипов резать из длинного исходника
+    "pipeline_auto_review": "0",    # одобрять клипы без ручного ревью (QC и оригинальность проверяет auto-shorts)
+    "pipeline_autopublish": "0",    # ставить пакеты на автозалив сразу
+    "pipeline_privacy": "public",
+    "pipeline_max_per_tick": "20",
     "pop_auto_pick": "1",           # чистые с баллом от pop_pick_min_score сами идут в подборку
     "pop_pick_min_score": "70",
 }

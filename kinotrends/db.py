@@ -263,6 +263,19 @@ CREATE TABLE IF NOT EXISTS pop_videos(
 CREATE INDEX IF NOT EXISTS idx_pop_level ON pop_videos(level, score);
 CREATE INDEX IF NOT EXISTS idx_pop_seen ON pop_videos(last_seen_at);
 
+CREATE TABLE IF NOT EXISTS pipeline_items(
+  id INTEGER PRIMARY KEY,
+  kind TEXT NOT NULL,
+  ref_id TEXT NOT NULL,
+  label TEXT, channel TEXT, source_url TEXT, source_video_id TEXT, direct_url TEXT, license TEXT, is_short INTEGER, duration_s INTEGER, hint TEXT,
+  clip_min_s INTEGER, clip_max_s INTEGER, niche_id TEXT, channel_slug TEXT,
+  status TEXT NOT NULL DEFAULT 'new', rights_type TEXT,
+  as_source_id TEXT, as_jobs TEXT NOT NULL DEFAULT '[]', as_packages TEXT NOT NULL DEFAULT '[]', as_publications TEXT NOT NULL DEFAULT '[]',
+  metrics TEXT, last_error TEXT, note TEXT,
+  created_at TEXT NOT NULL, updated_at TEXT NOT NULL, sent_at TEXT, published_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_pipeline_status ON pipeline_items(status, updated_at);
+
 CREATE TABLE IF NOT EXISTS pop_video_stats(
   video_id TEXT NOT NULL REFERENCES pop_videos(video_id) ON DELETE CASCADE,
   ts TEXT NOT NULL,

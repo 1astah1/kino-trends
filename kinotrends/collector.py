@@ -649,6 +649,13 @@ class Collector:
             self.prepare_files()
         except Exception as e:  # noqa: BLE001
             self.log(f"файлы исходников: {e}", "warn")
+        if self.settings.get("pipeline_enabled", "0") == "1" and self.settings.get("pipeline_auto_enqueue", "0") == "1":
+            try:
+                from . import pipeline
+                r = pipeline.enqueue_today(self.conn, self.settings)
+                self.log(f"конвейер: в очередь {len(r['queued'])}, пропущено {len(r['skipped'])}")
+            except Exception as e:  # noqa: BLE001
+                self.log(f"конвейер: очередь дня: {e}", "warn")
         try:
             text = recommend.alerts(self.conn)
         except Exception as e:  # noqa: BLE001
