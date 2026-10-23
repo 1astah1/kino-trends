@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import asyncio
 import shlex
 import sqlite3
 import subprocess
@@ -26,7 +27,7 @@ from .config import VAR
 from .db import dumps, get_meta, loads, now_iso, set_meta
 from .llm import LLM, LLMError, record_usage
 from .text import detect_lang
-from .yt import dataapi
+from .yt import dataapi, page
 
 FRAMES_DIR = VAR / "frames"
 FRAMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -132,6 +133,25 @@ def derive(conn: sqlite3.Connection, ts: str) -> int:
     return n
 
 
+def detect_shorts(conn: sqlite3.Connection, c: dict, budget: int = 200, should_stop=None) -> dict:
+    """Ролики до 3 минут без признака: страница youtube.com/shorts/<id> либо остаётся на /shorts/ (шортс), либо уходит на /watch."""
+    w, p = _eligible_where(c)
+    ids = [r[0] for r in conn.execute(f"SELECT video_id FROM pop_videos WHERE {w} AND is_short IS NULL AND COALESCE(duration_s, 0) BETWEEN 1 AND 180 ORDER BY COALESCE(growth, vpd, 0) DESC LIMIT ?", p + [budget])]
+    if not ids:
+        return {"checked": 0, "shorts": 0}
+    found = {"shorts": 0}
+
+    def on_result(d):
+        if d.status in ("ok", "not_short") and d.is_short is not None:
+            conn.execute("UPDATE pop_videos SET is_short = ? WHERE video_id = ?", (1 if d.is_short else 0, d.video_id))
+            found["shorts"] += 1 if d.is_short else 0
+        elif d.status == "removed":
+            conn.execute("UPDATE pop_videos SET status = 'removed', pick = 0 WHERE video_id = ?", (d.video_id,))
+    res = asyncio.run(page.fetch_many(ids, concurrency=4, on_result=on_result, should_stop=should_stop))
+    conn.commit()
+    return {"checked": len(ids), "shorts": found["shorts"], "aborted": res.get("aborted", False)}
+
+
 # ---------- нейросеть: текст ----------
 def _row(conn: sqlite3.Connection, video_id: str) -> dict | None:
     r = conn.execute("SELECT * FROM pop_videos WHERE video_id = ?", (video_id,)).fetchone()
@@ -209,6 +229,15 @@ def frames_remote(st: dict, video_id: str, duration_s: int | None) -> tuple[byte
     return r.content, ""
 
 
+_ZONES = {"top": "верх", "bottom": "низ", "left": "лево", "right": "право", "center": "центр", "top left": "левый верх", "top right": "правый верх",
+          "bottom left": "левый низ", "bottom right": "правый низ", "left bottom": "левый низ", "right bottom": "правый низ", "left top": "левый верх", "right top": "правый верх"}
+
+
+def _zone_ru(z) -> str:
+    s = str(z).strip()[:40]
+    return _ZONES.get(s.lower().replace("-", " ").replace("_", " "), s)
+
+
 def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes) -> dict:
     user = (
         f"Ролик «{v.get('title') or ''}» ({v.get('duration_s') or '?'} с, канал {v.get('channel_name') or ''}). "
@@ -226,7 +255,7 @@ def analyze_frames(conn: sqlite3.Connection, llm: LLM, v: dict, image: bytes) ->
     orient = str(data.get("orientation") or "").lower()
     ans = {k: bool(data.get(k)) for k in ("watermark", "text_overlay", "subtitles", "subscribe_cta", "banner", "borders", "faces", "screen_recording", "clean")}
     ans.update({"watermark_where": str(data.get("watermark_where") or "")[:80], "orientation": orient if orient in ("vertical", "horizontal", "square") else "",
-                "quality": str(data.get("quality") or "")[:20], "free_zones": [str(z)[:40] for z in (data.get("free_zones") or []) if z][:6],
+                "quality": str(data.get("quality") or "")[:20], "free_zones": [_zone_ru(z) for z in (data.get("free_zones") or []) if z][:6],
                 "note": str(data.get("note") or "")[:200], "model": llm.model})
     conn.execute("UPDATE pop_videos SET frames = ?, frames_at = ? WHERE video_id = ?", (dumps(ans), now_iso(), v["video_id"]))
     conn.commit()
@@ -400,9 +429,13 @@ def _file_info(conn: sqlite3.Connection, video_id: str) -> dict | None:
 
 def list_videos(conn: sqlite3.Connection, level: str | None = None, region: str | None = None, category: str | None = None, dur: int | None = None,
                 lang: str | None = None, q: str | None = None, sort: str = "score", pick: bool | None = None, fit: float | None = None,
-                limit: int = 50, offset: int = 0) -> dict:
+                short: int | None = None, limit: int = 50, offset: int = 0) -> dict:
     where = ["v.status = 'ok'"]
     params: list = []
+    if short == 1:
+        where.append("(v.is_short = 1 OR (v.is_short IS NULL AND v.duration_s <= 60))")
+    elif short == 0:
+        where.append("(v.is_short = 0 OR (v.is_short IS NULL AND v.duration_s > 180))")
     if fit is not None:
         where.append("COALESCE(json_extract(v.analysis, '$.audience_fit'), 0) >= ?")
         params.append(float(fit))
@@ -437,7 +470,8 @@ def list_videos(conn: sqlite3.Connection, level: str | None = None, region: str 
         items.append(d)
     levels = {r["level"]: r["n"] for r in conn.execute("SELECT level, COUNT(*) n FROM pop_videos WHERE status = 'ok' GROUP BY level")}
     picks = conn.execute("SELECT COUNT(*) FROM pop_videos WHERE pick = 1 AND status = 'ok'").fetchone()[0]
-    return {"items": items, "total": total, "levels": levels, "picks": picks, "regions_ru": REGION_RU, "categories_ru": dataapi.CATEGORY_RU}
+    shorts = conn.execute("SELECT COUNT(*) FROM pop_videos WHERE status = 'ok' AND (is_short = 1 OR (is_short IS NULL AND duration_s <= 60))").fetchone()[0]
+    return {"items": items, "total": total, "levels": levels, "picks": picks, "shorts": shorts, "regions_ru": REGION_RU, "categories_ru": dataapi.CATEGORY_RU}
 
 
 def detail(conn: sqlite3.Connection, video_id: str) -> dict | None:
@@ -534,7 +568,7 @@ def _eligible_where(c: dict) -> tuple[str, list]:
 def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=print, should_stop=None, charts_only: bool = False) -> dict:
     key = (settings.get("youtube_api_key") or "").strip()
     out = {"quota": 0, "seen": 0, "new": 0, "cc_new": 0, "refreshed": 0, "removed": 0, "channels": 0, "text": 0, "frames": 0, "frames_failed": 0,
-           "assessed": 0, "picked": 0, "unpicked": 0, "clean": 0, "check": 0, "no": 0}
+           "assessed": 0, "picked": 0, "unpicked": 0, "clean": 0, "check": 0, "no": 0, "shorts_checked": 0, "shorts_found": 0}
     if not key:
         log("популярные видео: нет ключа YouTube Data API (настройка youtube_api_key)", "warn")
         return out
@@ -572,12 +606,13 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
         after = (datetime.now(timezone.utc) - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
         ids: list[str] = []
         for q_text in c["cc_queries"]:
-            try:
-                found, q = dataapi.search_ids(key, q_text, region="RU", published_after=after, cc=True, lang=c["lang"] if c["lang"] != "all" else "ru")
-                out["quota"] += q
-                ids += found
-            except Exception as e:  # noqa: BLE001
-                log(f"поиск CC «{q_text}»: {e}", "warn")
+            for dur in (None, "short"):  # общий поиск и отдельно короткие (до 4 минут): там живут шортсы
+                try:
+                    found, q = dataapi.search_ids(key, q_text, region="RU", published_after=after, cc=True, duration=dur, lang=c["lang"] if c["lang"] != "all" else "ru")
+                    out["quota"] += q
+                    ids += found
+                except Exception as e:  # noqa: BLE001
+                    log(f"поиск CC «{q_text}»: {e}", "warn")
         ids = [i for i in dict.fromkeys(ids) if not conn.execute("SELECT 1 FROM pop_videos WHERE video_id = ?", (i,)).fetchone()]
         if ids:
             try:
@@ -617,6 +652,12 @@ def run_phase(conn: sqlite3.Connection, settings: dict, llm: LLM | None, log=pri
         except Exception as e:  # noqa: BLE001
             log(f"каналы: {e}", "warn")
     derive(conn, ts)
+    if not stop():
+        try:
+            r = detect_shorts(conn, c, budget=200, should_stop=should_stop)
+            out["shorts_checked"], out["shorts_found"] = r["checked"], r["shorts"]
+        except Exception as e:  # noqa: BLE001
+            log(f"определение шортсов: {e}", "warn")
     if charts_only:
         _finish(conn, out, ts, log)
         return out

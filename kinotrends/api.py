@@ -555,10 +555,10 @@ def api_videos_picks_files() -> dict:
 
 @app.get("/api/videos")
 def api_videos(level: str | None = None, region: str | None = None, category: str | None = None, dur: int | None = None, lang: str | None = None,
-               q: str | None = None, sort: str = "score", pick: int = 0, fit: float | None = None, limit: int = 50, offset: int = 0) -> dict:
+               q: str | None = None, sort: str = "score", pick: int = 0, fit: float | None = None, short: int | None = None, limit: int = 50, offset: int = 0) -> dict:
     c = _conn()
     try:
-        return popular.list_videos(c, level=level, region=region, category=category, dur=dur, lang=lang, q=q, sort=sort, pick=bool(pick), fit=fit,
+        return popular.list_videos(c, level=level, region=region, category=category, dur=dur, lang=lang, q=q, sort=sort, pick=bool(pick), fit=fit, short=short,
                                    limit=min(limit, 200), offset=max(0, offset))
     finally:
         c.close()

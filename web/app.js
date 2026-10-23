@@ -898,20 +898,21 @@ async function renderVideos(main) {
   const sel = (name, opts, cur, label) => { const el = h('select', { 'aria-label': label }, opts.map(([v, l]) => h('option', { value: v, selected: (cur || '') === v }, l))); el.addEventListener('change', () => setQuery({ [name]: el.value || null, offset: null })); return el; };
   const regionSel = sel('region', [['', 'все страны'], ...Object.entries(POP_REGIONS)], q.region, 'Страна');
   const catSel = sel('category', [['', 'все категории'], ...Object.entries(POP_CATS)], q.category, 'Категория');
+  const kindSel = sel('short', [['', 'шортсы и длинные'], ['1', 'только шортсы'], ['0', 'только длинные']], q.short, 'Шортсы или длинные');
   const durSel = sel('dur', [['', 'любая длина'], ['60', 'до 60 с'], ['180', 'до 3 мин'], ['600', 'до 10 мин'], ['1800', 'до 30 мин']], q.dur, 'Длительность');
   const langSel = sel('lang', [['ru', 'русский'], ['all', 'все языки']], q.lang || 'ru', 'Язык');
   const sortSel = sel('sort', [['score', 'по баллу'], ['audience', 'по совпадению с аудиторией'], ['growth', 'по приросту в день'], ['views', 'по просмотрам'], ['published', 'по дате'], ['seen', 'по появлению']], q.sort || 'score', 'Сортировка');
   const search = h('input', { type: 'search', placeholder: 'поиск по названию, каналу, описанию', value: q.q || '', 'aria-label': 'Поиск по видео' });
   search.addEventListener('input', debounce(() => setQuery({ q: search.value || null, offset: null }), 350));
-  main.append(h('div', { class: 'toolbar' }, chips, h('div', { class: 'grow' }, search), regionSel, catSel, durSel, langSel, sortSel));
+  main.append(h('div', { class: 'toolbar' }, chips, h('div', { class: 'grow' }, search), kindSel, regionSel, catSel, durSel, langSel, sortSel));
   const box = h('div'); main.append(box); box.append(skeleton(10));
   const limit = 50, offset = +(q.offset || 0);
-  const params = { region: q.region, category: q.category, dur: q.dur, lang: q.lang || 'ru', q: q.q, sort: q.sort || 'score', limit, offset };
+  const params = { region: q.region, category: q.category, dur: q.dur, lang: q.lang || 'ru', q: q.q, sort: q.sort || 'score', short: q.short, limit, offset };
   if (level === 'pick') params.pick = 1; else if (level === 'fit') params.fit = 0.6; else if (level !== 'all') params.level = level;
   const d = await api('api/videos', params);
   box.innerHTML = '';
   const lv = d.levels || {};
-  box.append(h('div', { class: 'status-line' }, h('span', null, 'всего: ', h('b', null, fmtFull(d.total))), h('span', null, 'чистых: ', h('b', null, fmtFull(lv.clean || 0))), h('span', null, 'проверить: ', h('b', null, fmtFull(lv.check || 0))), h('span', null, 'не брать: ', h('b', null, fmtFull(lv.no || 0))), h('span', null, 'не проверено: ', h('b', null, fmtFull(lv.unknown || 0))), h('span', null, 'в подборке: ', h('b', null, fmtFull(d.picks || 0)), helpIcon('picks'))));
+  box.append(h('div', { class: 'status-line' }, h('span', null, 'всего: ', h('b', null, fmtFull(d.total))), h('span', null, 'чистых: ', h('b', null, fmtFull(lv.clean || 0))), h('span', null, 'проверить: ', h('b', null, fmtFull(lv.check || 0))), h('span', null, 'не брать: ', h('b', null, fmtFull(lv.no || 0))), h('span', null, 'не проверено: ', h('b', null, fmtFull(lv.unknown || 0))), h('span', null, 'в подборке: ', h('b', null, fmtFull(d.picks || 0)), helpIcon('picks')), h('span', null, 'шортсов: ', h('b', null, fmtFull(d.shorts || 0)))));
   if (!d.items.length) { box.append(panel('Пусто', empty('Роликов с такими фильтрами нет', 'Нажми «обновить чарты и анализ» или дождись прогона сбора. Нужен ключ YouTube Data API в разделе «Сбор».'))); return; }
   const rows = d.items.map(v => {
     const tr = h('tr');
@@ -920,7 +921,7 @@ async function renderVideos(main) {
       tr.innerHTML = '';
       tr.append(
         h('td', null, h('a', { href: `#/video/${v.video_id}` }, h('img', { class: 'thumb thumb-wide', src: abs(`thumb/${v.video_id}.jpg`), alt: '', loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } }))),
-        h('td', { class: 'row-title' }, h('div', null, h('a', { href: `#/video/${v.video_id}`, class: 'title-link' }, h('span', { class: 't', title: v.title || v.video_id }, v.title || v.video_id)), h('span', { class: 'sub' }, [v.channel_name, v.channel_subs ? fmtN(v.channel_subs) + ' подп.' : null, fmtDate(v.published_at), fmtDur(v.duration_s), v.category, v.lang].filter(Boolean).join(' · ')), a.topic ? h('span', { class: 'sub' }, [a.topic, a.format].filter(Boolean).join(' · ')) : null)),
+        h('td', { class: 'row-title' }, h('div', null, h('a', { href: `#/video/${v.video_id}`, class: 'title-link' }, h('span', { class: 't', title: v.title || v.video_id }, v.title || v.video_id)), h('span', { class: 'sub' }, [v.channel_name, v.channel_subs ? fmtN(v.channel_subs) + ' подп.' : null, fmtDate(v.published_at), fmtDur(v.duration_s) + (v.is_short === 1 ? ' · шортс' : v.is_short === 0 ? ' · длинное' : ''), v.category, v.lang].filter(Boolean).join(' · ')), a.topic ? h('span', { class: 'sub' }, [a.topic, a.format].filter(Boolean).join(' · ')) : null)),
         h('td', null, regionChips(v)),
         h('td', { class: 'num' }, h('span', { title: fmtFull(v.views) }, fmtN(v.views)), h('span', { class: 'sub' }, v.growth != null ? '+' + fmtN(v.growth) + '/дн' : v.vpd != null ? fmtN(v.vpd) + '/дн' : '')),
         h('td', null, fitCell(v)),
@@ -1156,7 +1157,7 @@ const HELP = {
   outliers: ['Аутлаеры', 'Доля роликов по теме, набравших в 3 и более раз больше обычного для своего канала (медиана роликов канала за период). Так считают VidIQ и Virlo: если тема бьёт норму канала, виновата тема, а не аудитория канала. Чем выше доля, тем вернее тема зайдёт и у вас.'],
   small: ['Маленькие каналы', 'Медиана просмотров у роликов с каналов до 100 тысяч подписчиков. Если она высокая, тема работает без раскрученной аудитории: лучший знак для нового канала.'],
   interest: ['Интерес аудитории', 'Независимо от наших шортсов: просмотры статьи о произведении в русской Википедии в день и поисковый интерес в Google Trends по России. Рост в полтора раза и выше добавляет балл возможности.'],
-  videos: ['Видео под перезалив', 'Чарты «самое популярное» YouTube по странам СНГ (Data API, 1 единица квоты за 50 роликов) и поиск роликов с лицензией Creative Commons. У каждого ролика: замеры просмотров между прогонами, язык, лицензия, флаг «заявлен партнёром» (Content ID), подписчики канала, разбор нейросети: тема, формат, хук, спонсор, совпадение с нашей аудиторией VPN (профиль задаётся в «Сборе»).'],
+  videos: ['Видео под перезалив', 'Чарты «самое популярное» YouTube по странам СНГ (Data API, 1 единица квоты за 50 роликов) и поиск роликов с лицензией Creative Commons, в том числе коротких. Шортс распознаётся по странице youtube.com/shorts: если она не уходит на /watch, это шортс, и резать его не нужно: заливщик берёт как есть. У каждого ролика: замеры просмотров между прогонами, язык, лицензия, флаг «заявлен партнёром» (Content ID), подписчики канала, разбор нейросети: тема, формат, хук, спонсор, совпадение с нашей аудиторией VPN (профиль задаётся в «Сборе»).'],
   clean: ['Чистота ролика', 'Балл 0–100 и уровень: чистое (от 70, кадры проверены, нет логотипов и плашек, нет заявок партнёра), проверить (от 45), не брать. Снижают: заявка партнёра, канал правообладателя, музыка, водяной знак, чужая реклама, призыв подписаться, спонсор, не наш язык. Поднимают: Creative Commons, совпадение с аудиторией, пригодность под баннер, прирост просмотров, чистые кадры, свободные зоны. Кадры: 6 штук вынимаются на хранилище без скачивания всего видео.'],
   picks: ['Подборка', 'Чистые ролики с баллом от порога попадают в подборку сами; любой ролик можно взять или убрать руками. «Подборка JSON» (GET /api/videos/picks) отдаёт заливщику ссылку, прямой mp4 из хранилища, кадры, свободные зоны под баннер и совет, где его ставить. «mp4 для подборки» скачивает все файлы разом.'],
   rights: ['Авторские права', 'Пройдёт ли произведение к нарезчику. Четыре улики: сносы чужих нарезок по жалобам (страница YouTube называет заявителя), правообладатель и его привычки (нейросеть плюс список известных студий и каналов), официальный ли и живой ли исходник, наш опыт: заявки, блокировки и страйки на наших роликах. Итог: проходит, с оговорками, не проходит. «Не проходит» в календарь не ставится. Клип не длиннее 59 с: шортс дольше 60 с с заявкой Content ID блокируется.'],
