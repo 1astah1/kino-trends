@@ -526,7 +526,7 @@ def picks(conn: sqlite3.Connection, include_used: bool = False, limit: int = 200
     return [cutter_block(conn, _hydrate(dict(r))) for r in rows]
 
 
-def candidates_to_check(conn: sqlite3.Connection, fit: float = 0.6, limit: int = 6) -> list[dict]:
+def candidates_to_check(conn: sqlite3.Connection, fit: float = 0.6, limit: int = 12) -> list[dict]:
     """Под нашу аудиторию, но ещё не подтверждены как чистые: на ручной просмотр."""
     rows = conn.execute("""SELECT * FROM pop_videos WHERE status = 'ok' AND pick = 0 AND level = 'check' AND COALESCE(json_extract(analysis, '$.audience_fit'), 0) >= ?
                            ORDER BY COALESCE(score, 0) DESC LIMIT ?""", (fit, limit)).fetchall()

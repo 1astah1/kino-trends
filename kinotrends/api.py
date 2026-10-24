@@ -155,6 +155,16 @@ def _scheduler() -> None:
                     if not imported or mtime > imported:
                         threading.Thread(target=_import_dict_job, name="dict-import", daemon=True).start()
                 notify.maybe_digest(c)
+                # популярные видео обновляются чаще полного прогона: чарты меняются за часы, а не за сутки
+                ph = db.get_int(c, "pop_refresh_hours")
+                if ph > 0 and not STATE.running and not JOBS["popular"]["running"] and (db.get_setting(c, "youtube_api_key") or "").strip():
+                    last_pop = db.loads(db.get_meta(c, "pop_last_run", ""), None) or {}
+                    pop_due = True
+                    if last_pop.get("ts"):
+                        started = datetime.strptime(str(last_pop["ts"])[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+                        pop_due = datetime.now(timezone.utc) - started >= timedelta(hours=ph)
+                    if pop_due:
+                        threading.Thread(target=_popular_job, args=(False,), name="popular", daemon=True).start()
                 hours = db.get_int(c, "schedule_hours")
                 if hours > 0 and not STATE.running:
                     running_elsewhere = c.execute("SELECT 1 FROM runs WHERE status = 'running'").fetchone()
@@ -575,6 +585,13 @@ def _popular_job(charts_only: bool) -> None:
         s = db.all_settings(c)
         res = popular.run_phase(c, s, llm_from_settings(s), log=lambda m, level="info": None, charts_only=charts_only)
         JOBS["popular"]["last"] = {"ok": True, "ts": db.now_iso(), **res}
+        # свежие чистые ролики сразу в конвейер, не дожидаясь полного прогона сбора
+        if not charts_only and s.get("pipeline_enabled", "0") == "1" and s.get("pipeline_auto_enqueue", "1") == "1":
+            try:
+                q = pipeline.enqueue_today(c, s)
+                JOBS["popular"]["last"]["enqueued"] = len(q.get("queued", []))
+            except Exception as e:  # noqa: BLE001
+                JOBS["popular"]["last"]["enqueue_error"] = str(e)[:200]
     except Exception as e:  # noqa: BLE001
         JOBS["popular"]["last"] = {"ok": False, "ts": db.now_iso(), "error": str(e)[:300]}
     finally:
