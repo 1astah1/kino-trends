@@ -357,15 +357,15 @@ def film_sources_summary(c: sqlite3.Connection, title_ids: list[str]) -> dict[st
             d["_key"] = key
             best[d["title_id"]] = d
     vids = [d["video_id"] for d in best.values() if d.get("video_id")]
-    files = {}
+    dl_rows: dict = {}
     if vids:
         qv = ",".join("?" * len(vids))
-        files = {r["video_id"]: dict(r) for r in c.execute(f"SELECT video_id, status, error FROM downloads WHERE video_id IN ({qv})", vids)}
+        dl_rows = {r["video_id"]: dict(r) for r in c.execute(f"SELECT video_id, status, error FROM downloads WHERE video_id IN ({qv})", vids)}
     out = {}
     for tid, d in best.items():
-        f = files.get(d.get("video_id") or "")
+        f = dl_rows.get(d.get("video_id") or "")
         err = (f.get("error") or None) if f else None
-        if err and len(err) > 120:
+        if err and ("ERROR" in err or len(err) > 80):
             err = files._short_error(err)  # старые записи хранят сырой хвост yt-dlp
         out[tid] = {"video_id": d.get("video_id"), "url": d.get("url"), "label": d.get("label"), "channel": d.get("channel"),
                     "duration_s": d.get("duration_s"), "language": d.get("language"), "verified": bool(d.get("verified")),

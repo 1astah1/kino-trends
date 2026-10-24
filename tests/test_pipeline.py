@@ -244,3 +244,19 @@ def test_short_error_recognises_geo_block_tail():
     )
     assert _short_error("ERROR: [youtube] x: The uploader has not made this video available in your country. This video is available in Albania, …").startswith("видео недоступно")
     assert _short_error("ERROR: [youtube] x: Sign in to confirm you’re not a bot.").startswith("YouTube требует вход")
+
+
+def test_film_sources_summary_shortens_legacy_errors(conn):
+    from kinotrends.api import film_sources_summary
+
+    files.init(conn)
+    conn.execute("INSERT OR IGNORE INTO titles(id, label_ru, label_en, year, kind, updated_at) VALUES ('T1','Фильм','Film',2020,'film','2026-10-24T00:00:00Z')")
+    conn.execute("""INSERT INTO title_sources(title_id, video_id, url, label, channel, duration_s, views, kind, language, trust, verified, score, found_at)
+                    VALUES ('T1','v1','https://www.youtube.com/watch?v=v1','Фильм','Канал',5400,10,'film','русский дубляж',0.9,1,9.0,'2026-10-24T00:00:00Z')""")
+    conn.execute("""INSERT INTO downloads(title_id, video_id, url, status, error, created_at)
+                    VALUES ('T1','v1','https://www.youtube.com/watch?v=v1','error', ?, '2026-10-24T00:00:00Z')""",
+                 ("ERROR: [youtube] v1: Sign in to confirm you’re not a bot. Use --cookies-from-browser or --cookies for the authentication. " * 2,))
+    conn.commit()
+    out = film_sources_summary(conn, ["T1"])
+    assert out["T1"]["verified"] is True and out["T1"]["file_status"] == "error"
+    assert out["T1"]["file_error"].startswith("YouTube требует вход")

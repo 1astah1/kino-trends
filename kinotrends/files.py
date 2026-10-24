@@ -234,7 +234,7 @@ def _short_error(log: str) -> str:
     if ("available in your country" in low or "not available in the country" in low or ("geo" in low and "restricted" in low)
             or "use a vpn or a proxy" in low):
         return "видео недоступно из страны хранилища (гео-блок автора)"
-    if "sign in to confirm" in low or "not a bot" in low:
+    if "sign in to confirm" in low or "not a bot" in low or "cookies-from-browser" in low or "pass cookies" in low:
         return "YouTube требует вход (бот-проверка): нужны cookies или прокси хранилища"
     if "private video" in low:
         return "видео приватное"
