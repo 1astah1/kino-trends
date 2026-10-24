@@ -298,3 +298,19 @@ def test_enqueue_skips_source_blocked_by_geo(conn, monkeypatch):
     brief["source"]["video_id"] = "old"
     with pytest.raises(ValueError, match="закрыт по странам"):
         pipeline.enqueue(conn, "film", "F1", {})
+
+
+def test_job_options_short_video_vs_film():
+    st = {"pipeline_banner_bottom": "1", "pipeline_banner_top": "2"}
+    short = {"channel_slug": "kadr-dnya", "niche_id": "vpn", "is_short": 1,
+             "metrics": {"free_zones": ["верх", "низ"], "text_overlay": True, "subtitles": False, "orientation": "vertical"}}
+    o = pipeline._job_options(short, st)
+    assert o["niche_id"] == "vpn" and o["author_layer"]["captions"] == "author"
+    assert o["author_layer"]["layout"] == {"mode": "manual", "title_top": pipeline.SHORT_TITLE_TOP}
+    assert o["banner_variant_id"] == 1  # низ свободен → нижний вариант
+    top_only = dict(short, metrics={**short["metrics"], "free_zones": ["верх"]})
+    assert pipeline._job_options(top_only, st)["banner_variant_id"] == 2
+    film = {"channel_slug": "kadr-dnya", "niche_id": "kino", "is_short": 0, "metrics": {"year": 2010}}
+    f = pipeline._job_options(film, st)
+    assert f["niche_id"] == "kino" and f["author_layer"]["captions"] == "both" and "layout" not in f["author_layer"]
+    assert f["banner_variant_id"] == 1

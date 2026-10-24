@@ -208,7 +208,10 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
                   "direct_url": cu.get("direct_file_url"), "license": d.get("license"), "is_short": d.get("is_short"), "duration_s": d.get("duration_s"),
                   "hint": (d.get("analysis") or {}).get("banner_advice"), "clip_min_s": None, "clip_max_s": 58,
                   "niche_id": settings.get("pipeline_niche_video") or "vpn", "channel_slug": settings.get("pipeline_channel_video") or "",
-                  "metrics": dumps({"free_zones": (d.get("frames") or {}).get("free_zones") or []})}
+                  "metrics": dumps({"free_zones": (d.get("frames") or {}).get("free_zones") or [],
+                                    "text_overlay": bool((d.get("frames") or {}).get("text_overlay")),
+                                    "subtitles": bool((d.get("frames") or {}).get("subtitles")),
+                                    "orientation": (d.get("frames") or {}).get("orientation") or None})}
     if blocked_src and fields.get("source_video_id") == blocked_src:
         raise ValueError("исходник закрыт по странам для хранилища, нужен другой исходник или прокси")
     ts = now_iso()
@@ -340,10 +343,22 @@ def pick_banner_variant(zones: list[str] | None, settings: dict) -> int | None:
     return bottom
 
 
+SHORT_TITLE_TOP = 560  # у шортсов с чужими надписями свой заголовок уводим из верхней трети, где обычно стоит хук автора ролика
+
+
 def _job_options(item: dict, settings: dict) -> dict:
-    zones = (item.get("metrics") or {}).get("free_zones") if isinstance(item.get("metrics"), dict) else None
-    opts = {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"},
-            "author_layer": {"mode": "llm_draft", "captions": "both", "voice": "tts", "hook_text": None, "title_overlay": None}}
+    """Параметры ролика для auto-shorts: ниша источника (не ниша канала!), баннер по свободным зонам,
+    у вертикальных шортсов — только авторские субтитры (у них свои вшитые, две дорожки налезают друг на друга)
+    и заголовок ниже чужой плашки-хука."""
+    m = item.get("metrics") if isinstance(item.get("metrics"), dict) else {}
+    zones = m.get("free_zones")
+    is_short = item.get("is_short") == 1 or m.get("orientation") == "vertical"
+    layer = {"mode": "llm_draft", "captions": "author" if is_short else "both", "voice": "tts", "hook_text": None, "title_overlay": None}
+    if is_short and (m.get("text_overlay") or m.get("subtitles")):
+        layer["layout"] = {"mode": "manual", "title_top": SHORT_TITLE_TOP}
+    opts = {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"}, "author_layer": layer}
+    if item.get("niche_id"):
+        opts["niche_id"] = item["niche_id"]
     variant = pick_banner_variant(zones, settings)
     if variant:
         opts["banner_variant_id"] = variant
