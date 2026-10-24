@@ -25,7 +25,7 @@ from . import files, popular
 from .db import dumps, loads, now_iso
 
 STATES = ("new", "file_pending", "needs_rights", "sent", "cutting", "review", "qc_failed", "approved", "publishing", "published", "failed", "cancelled")
-ACTIVE = ("new", "file_pending", "sent", "cutting", "review", "approved", "publishing")
+ACTIVE = ("new", "needs_rights", "file_pending", "sent", "cutting", "review", "approved", "publishing")
 STATE_RU = {"new": "в очереди", "file_pending": "готовится файл", "needs_rights": "нужен тип прав", "sent": "источник в auto-shorts", "cutting": "нарезка",
             "review": "ждёт ревью", "qc_failed": "не прошёл QC", "approved": "одобрено, ждёт залива", "publishing": "на автозаливе", "published": "опубликовано",
             "failed": "ошибка", "cancelled": "отменено"}
@@ -337,11 +337,18 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     _set(conn, iid, status="failed", last_error=f"файл: {res.get('error')}")
                     return "failed"
             return st
-        if st == "new":
+        if st in ("new", "needs_rights"):
             rights = rights_for(item, settings)
             if not rights:
-                _set(conn, iid, status="needs_rights", last_error=None)
+                if st != "needs_rights":
+                    _set(conn, iid, status="needs_rights", last_error=None)
                 return "needs_rights"
+            if not item.get("direct_url") and item.get("source_video_id"):
+                # в auto-shorts уходит только файл с хранилища: YouTube оттуда напрямую не качается
+                files.init(conn)
+                res = files.request(conn, item["ref_id"] if item["kind"] == "film" else None, item["source_video_id"], item["source_url"])
+                _set(conn, iid, status="file_pending" if res.get("ok") else "failed", last_error=None if res.get("ok") else f"файл: {res.get('error')}")
+                return "file_pending" if res.get("ok") else "failed"
             url = item.get("direct_url") or item.get("source_url")
             if url and not url.startswith("http"):
                 url = (settings.get("public_url") or "").rstrip("/") + "/" + url.lstrip("/")

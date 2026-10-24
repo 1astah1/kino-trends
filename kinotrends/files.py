@@ -172,12 +172,21 @@ def status(conn: sqlite3.Connection, video_id: str) -> dict | None:
     if not r:
         return None
     if r["status"] == "running" and not _running.get(video_id):
-        # поток загрузки умер, не записав итог
-        out = FILES_DIR / f"{_safe(video_id)}.mp4"
-        if out.exists() and out.stat().st_size > 1_000_000 and not (FILES_DIR / f"{_safe(video_id)}.mp4.part").exists():
-            _write(conn, "UPDATE downloads SET status = 'done', path = ?, size = ?, finished_at = ? WHERE video_id = ?", (str(out), out.stat().st_size, now_iso(), video_id), attempts=2)
+        st = storage(conn)
+        if st["remote"]:
+            # сервис перезапускался: yt-dlp на хранилище живёт отдельно, просто снова ждём его итог
+            with _watch_lock:
+                if not _running.get(video_id):
+                    _running[video_id] = True
+                    threading.Thread(target=_watch_remote, args=(video_id, f"{st['dir']}/{_safe(video_id)}.mp4", st),
+                                     name=f"dl-{video_id}", daemon=True).start()
         else:
-            _write(conn, "UPDATE downloads SET status = 'error', error = 'загрузка оборвалась', finished_at = ? WHERE video_id = ?", (now_iso(), video_id), attempts=2)
+            # поток загрузки умер, не записав итог
+            out = FILES_DIR / f"{_safe(video_id)}.mp4"
+            if out.exists() and out.stat().st_size > 1_000_000 and not (FILES_DIR / f"{_safe(video_id)}.mp4.part").exists():
+                _write(conn, "UPDATE downloads SET status = 'done', path = ?, size = ?, finished_at = ? WHERE video_id = ?", (str(out), out.stat().st_size, now_iso(), video_id), attempts=2)
+            else:
+                _write(conn, "UPDATE downloads SET status = 'error', error = 'загрузка оборвалась', finished_at = ? WHERE video_id = ?", (now_iso(), video_id), attempts=2)
         r = conn.execute("SELECT * FROM downloads WHERE video_id = ?", (video_id,)).fetchone()
     d = dict(r)
     d["file_url"] = file_url(conn, r)
@@ -217,6 +226,72 @@ def request(conn: sqlite3.Connection, title_id: str | None, video_id: str, url: 
     return {"ok": True, "status": status(conn, video_id)}
 
 
+_watch_lock = threading.Lock()
+
+
+def _short_error(log: str) -> str:
+    low = log.lower()
+    if "not available in your country" in low or "geo" in low and "restricted" in low:
+        return "видео недоступно из страны хранилища (гео-блок)"
+    if "sign in to confirm" in low or "not a bot" in low:
+        return "YouTube требует вход (бот-проверка): нужны cookies или прокси хранилища"
+    if "private video" in low:
+        return "видео приватное"
+    if "video unavailable" in low or "has been removed" in low:
+        return "видео удалено или недоступно"
+    if "requested format is not available" in low:
+        return "нет подходящего формата (yt-dlp)"
+    lines = [ln.strip() for ln in log.strip().splitlines() if ln.strip()]
+    err = [ln for ln in lines if ln.startswith("ERROR")]
+    return (err[-1] if err else (lines[-1] if lines else "ошибка yt-dlp на хранилище"))[-300:]
+
+
+def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bool = False, timeout: int = 5400) -> None:
+    """Ждёт маркеры .ok/.fail загрузки на хранилище. Работает и после перезапуска сервиса."""
+    from . import db
+
+    q = shlex.quote
+    own = conn is None
+    if own:
+        conn = db.connect()
+    try:
+        if not hold:
+            _running[video_id] = True
+        probe = (f"if [ -f {q(remote_path + '.ok')} ]; then echo OK; cat {q(remote_path + '.ok')}; "
+                 f"elif [ -f {q(remote_path + '.fail')} ]; then echo FAIL; tail -c 1500 {q(remote_path + '.log')} 2>/dev/null; "
+                 f"elif pgrep -f {q('[y]t-dlp.*' + remote_path)} >/dev/null; then echo RUN; else echo GONE; fi")
+        started = time.monotonic()
+        while True:
+            try:
+                res = _ssh(st, probe, timeout=60)
+                out = res.stdout.strip()
+            except subprocess.TimeoutExpired:
+                out = ""
+            head = out.split("\n", 1)[0] if out else ""
+            rest = out.split("\n", 1)[1] if "\n" in out else ""
+            if head == "OK" and rest.strip().isdigit():
+                _write(conn, "UPDATE downloads SET status = 'done', path = ?, size = ?, finished_at = ? WHERE video_id = ?",
+                       (f"remote:{remote_path}", int(rest.strip()), now_iso(), video_id))
+                return
+            if head == "FAIL":
+                _write(conn, "UPDATE downloads SET status = 'error', error = ?, finished_at = ? WHERE video_id = ?", (_short_error(rest), now_iso(), video_id))
+                return
+            if head == "GONE":
+                # процесса нет, маркеров нет: сразу после запуска это бывает, даём минуту
+                if time.monotonic() - started > 90:
+                    _write(conn, "UPDATE downloads SET status = 'error', error = 'загрузка оборвалась', finished_at = ? WHERE video_id = ?", (now_iso(), video_id))
+                    return
+            if time.monotonic() - started > timeout:
+                _ssh(st, f"pkill -f {q('[y]t-dlp.*' + remote_path)} || true", timeout=30)
+                _write(conn, "UPDATE downloads SET status = 'error', error = 'таймаут загрузки', finished_at = ? WHERE video_id = ?", (now_iso(), video_id))
+                return
+            time.sleep(10)
+    finally:
+        if own:
+            conn.close()
+            _running.pop(video_id, None)
+
+
 def _download(video_id: str, url: str, st: dict) -> None:
     from . import db
 
@@ -227,21 +302,25 @@ def _download(video_id: str, url: str, st: dict) -> None:
             name = f"{_safe(video_id)}.mp4"
             if st["remote"]:
                 remote_path = f"{st['dir']}/{name}"
+                q = shlex.quote
                 proxy = ytdlp_extra(st)
-                ytdlp = (f"yt-dlp --no-warnings --quiet --js-runtimes node {proxy}-f {shlex.quote(FORMAT)} --merge-output-format mp4 --no-playlist "
-                         f"-o {shlex.quote(remote_path)} {shlex.quote(url)} && chown www-data:www-data {shlex.quote(remote_path)} && stat -c %s {shlex.quote(remote_path)}")
+                # yt-dlp запускается отдельной сессией (setsid): перезапуск kino-trends или обрыв ssh его не убивает.
+                # Итог пишется в маркеры <файл>.ok (размер) или <файл>.fail, лог в <файл>.log — их читает _watch_remote.
+                inner = (f"rm -f {q(remote_path + '.ok')} {q(remote_path + '.fail')}; "
+                         f"if yt-dlp --no-warnings --js-runtimes node {proxy}-f {q(FORMAT)} --merge-output-format mp4 --no-playlist "
+                         f"-o {q(remote_path)} {q(url)} > {q(remote_path + '.log')} 2>&1; then chown www-data:www-data {q(remote_path)}; "
+                         f"stat -c %s {q(remote_path)} > {q(remote_path + '.ok')}; else echo fail > {q(remote_path + '.fail')}; fi")
+                launch = f"setsid nohup bash -c {q(inner)} >/dev/null 2>&1 < /dev/null & echo started"
                 try:
-                    res = _ssh(st, ytdlp, timeout=5400)
+                    res = _ssh(st, launch, timeout=60)
                 except subprocess.TimeoutExpired:
-                    _write(conn, "UPDATE downloads SET status = 'error', error = 'таймаут загрузки', finished_at = ? WHERE video_id = ?", (now_iso(), video_id))
+                    _write(conn, "UPDATE downloads SET status = 'error', error = 'хранилище не отвечает', finished_at = ? WHERE video_id = ?", (now_iso(), video_id))
                     return
-                size_line = res.stdout.strip().splitlines()[-1] if res.stdout.strip() else ""
-                if res.returncode != 0 or not size_line.isdigit():
-                    err = (res.stderr or res.stdout or "ошибка yt-dlp на хранилище").strip()[-300:]
+                if res.returncode != 0 or "started" not in res.stdout:
+                    err = (res.stderr or res.stdout or "не удалось запустить yt-dlp на хранилище").strip()[-300:]
                     _write(conn, "UPDATE downloads SET status = 'error', error = ?, finished_at = ? WHERE video_id = ?", (err, now_iso(), video_id))
                     return
-                _write(conn, "UPDATE downloads SET status = 'done', path = ?, size = ?, finished_at = ? WHERE video_id = ?",
-                       (f"remote:{remote_path}", int(size_line), now_iso(), video_id))
+                _watch_remote(video_id, remote_path, st, conn=conn, hold=True)
                 return
             out = FILES_DIR / name
             cmd = [str(ROOT / ".venv" / "bin" / "yt-dlp"), "--no-warnings", "--quiet", "-f", FORMAT, "--merge-output-format", "mp4", "--no-playlist", "-o", str(out), url]
