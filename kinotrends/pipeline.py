@@ -191,7 +191,8 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
         fields = {"label": b["title"]["label"], "channel": src.get("channel"), "source_url": cu["source_url"], "source_video_id": src.get("video_id"),
                   "direct_url": cu.get("direct_file_url"), "license": None, "is_short": 0, "duration_s": src.get("duration_s"), "hint": cu.get("hint"),
                   "clip_min_s": cu.get("clip_min_s"), "clip_max_s": cu.get("clip_max_s"),
-                  "niche_id": settings.get("pipeline_niche_film") or "kino", "channel_slug": settings.get("pipeline_channel_film") or "", "metrics": None}
+                  "niche_id": settings.get("pipeline_niche_film") or "kino", "channel_slug": settings.get("pipeline_channel_film") or "",
+                  "metrics": dumps({"year": b["title"].get("year"), "title_kind": b["title"].get("kind")})}
     else:
         d = popular.detail(conn, ref_id)
         if not d:
@@ -244,13 +245,47 @@ def enqueue_today(conn: sqlite3.Connection, settings: dict) -> dict:
     return out
 
 
+_KIND_RU = {"film": "фильма", "animated": "мультфильма", "series": "сериала", "animated_series": "мультсериала", "tv": "шоу"}
+
+
+def _public_url(url: str | None, settings: dict) -> str | None:
+    """Ссылка годится для публичного описания только если это YouTube; адрес хранилища и прямые mp4 — никогда."""
+    u = (url or "").strip()
+    if not u or not ("youtube.com/" in u or "youtu.be/" in u):
+        return None
+    host = (settings.get("public_url") or "").split("://")[-1].split("/")[0]
+    if host and host in u:
+        return None
+    return u
+
+
+def attribution_text(item: dict, rights_type: str, settings: dict) -> str | None:
+    """Публичная строка «откуда фрагмент» для описания ролика. Без служебных ссылок и без «Источник:» —
+    это слово добавляет auto-shorts. Для CC BY ссылка на оригинал обязательна по лицензии."""
+    owner = (item.get("channel") or "").strip()
+    label = (item.get("label") or "").strip()
+    if rights_type == "own":
+        return None
+    if rights_type == "cc_by":
+        url = _public_url(item.get("source_url"), settings)
+        return f"автор {owner or 'неизвестен'}" + (f" ({url})" if url else "") + ", лицензия CC BY"
+    m = loads(item.get("metrics"), {}) if isinstance(item.get("metrics"), str) else (item.get("metrics") or {})
+    if item.get("kind") == "film" and label:
+        kind = _KIND_RU.get(str((m or {}).get("title_kind") or "film"), "фильма")
+        year = (m or {}).get("year")
+        return f"фрагмент {kind} «{label}»" + (f" ({year})" if year else "")
+    if owner:
+        return f"фрагмент видео канала «{owner}»"
+    return f"фрагмент видео «{label}»" if label else None
+
+
 def rights_for(item: dict, settings: dict) -> dict | None:
     """Права для источника в auto-shorts. None = нужен выбор оператора."""
     url = item.get("source_url") or ""
     owner = item.get("channel") or "неизвестен"
     if item.get("license") == "creativeCommon":
         return {"rights_type": "cc_by", "owner_name": owner, "proof_note": f"YouTube показывает лицензию Creative Commons: {url}",
-                "attribution_text": f"Автор: {owner} ({url}), лицензия CC BY", "license": "CC BY", "license_url": "https://creativecommons.org/licenses/by/4.0/",
+                "attribution_text": attribution_text(item, "cc_by", settings), "license": "CC BY", "license_url": "https://creativecommons.org/licenses/by/4.0/",
                 "owner_channel_url": None}
     if item.get("rights_type") in RIGHTS_TYPES:
         rt = item["rights_type"]
@@ -259,7 +294,7 @@ def rights_for(item: dict, settings: dict) -> dict | None:
         if rt not in RIGHTS_TYPES:
             return None
     note = (settings.get("pipeline_rights_note") or "").strip() or f"тип прав задан в Кино-трендах ({rt})"
-    return {"rights_type": rt, "owner_name": owner, "proof_note": note, "attribution_text": None if rt == "own" else f"Источник: {owner} ({url})",
+    return {"rights_type": rt, "owner_name": owner, "proof_note": note, "attribution_text": attribution_text(item, rt, settings),
             "license": None, "license_url": None, "owner_channel_url": None}
 
 

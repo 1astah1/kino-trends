@@ -164,3 +164,21 @@ def test_pick_banner_variant():
 def test_tick_without_config(conn):
     out = pipeline.tick(conn, {"autoshorts_url": ""}, log=lambda *a, **k: None)
     assert "не настроен" in out["skipped"]
+
+
+def test_attribution_text_is_public_and_without_storage_links():
+    from kinotrends import pipeline
+
+    st = {"public_url": "http://185.102.115.55/files"}
+    film = {"kind": "film", "label": "Брестская крепость", "channel": "Киностудия Беларусьфильм",
+            "source_url": "https://www.youtube.com/watch?v=jUzGyns9TCE", "metrics": '{"year": 2010, "title_kind": "film"}'}
+    assert pipeline.attribution_text(film, "licensed_platform", st) == "фрагмент фильма «Брестская крепость» (2010)"
+    cartoon = dict(film, label="Суперсемейка", metrics='{"year": 2004, "title_kind": "animated"}')
+    assert pipeline.attribution_text(cartoon, "licensed_platform", st) == "фрагмент мультфильма «Суперсемейка» (2004)"
+    video = {"kind": "video", "label": "Ролик", "channel": "Андроид Плюс", "source_url": "https://www.youtube.com/watch?v=SzcngC9Bd5I"}
+    assert pipeline.attribution_text(video, "licensed_platform", st) == "фрагмент видео канала «Андроид Плюс»"
+    assert pipeline.attribution_text(video, "cc_by", st) == "автор Андроид Плюс (https://www.youtube.com/watch?v=SzcngC9Bd5I), лицензия CC BY"
+    storage = dict(video, source_url="http://185.102.115.55/files/sample-t34.mp4")
+    assert pipeline.attribution_text(storage, "cc_by", st) == "автор Андроид Плюс, лицензия CC BY"
+    assert pipeline.attribution_text(video, "own", st) is None
+    assert pipeline.rights_for(video, {"pipeline_rights_default": "licensed_platform", **st})["attribution_text"].startswith("фрагмент видео")
