@@ -231,8 +231,8 @@ _watch_lock = threading.Lock()
 
 def _short_error(log: str) -> str:
     low = log.lower()
-    if "not available in your country" in low or "geo" in low and "restricted" in low:
-        return "видео недоступно из страны хранилища (гео-блок)"
+    if "available in your country" in low or "not available in the country" in low or ("geo" in low and "restricted" in low):
+        return "видео недоступно из страны хранилища (гео-блок автора)"
     if "sign in to confirm" in low or "not a bot" in low:
         return "YouTube требует вход (бот-проверка): нужны cookies или прокси хранилища"
     if "private video" in low:
@@ -243,7 +243,8 @@ def _short_error(log: str) -> str:
         return "нет подходящего формата (yt-dlp)"
     lines = [ln.strip() for ln in log.strip().splitlines() if ln.strip()]
     err = [ln for ln in lines if ln.startswith("ERROR")]
-    return (err[-1] if err else (lines[-1] if lines else "ошибка yt-dlp на хранилище"))[-300:]
+    text = err[-1] if err else (lines[-1] if lines else "ошибка yt-dlp на хранилище")
+    return text[:300]
 
 
 def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bool = False, timeout: int = 5400) -> None:
