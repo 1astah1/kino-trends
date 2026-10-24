@@ -199,6 +199,33 @@ def find_sources(conn: sqlite3.Connection, llm: LLM | None, title: dict, log=pri
     return get_sources(conn, title["title_id"])
 
 
+# типы произведений, для которых ищем исходники (franchise — зонтик без своего видео)
+SOURCE_KINDS = {"film", "series", "animated", "animated_series", "anime", "tv_show"}
+
+
+def top_candidates(conn: sqlite3.Connection, limit: int = 30, period: str = "30", lang: str = "ru") -> list[dict]:
+    """Произведения, где найденный исходник сразу расширит выбор конвейера: самые популярные в Shorts,
+    кино/сериалы/анимация, права не «нельзя», проверенного исходника ещё нет. Порядок — по score."""
+    from . import rights, stats
+    from .stats import Filters
+
+    out = stats.films(conn, Filters(period, lang=lang), limit=400, sort="score")
+    ids = [it["title_id"] for it in out["items"]]
+    levels = rights.levels(conn, ids) if ids else {}
+    picked: list[dict] = []
+    for it in out["items"]:
+        if it.get("kind") not in SOURCE_KINDS:
+            continue
+        if ((levels.get(it["title_id"]) or {}).get("level") or "unknown") == "block":
+            continue
+        if any(x.get("verified") for x in get_sources(conn, it["title_id"])):
+            continue
+        picked.append({"title_id": it["title_id"], "label": it["label"], "label_en": it.get("label_en"), "year": it.get("year"), "kind": it["kind"]})
+        if len(picked) >= limit:
+            break
+    return picked
+
+
 def get_sources(conn: sqlite3.Connection, title_id: str) -> list[dict]:
     rows = conn.execute("SELECT * FROM title_sources WHERE title_id = ? ORDER BY verified DESC, score DESC LIMIT 12", (title_id,)).fetchall()
     return [dict(r) for r in rows]

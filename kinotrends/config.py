@@ -66,6 +66,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "storage_proxy": "",            # прокси для yt-dlp на хранилище (http://user:pass@host:port или socks5://…), если YouTube режет IP хранилища
     "storage_cookies": "",          # путь к cookies.txt (формат Netscape) на хранилище для yt-dlp, если YouTube требует вход «не бот»
     "rights_policy": "balanced",    # авторские права в календаре: strict = только «проходит», balanced = и «с оговорками», off = только пометка
+    "sources_top_max": "30",        # для скольких популярных произведений без исходника искать исходник за прогон
     "rights_llm_max": "40",         # сколько произведений за прогон спрашивать у модели про правообладателя
     "rights_recheck_max": "400",    # сколько чужих нарезок перепроверять за прогон на сносы
     "pop_enabled": "1",             # популярные видео СНГ для перезалива (нужен youtube_api_key)

@@ -197,3 +197,24 @@ def test_film_ready_flags_and_reasons():
     assert film_ready("ok", dict(src, verified=False))[1] == ["исходник не подтверждён"]
     assert film_ready("ok", src, "cutting")[1] == ["уже в конвейере (cutting)"]
     assert film_ready("ok", src, "failed") == (True, [])
+
+
+def test_top_candidates_prefers_popular_unblocked_titles_without_sources(monkeypatch):
+    from kinotrends import sources
+
+    items = [
+        {"title_id": "A", "label": "Фильм без исходника", "kind": "film", "year": 2020, "score": 90},
+        {"title_id": "B", "label": "Сериал с исходником", "kind": "series", "year": 2021, "score": 85},
+        {"title_id": "C", "label": "Нельзя по правам", "kind": "film", "year": 2019, "score": 80},
+        {"title_id": "D", "label": "Франшиза", "kind": "franchise", "year": None, "score": 79},
+        {"title_id": "E", "label": "Аниме без прав-проверки", "kind": "anime", "year": 2022, "score": 70},
+    ]
+    monkeypatch.setattr(sources.stats if hasattr(sources, "stats") else __import__("kinotrends.stats", fromlist=["films"]), "films",
+                        lambda conn, f, limit=400, sort="score", **kw: {"items": items, "total": len(items)})
+    monkeypatch.setattr(__import__("kinotrends.rights", fromlist=["levels"]), "levels",
+                        lambda conn, ids: {"A": {"level": "ok"}, "B": {"level": "ok"}, "C": {"level": "block"}})
+    monkeypatch.setattr(sources, "get_sources", lambda conn, tid: [{"verified": 1}] if tid == "B" else [])
+    picked = sources.top_candidates(None, limit=10)
+    assert [t["title_id"] for t in picked] == ["A", "E"]
+    assert picked[0]["label"] == "Фильм без исходника" and picked[1]["kind"] == "anime"
+    assert sources.top_candidates(None, limit=1)[0]["title_id"] == "A"

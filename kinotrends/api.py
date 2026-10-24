@@ -24,7 +24,7 @@ from .yt import flat
 
 app = FastAPI(title="Kino Trends", docs_url="/api/docs", openapi_url="/api/openapi.json")
 REC = Recognizer()
-JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None},
+JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None}, "sources_top": {"running": False, "last": None},
                          "popular": {"running": False, "last": None}}
 SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token", "autoshorts_password")
 TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy",
@@ -1229,6 +1229,37 @@ def api_neuro_status() -> dict:
         }
     finally:
         c.close()
+
+
+def _sources_top_job(limit: int) -> None:
+    JOBS["sources_top"]["running"] = True
+    c = _conn()
+    try:
+        llm = llm_from_settings(db.all_settings(c))
+        cands = sources.top_candidates(c, limit=limit * 3)
+        found = 0
+        for t in cands[: limit * 3]:
+            if found >= limit:
+                break
+            res = sources.find_sources(c, llm if llm.configured else None, t, log=lambda *a, **k: None)
+            found += 1
+            JOBS["sources_top"]["progress"] = f"{found}/{min(limit, len(cands))} «{t['label']}»: {sum(1 for r in res if r['verified'])} подтверждённых"
+        JOBS["sources_top"]["last"] = {"at": db.now_iso(), "checked": found, "candidates": len(cands)}
+    except Exception as e:  # noqa: BLE001
+        JOBS["sources_top"]["last"] = {"at": db.now_iso(), "error": str(e)[:300]}
+    finally:
+        c.close()
+        JOBS["sources_top"]["running"] = False
+        JOBS["sources_top"].pop("progress", None)
+
+
+@app.post("/api/films/sources/find-top")
+def api_sources_find_top(limit: int = 30) -> dict:
+    """Найти исходники для популярных произведений без исходника (кино, сериалы, анимация, права не «нельзя») — в фоне."""
+    if JOBS["sources_top"]["running"]:
+        raise HTTPException(409, "поиск исходников уже идёт")
+    threading.Thread(target=_sources_top_job, args=(max(1, min(limit, 200)),), name="sources_top", daemon=True).start()
+    return {"started": True, "limit": limit}
 
 
 @app.post("/api/neuro/run")

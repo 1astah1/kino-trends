@@ -632,6 +632,23 @@ class Collector:
                            "rights_llm": res["llm"], "rights_block": res.get("block", 0), "rights_caution": res.get("caution", 0),
                            "rights_sources_dead": res["sources_dead"]})
 
+    def sources_top_phase(self) -> None:
+        """Исходники для популярных произведений без исходника: кино, сериалы, анимация с правами не «нельзя».
+        Поиск через yt-dlp и Rutube бесплатный, поэтому чем шире пул «готовых к нарезке», тем больше выбор у конвейера."""
+        n_max = self.setting_int("sources_top_max")
+        if n_max <= 0:
+            return
+        self.phase("исходники для топа")
+        llm = llm_from_settings(self.settings)
+        try:
+            cands = sources.top_candidates(self.conn, limit=n_max * 3)
+            n = sources.ensure_for_titles(self.conn, llm if llm.configured else None, cands, max_titles=n_max, log=self.log)
+        except Exception as e:  # noqa: BLE001
+            self.log(f"исходники для топа: {e}", "warn")
+            return
+        self.stats["sources_top"] = n
+        self.log(f"исходники для топа: проверено {n} из {len(cands)} кандидатов")
+
     def notify_phase(self) -> None:
         """Календарь на неделю вперёд и тревоги в Telegram."""
         self.phase("календарь и тревоги")
@@ -753,6 +770,8 @@ class Collector:
                 self.popular_phase()
             if not self.cancelled():
                 self.rights_phase()
+            if not self.cancelled():
+                self.sources_top_phase()
             if not self.cancelled():
                 self.notify_phase()
             if self.cancelled():
