@@ -182,3 +182,18 @@ def test_attribution_text_is_public_and_without_storage_links():
     assert pipeline.attribution_text(storage, "cc_by", st) == "автор Андроид Плюс, лицензия CC BY"
     assert pipeline.attribution_text(video, "own", st) is None
     assert pipeline.rights_for(video, {"pipeline_rights_default": "licensed_platform", **st})["attribution_text"].startswith("фрагмент видео")
+
+
+def test_film_ready_flags_and_reasons():
+    from kinotrends.api import film_ready
+
+    src = {"video_id": "x", "verified": True, "file_status": "done", "file_error": None}
+    assert film_ready("ok", src) == (True, [])
+    assert film_ready("caution", src) == (True, [])
+    ok, why = film_ready("block", None)
+    assert not ok and "права: нельзя" in why and "нет исходника" in why
+    geo = dict(src, file_status="error", file_error="видео недоступно из страны хранилища (гео-блок автора)")
+    assert film_ready("ok", geo) == (False, ["исходник закрыт по странам"])
+    assert film_ready("ok", dict(src, verified=False))[1] == ["исходник не подтверждён"]
+    assert film_ready("ok", src, "cutting")[1] == ["уже в конвейере (cutting)"]
+    assert film_ready("ok", src, "failed") == (True, [])

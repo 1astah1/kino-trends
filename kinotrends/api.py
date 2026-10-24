@@ -339,15 +339,91 @@ def api_overview(period: str = "30", min_conf: float = 0.6, min_views: int = 0, 
         c.close()
 
 
+def film_sources_summary(c: sqlite3.Connection, title_ids: list[str]) -> dict[str, dict]:
+    """Лучший исходник на произведение: проверенный, YouTube раньше Rutube, выше score; плюс статус файла на хранилище."""
+    if not title_ids:
+        return {}
+    qs = ",".join("?" * len(title_ids))
+    rows = c.execute(f"SELECT title_id, video_id, url, label, channel, duration_s, language, verified, trust, score, alive "
+                     f"FROM title_sources WHERE title_id IN ({qs})", title_ids).fetchall()
+    best: dict[str, dict] = {}
+    for r in rows:
+        d = dict(r)
+        if d.get("alive") == 0:
+            continue
+        key = (int(d.get("verified") or 0), 1 if "youtube.com" in (d.get("url") or "") else 0, float(d.get("score") or 0))
+        cur = best.get(d["title_id"])
+        if cur is None or key > cur["_key"]:
+            d["_key"] = key
+            best[d["title_id"]] = d
+    vids = [d["video_id"] for d in best.values() if d.get("video_id")]
+    files = {}
+    if vids:
+        qv = ",".join("?" * len(vids))
+        files = {r["video_id"]: dict(r) for r in c.execute(f"SELECT video_id, status, error FROM downloads WHERE video_id IN ({qv})", vids)}
+    out = {}
+    for tid, d in best.items():
+        f = files.get(d.get("video_id") or "")
+        out[tid] = {"video_id": d.get("video_id"), "url": d.get("url"), "label": d.get("label"), "channel": d.get("channel"),
+                    "duration_s": d.get("duration_s"), "language": d.get("language"), "verified": bool(d.get("verified")),
+                    "file_status": f["status"] if f else None, "file_error": (f.get("error") or None) if f else None}
+    return out
+
+
+_GEO_WORDS = ("гео-блок", "available in your country", "not available in the country")
+
+
+def film_ready(rights_level: str | None, source: dict | None, in_pipeline: str | None = None) -> tuple[bool, list[str]]:
+    """«Готово к нарезке»: права проходят (ok или caution), исходник есть и не закрыт по странам, не в работе."""
+    reasons: list[str] = []
+    lvl = rights_level or "unknown"
+    if lvl == "block":
+        reasons.append("права: нельзя")
+    elif lvl == "unknown":
+        reasons.append("права не проверены")
+    if not source:
+        reasons.append("нет исходника")
+    else:
+        if not source.get("verified"):
+            reasons.append("исходник не подтверждён")
+        err = (source.get("file_error") or "").lower()
+        if source.get("file_status") == "error" and any(w in err for w in _GEO_WORDS):
+            reasons.append("исходник закрыт по странам")
+    if in_pipeline and in_pipeline not in ("failed", "cancelled", "qc_failed"):
+        reasons.append(f"уже в конвейере ({in_pipeline})")
+    return (not reasons, reasons)
+
+
 @app.get("/api/films")
 def api_films(period: str = "30", min_conf: float = 0.6, min_views: int = 0, lang: str = "all", sort: str = "score",
-              kind: str = "all", genre: str | None = None, q: str | None = None, limit: int = 100, offset: int = 0) -> dict:
+              kind: str = "all", genre: str | None = None, q: str | None = None, limit: int = 100, offset: int = 0,
+              ready: int = 0) -> dict:
+    """Список произведений. `kind` принимает и группы (series = сериалы, мультсериалы, аниме, шоу; animated = анимация).
+    `ready=1` — только то, с чем можно работать прямо сейчас: права проходят, исходник есть, не в конвейере."""
     c = _conn()
     try:
-        out = stats.films(c, _filters(period, min_conf, min_views, lang), limit=min(limit, 1000), sort=sort, kind=kind, genre=genre, q=q, offset=offset)
-        lv = rights.levels(c, [it["title_id"] for it in out["items"]])
+        f = _filters(period, min_conf, min_views, lang)
+        if ready:
+            out = stats.films(c, f, limit=1000, sort=sort, kind=kind, genre=genre, q=q, offset=0)
+        else:
+            out = stats.films(c, f, limit=min(limit, 1000), sort=sort, kind=kind, genre=genre, q=q, offset=offset)
+        ids = [it["title_id"] for it in out["items"]]
+        lv = rights.levels(c, ids)
+        srcs = film_sources_summary(c, ids)
+        pipe: dict[str, str] = {}
+        if ids:
+            qs = ",".join("?" * len(ids))
+            for r in c.execute(f"SELECT ref_id, status FROM pipeline_items WHERE kind = 'film' AND ref_id IN ({qs}) ORDER BY id", ids):
+                pipe[r["ref_id"]] = r["status"]
         for it in out["items"]:
             it["rights"] = lv.get(it["title_id"])
+            it["source"] = srcs.get(it["title_id"])
+            it["in_pipeline"] = pipe.get(it["title_id"])
+            it["ready"], it["ready_reasons"] = film_ready((it["rights"] or {}).get("level"), it["source"], it["in_pipeline"])
+        if ready:
+            items = [it for it in out["items"] if it["ready"]]
+            out["total"] = len(items)
+            out["items"] = items[offset:offset + min(limit, 1000)]
         return out
     finally:
         c.close()

@@ -163,6 +163,10 @@ def _video_dict(r: sqlite3.Row) -> dict:
 
 
 # ---------- фильмы ----------
+# группы типов для фильтра: сериалы (включая мультсериалы, аниме и шоу) и анимация
+KIND_GROUPS = {"series": {"series", "animated_series", "anime", "tv_show"}, "animated": {"animated", "animated_series", "anime"}, "film": {"film"}}
+
+
 def films(conn: sqlite3.Connection, f: Filters, limit: int = 100, sort: str = "score", kind: str = "all",
           genre: str | None = None, q: str | None = None, offset: int = 0) -> dict:
     rows = _base_rows(conn, f)
@@ -171,7 +175,7 @@ def films(conn: sqlite3.Connection, f: Filters, limit: int = 100, sort: str = "s
     groups: dict[str, dict] = {}
     for r in rows:
         tid = r["title_id"]
-        if kind != "all" and r["kind"] != kind:
+        if kind != "all" and r["kind"] not in KIND_GROUPS.get(kind, {kind}):
             continue
         genres = loads(r["genres"], [])
         if genre and genre not in genres:
