@@ -260,3 +260,41 @@ def test_film_sources_summary_shortens_legacy_errors(conn):
     out = film_sources_summary(conn, ["T1"])
     assert out["T1"]["verified"] is True and out["T1"]["file_status"] == "error"
     assert out["T1"]["file_error"].startswith("YouTube требует вход")
+
+
+def test_enqueue_skips_source_blocked_by_geo(conn, monkeypatch):
+    from kinotrends import popular
+
+    conn.execute("""INSERT INTO pipeline_items(kind, ref_id, label, channel, source_url, source_video_id, direct_url, license, is_short, duration_s, hint,
+                    clip_min_s, clip_max_s, niche_id, channel_slug, status, note, metrics, created_at, updated_at)
+                    VALUES ('video','geo1','Ролик','Канал','https://www.youtube.com/watch?v=geo1','geo1',NULL,NULL,1,30,NULL,NULL,58,'vpn','ch','failed',
+                    NULL, NULL, '2026-10-24T14:00:00Z', '2026-10-24T14:00:00Z')""")
+    conn.execute("UPDATE pipeline_items SET last_error = 'файл не скачался: видео недоступно из страны хранилища (гео-блок автора)' WHERE ref_id = 'geo1'")
+    conn.commit()
+    monkeypatch.setattr(popular, "detail", lambda c, vid: {"video_id": vid, "title": "Ролик", "channel_name": "Канал", "level": "clean", "license": None,
+                                                           "is_short": 1, "duration_s": 30, "analysis": {}, "frames": {}})
+    monkeypatch.setattr(popular, "cutter_block", lambda c, d: {"source_url": "https://www.youtube.com/watch?v=geo1", "direct_file_url": None})
+    with pytest.raises(ValueError, match="закрыт по странам"):
+        pipeline.enqueue(conn, "video", "geo1", {})
+    # у фильма появился другой исходник — ставим как обычно
+    conn.execute("""INSERT INTO pipeline_items(kind, ref_id, label, channel, source_url, source_video_id, direct_url, license, is_short, duration_s, hint,
+                    clip_min_s, clip_max_s, niche_id, channel_slug, status, note, metrics, created_at, updated_at)
+                    VALUES ('film','F1','Фильм','Канал','https://www.youtube.com/watch?v=old','old',NULL,NULL,0,5000,NULL,30,59,'kino','ch','failed',
+                    NULL, NULL, '2026-10-24T14:00:00Z', '2026-10-24T14:00:00Z')""")
+    conn.execute("UPDATE pipeline_items SET last_error = 'файл не скачался: видео недоступно из страны хранилища (гео-блок автора)' WHERE ref_id = 'F1'")
+    conn.commit()
+    from kinotrends import recommend
+
+    brief = {"title": {"label": "Фильм", "year": 2020, "kind": "film"}, "source": {"channel": "Канал", "video_id": "new", "duration_s": 5000},
+             "cutter": {"source_url": "https://www.youtube.com/watch?v=new", "rights_ok": True, "direct_file_url": None, "hint": None,
+                        "clip_min_s": 30, "clip_max_s": 59}}
+    monkeypatch.setattr(recommend, "brief", lambda c, f, tid: brief)
+    monkeypatch.setattr(files, "init", lambda c: None)
+    monkeypatch.setattr(files, "request", lambda c, t, v, u: {"ok": True, "status": {"status": "running"}})
+    item = pipeline.enqueue(conn, "film", "F1", {})
+    assert item["status"] == "file_pending"
+    pipeline.cancel(conn, item["id"])  # иначе enqueue вернёт активное задание, а не проверит исходник
+    # а тот же закрытый исходник — нет
+    brief["source"]["video_id"] = "old"
+    with pytest.raises(ValueError, match="закрыт по странам"):
+        pipeline.enqueue(conn, "film", "F1", {})

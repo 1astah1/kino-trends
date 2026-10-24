@@ -176,6 +176,10 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
     active = conn.execute(f"SELECT id FROM pipeline_items WHERE kind = ? AND ref_id = ? AND status IN ({','.join('?' * len(ACTIVE))})", (kind, ref_id, *ACTIVE)).fetchone()
     if active:
         return _row(conn, active["id"])
+    # исходник закрыт по странам — ставить его снова бессмысленно, пока не появится другой исходник
+    prev = conn.execute("SELECT source_video_id, last_error FROM pipeline_items WHERE kind = ? AND ref_id = ? AND status = 'failed' ORDER BY id DESC LIMIT 1",
+                        (kind, ref_id)).fetchone()
+    blocked_src = prev["source_video_id"] if prev and prev["last_error"] and ("гео-блок" in prev["last_error"] or "закрыт по странам" in prev["last_error"]) else None
     if kind == "film":
         from . import recommend
         from .stats import Filters
@@ -205,6 +209,8 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
                   "hint": (d.get("analysis") or {}).get("banner_advice"), "clip_min_s": None, "clip_max_s": 58,
                   "niche_id": settings.get("pipeline_niche_video") or "vpn", "channel_slug": settings.get("pipeline_channel_video") or "",
                   "metrics": dumps({"free_zones": (d.get("frames") or {}).get("free_zones") or []})}
+    if blocked_src and fields.get("source_video_id") == blocked_src:
+        raise ValueError("исходник закрыт по странам для хранилища, нужен другой исходник или прокси")
     ts = now_iso()
     status = "new" if fields["direct_url"] else "file_pending"
     cur = conn.execute("""INSERT INTO pipeline_items(kind, ref_id, label, channel, source_url, source_video_id, direct_url, license, is_short, duration_s, hint,
