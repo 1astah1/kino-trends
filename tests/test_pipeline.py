@@ -306,7 +306,7 @@ def test_job_options_short_video_vs_film():
              "metrics": {"free_zones": ["верх", "низ"], "text_overlay": True, "subtitles": False, "orientation": "vertical"}}
     o = pipeline._job_options(short, st)
     assert o["niche_id"] == "vpn" and o["author_layer"]["captions"] == "author"
-    assert o["author_layer"]["layout"] == {"mode": "manual", "title_top": pipeline.SHORT_TITLE_TOP}
+    assert o["author_layer"]["layout"] == {"mode": "manual", "title_top": pipeline.SHORT_TITLE_TOP, "onscreen_top": pipeline.SHORT_ONSCREEN_TOP}
     assert o["banner_variant_id"] == 1  # низ свободен → нижний вариант
     top_only = dict(short, metrics={**short["metrics"], "free_zones": ["верх"]})
     assert pipeline._job_options(top_only, st)["banner_variant_id"] == 2

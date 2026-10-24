@@ -344,6 +344,7 @@ def pick_banner_variant(zones: list[str] | None, settings: dict) -> int | None:
 
 
 SHORT_TITLE_TOP = 560  # у шортсов с чужими надписями свой заголовок уводим из верхней трети, где обычно стоит хук автора ролика
+SHORT_ONSCREEN_TOP = 700  # тезисы — сразу под заголовком, а не над ним
 
 
 def _job_options(item: dict, settings: dict) -> dict:
@@ -355,7 +356,7 @@ def _job_options(item: dict, settings: dict) -> dict:
     is_short = item.get("is_short") == 1 or m.get("orientation") == "vertical"
     layer = {"mode": "llm_draft", "captions": "author" if is_short else "both", "voice": "tts", "hook_text": None, "title_overlay": None}
     if is_short and (m.get("text_overlay") or m.get("subtitles")):
-        layer["layout"] = {"mode": "manual", "title_top": SHORT_TITLE_TOP}
+        layer["layout"] = {"mode": "manual", "title_top": SHORT_TITLE_TOP, "onscreen_top": SHORT_ONSCREEN_TOP}
     opts = {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"}, "author_layer": layer}
     if item.get("niche_id"):
         opts["niche_id"] = item["niche_id"]
