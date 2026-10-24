@@ -221,7 +221,6 @@ def test_top_candidates_prefers_popular_unblocked_titles_without_sources(monkeyp
 
 
 def test_retry_of_file_item_requests_fresh_download(conn, monkeypatch):
-    pipeline.init(conn)
     conn.execute("""INSERT INTO pipeline_items(kind, ref_id, label, channel, source_url, source_video_id, direct_url, license, is_short, duration_s, hint,
                     clip_min_s, clip_max_s, niche_id, channel_slug, status, note, metrics, created_at, updated_at)
                     VALUES ('video','vid1','Ролик','Канал','https://www.youtube.com/watch?v=vid1','vid1',NULL,NULL,1,30,NULL,NULL,58,'vpn','ch','failed',
