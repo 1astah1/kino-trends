@@ -829,9 +829,11 @@ async function renderCollect(main) {
       sf('pipeline_clips_per_source', 'клипов из длинного исходника', 'number'),
       sel('pipeline_auto_review', 'одобрять без ручного ревью', [['0', 'нет: ревью в auto-shorts'], ['1', 'да: QC и оригинальность решают']]),
       sel('pipeline_autopublish', 'ставить на автозалив сразу', [['0', 'нет'], ['1', 'да']]),
-      sel('pipeline_privacy', 'доступ при заливе', [['public', 'публично'], ['unlisted', 'по ссылке'], ['private', 'приватно']])),
+      sel('pipeline_privacy', 'доступ при заливе', [['public', 'публично'], ['unlisted', 'по ссылке'], ['private', 'приватно']]),
+      sf('pipeline_banner_bottom', 'вариант баннера: низ кадра (id в auto-shorts)', 'number', 'ставится по умолчанию'),
+      sf('pipeline_banner_top', 'вариант баннера: верх кадра (id)', 'number', 'когда по кадрам низ занят, а верх свободен')),
     h('div', { class: 'actions', style: 'margin-top:10px' },
-      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pipeline_enabled', 'pipeline_tick_min', 'autoshorts_url', 'autoshorts_login', 'autoshorts_password', 'pipeline_auto_enqueue', 'pipeline_channel_film', 'pipeline_channel_video', 'pipeline_niche_film', 'pipeline_niche_video', 'pipeline_rights_default', 'pipeline_rights_note', 'pipeline_clips_per_source', 'pipeline_auto_review', 'pipeline_autopublish', 'pipeline_privacy'], 'Настройки конвейера сохранены') }, 'Сохранить'),
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pipeline_enabled', 'pipeline_tick_min', 'autoshorts_url', 'autoshorts_login', 'autoshorts_password', 'pipeline_auto_enqueue', 'pipeline_channel_film', 'pipeline_channel_video', 'pipeline_niche_film', 'pipeline_niche_video', 'pipeline_rights_default', 'pipeline_rights_note', 'pipeline_clips_per_source', 'pipeline_auto_review', 'pipeline_autopublish', 'pipeline_privacy', 'pipeline_banner_bottom', 'pipeline_banner_top'], 'Настройки конвейера сохранены') }, 'Сохранить'),
       h('a', { class: 'btn', href: '#/pipeline' }, 'открыть конвейер'))), 'Кино-тренды ставят задания, auto-shorts режет, оформляет, проводит ревью и заливает');
   box.append(h('div', { style: 'margin-top:18px', id: 'sec-pipeline' }, pipePanel));
   box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px', id: 'sec-src' }, hashPanel, chanPanel));

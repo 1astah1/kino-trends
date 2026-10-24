@@ -187,7 +187,7 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
         fields = {"label": b["title"]["label"], "channel": src.get("channel"), "source_url": cu["source_url"], "source_video_id": src.get("video_id"),
                   "direct_url": cu.get("direct_file_url"), "license": None, "is_short": 0, "duration_s": src.get("duration_s"), "hint": cu.get("hint"),
                   "clip_min_s": cu.get("clip_min_s"), "clip_max_s": cu.get("clip_max_s"),
-                  "niche_id": settings.get("pipeline_niche_film") or "kino", "channel_slug": settings.get("pipeline_channel_film") or ""}
+                  "niche_id": settings.get("pipeline_niche_film") or "kino", "channel_slug": settings.get("pipeline_channel_film") or "", "metrics": None}
     else:
         d = popular.detail(conn, ref_id)
         if not d:
@@ -198,14 +198,15 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
         fields = {"label": d.get("title"), "channel": d.get("channel_name"), "source_url": cu["source_url"], "source_video_id": ref_id,
                   "direct_url": cu.get("direct_file_url"), "license": d.get("license"), "is_short": d.get("is_short"), "duration_s": d.get("duration_s"),
                   "hint": (d.get("analysis") or {}).get("banner_advice"), "clip_min_s": None, "clip_max_s": 58,
-                  "niche_id": settings.get("pipeline_niche_video") or "vpn", "channel_slug": settings.get("pipeline_channel_video") or ""}
+                  "niche_id": settings.get("pipeline_niche_video") or "vpn", "channel_slug": settings.get("pipeline_channel_video") or "",
+                  "metrics": dumps({"free_zones": (d.get("frames") or {}).get("free_zones") or []})}
     ts = now_iso()
     status = "new" if fields["direct_url"] else "file_pending"
     cur = conn.execute("""INSERT INTO pipeline_items(kind, ref_id, label, channel, source_url, source_video_id, direct_url, license, is_short, duration_s, hint,
-                          clip_min_s, clip_max_s, niche_id, channel_slug, status, note, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                          clip_min_s, clip_max_s, niche_id, channel_slug, status, note, metrics, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                        (kind, ref_id, fields["label"], fields["channel"], fields["source_url"], fields["source_video_id"], fields["direct_url"], fields["license"],
                         fields["is_short"], fields["duration_s"], fields["hint"], fields["clip_min_s"], fields["clip_max_s"], fields["niche_id"], fields["channel_slug"],
-                        status, note, ts, ts))
+                        status, note, fields.get("metrics"), ts, ts))
     conn.commit()
     item_id = cur.lastrowid
     if status == "file_pending" and fields["source_video_id"]:
@@ -276,9 +277,32 @@ def _options(item: dict, settings: dict) -> dict:
             "max_candidates": max(12, n * 2), "target_count": n, "detail_pass": True, "tighten_pauses": False}
 
 
+def pick_banner_variant(zones: list[str] | None, settings: dict) -> int | None:
+    """Вариант баннера по свободным зонам кадра из анализа Кино-трендов: низ свободен → нижний, иначе верх свободен → верхний."""
+    def _id(key: str) -> int | None:
+        try:
+            return int(settings.get(key) or 0) or None
+        except (TypeError, ValueError):
+            return None
+    bottom, top = _id("pipeline_banner_bottom"), _id("pipeline_banner_top")
+    z = " ".join(zones or []).lower()
+    if not z:
+        return bottom
+    if "низ" in z or not top:
+        return bottom
+    if "верх" in z:
+        return top
+    return bottom
+
+
 def _job_options(item: dict, settings: dict) -> dict:
-    return {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"},
+    zones = (item.get("metrics") or {}).get("free_zones") if isinstance(item.get("metrics"), dict) else None
+    opts = {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"},
             "author_layer": {"mode": "llm_draft", "captions": "both", "voice": "tts", "hook_text": None, "title_overlay": None}}
+    variant = pick_banner_variant(zones, settings)
+    if variant:
+        opts["banner_variant_id"] = variant
+    return opts
 
 
 # ---------- шаг конвейера ----------

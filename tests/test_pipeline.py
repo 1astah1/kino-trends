@@ -151,6 +151,16 @@ def test_needs_rights_then_set(conn, monkeypatch):
     assert pipeline.retry(conn, it["id"])["status"] == "sent"
 
 
+def test_pick_banner_variant():
+    s = {"pipeline_banner_bottom": "1", "pipeline_banner_top": "2"}
+    assert pipeline.pick_banner_variant(None, s) == 1
+    assert pipeline.pick_banner_variant(["низ", "верх"], s) == 1
+    assert pipeline.pick_banner_variant(["верх"], s) == 2
+    assert pipeline.pick_banner_variant(["лево"], s) == 1
+    assert pipeline.pick_banner_variant(["верх"], {"pipeline_banner_bottom": "1"}) == 1
+    assert pipeline.pick_banner_variant(["верх"], {}) is None
+
+
 def test_tick_without_config(conn):
     out = pipeline.tick(conn, {"autoshorts_url": ""}, log=lambda *a, **k: None)
     assert "не настроен" in out["skipped"]
