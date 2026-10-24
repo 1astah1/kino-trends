@@ -118,8 +118,12 @@ class AutoShorts:
     def package(self, pid) -> dict:
         return self.get(f"/api/v1/packages/{pid}")
 
-    def autopublish(self, pid, now: bool = True, privacy: str = "public") -> dict:
-        return self.post(f"/api/v1/packages/{pid}/autopublish", {"now": now, "privacy": privacy})
+    def autopublish(self, pid, now: bool = False, privacy: str = "public") -> dict:
+        """now=False: пакет встаёт в ближайший свободный слот плана канала; now=True: заливать немедленно."""
+        body = {"privacy": privacy}
+        if now:
+            body["now"] = True
+        return self.post(f"/api/v1/packages/{pid}/autopublish", body)
 
     def publication(self, pub_id) -> dict:
         return self.get(f"/api/v1/publications/{pub_id}")
@@ -317,6 +321,13 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 _set(conn, iid, direct_url=fs["file_url"], status="new")
                 return "new"
             if fs and fs.get("status") == "error":
+                m = dict(item.get("metrics") or {})
+                if not m.get("file_retry"):
+                    m["file_retry"] = now_iso()
+                    files.init(conn)
+                    res = files.request(conn, item["ref_id"] if item["kind"] == "film" else None, item["source_video_id"], item["source_url"])
+                    _set(conn, iid, metrics=dumps(m), last_error=f"файл не скачался ({fs.get('error')}), заказан повторно" if res.get("ok") else f"файл: {res.get('error')}")
+                    return st
                 _set(conn, iid, status="failed", last_error=f"файл не скачался: {fs.get('error')}")
                 return "failed"
             if not fs:
@@ -407,7 +418,7 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             _set(conn, iid, as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses}))
             if settings.get("pipeline_autopublish", "0") == "1" and pkgs:
                 for pid in pkgs:
-                    asc.autopublish(pid, now=True, privacy=settings.get("pipeline_privacy") or "public")
+                    asc.autopublish(pid, now=settings.get("pipeline_publish_now", "0") == "1", privacy=settings.get("pipeline_privacy") or "public")
                 _set(conn, iid, status="publishing")
                 return "publishing"
             _set(conn, iid, status="approved")
@@ -483,8 +494,8 @@ def retry(conn: sqlite3.Connection, item_id: int) -> dict | None:
     if not it:
         return None
     back = "new" if not it.get("as_source_id") else "sent" if not it["as_jobs"] else "cutting"
-    if it["status"] == "file_pending":
-        back = "file_pending"
+    if it["status"] == "file_pending" or (back == "new" and not it.get("direct_url") and it.get("source_video_id")):
+        back = "file_pending"  # файл так и не готов: заказать заново, YouTube-ссылку напрямую в auto-shorts не отдаём
     _set(conn, item_id, status=back, last_error=None)
     return _row(conn, item_id)
 

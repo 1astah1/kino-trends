@@ -773,9 +773,10 @@ async function renderCollect(main) {
       sf('storage_url', 'публичный адрес каталога', 'text', 'например http://1.2.3.4/files'),
       sf('storage_max_gb', 'потолок, ГБ', 'number'),
       sf('storage_ttl_hours', 'хранить файлы, часов', 'number'),
-      sf('storage_proxy', 'прокси для yt-dlp на хранилище', 'text', 'если YouTube метит IP хранилища как бота: http://user:pass@host:port или socks5://…')),
+      sf('storage_proxy', 'прокси для yt-dlp на хранилище', 'text', 'если YouTube метит IP хранилища как бота: http://user:pass@host:port или socks5://…'),
+      sf('storage_cookies', 'cookies.txt для yt-dlp на хранилище', 'text', 'путь к файлу на хранилище, формат Netscape; снимает «подтвердите, что вы не бот»')),
     h('div', { class: 'actions', style: 'margin-top:10px' },
-      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['storage_host', 'storage_user', 'storage_key', 'storage_dir', 'storage_url', 'storage_max_gb', 'storage_ttl_hours', 'storage_proxy'], 'Настройки хранилища сохранены') }, 'Сохранить'))), 'отдельный сервер качает исходники (YouTube и Rutube) и раздаёт mp4');
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['storage_host', 'storage_user', 'storage_key', 'storage_dir', 'storage_url', 'storage_max_gb', 'storage_ttl_hours', 'storage_proxy', 'storage_cookies'], 'Настройки хранилища сохранены') }, 'Сохранить'))), 'отдельный сервер качает исходники (YouTube и Rutube) и раздаёт mp4');
   const calPanel = panel('Календарь нарезки', h('div', null,
     h('div', { class: 'form' },
       sf('schedule_days', 'дней вперёд', 'number'),
@@ -828,12 +829,13 @@ async function renderCollect(main) {
       sf('pipeline_rights_note', 'основание прав (proof_note)', 'text'),
       sf('pipeline_clips_per_source', 'клипов из длинного исходника', 'number'),
       sel('pipeline_auto_review', 'одобрять без ручного ревью', [['0', 'нет: ревью в auto-shorts'], ['1', 'да: QC и оригинальность решают']]),
-      sel('pipeline_autopublish', 'ставить на автозалив сразу', [['0', 'нет'], ['1', 'да']]),
+      sel('pipeline_autopublish', 'ставить одобренное на автозалив', [['0', 'нет'], ['1', 'да']]),
+      sel('pipeline_publish_now', 'когда заливать', [['0', 'в ближайший слот плана канала'], ['1', 'сразу после одобрения']]),
       sel('pipeline_privacy', 'доступ при заливе', [['public', 'публично'], ['unlisted', 'по ссылке'], ['private', 'приватно']]),
       sf('pipeline_banner_bottom', 'вариант баннера: низ кадра (id в auto-shorts)', 'number', 'ставится по умолчанию'),
       sf('pipeline_banner_top', 'вариант баннера: верх кадра (id)', 'number', 'когда по кадрам низ занят, а верх свободен')),
     h('div', { class: 'actions', style: 'margin-top:10px' },
-      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pipeline_enabled', 'pipeline_tick_min', 'autoshorts_url', 'autoshorts_login', 'autoshorts_password', 'pipeline_auto_enqueue', 'pipeline_channel_film', 'pipeline_channel_video', 'pipeline_niche_film', 'pipeline_niche_video', 'pipeline_rights_default', 'pipeline_rights_note', 'pipeline_clips_per_source', 'pipeline_auto_review', 'pipeline_autopublish', 'pipeline_privacy', 'pipeline_banner_bottom', 'pipeline_banner_top'], 'Настройки конвейера сохранены') }, 'Сохранить'),
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveKeys(['pipeline_enabled', 'pipeline_tick_min', 'autoshorts_url', 'autoshorts_login', 'autoshorts_password', 'pipeline_auto_enqueue', 'pipeline_channel_film', 'pipeline_channel_video', 'pipeline_niche_film', 'pipeline_niche_video', 'pipeline_rights_default', 'pipeline_rights_note', 'pipeline_clips_per_source', 'pipeline_auto_review', 'pipeline_autopublish', 'pipeline_privacy', 'pipeline_publish_now', 'pipeline_banner_bottom', 'pipeline_banner_top'], 'Настройки конвейера сохранены') }, 'Сохранить'),
       h('a', { class: 'btn', href: '#/pipeline' }, 'открыть конвейер'))), 'Кино-тренды ставят задания, auto-shorts режет, оформляет, проводит ревью и заливает');
   box.append(h('div', { style: 'margin-top:18px', id: 'sec-pipeline' }, pipePanel));
   box.append(h('div', { class: 'grid grid-halves', style: 'margin-top:18px', id: 'sec-src' }, hashPanel, chanPanel));

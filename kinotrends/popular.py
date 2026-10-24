@@ -214,7 +214,7 @@ def frames_remote(st: dict, video_id: str, duration_s: int | None) -> dict:
     d = shlex.quote(st["dir"])
     url = shlex.quote(f"https://www.youtube.com/watch?v={video_id}")
     script = ("set -e; id=" + vid + "; D=" + str(dur) + "; mkdir -p " + d + "/frames; "
-              "u=$(yt-dlp --no-warnings -q --js-runtimes node " + (("--proxy " + shlex.quote(st["proxy"]) + " ") if st.get("proxy") else "") + "-f 'bv*[height<=480][ext=mp4]/b[height<=480]/bv*[height<=720]/b' -g " + url + " | head -1); "
+              "u=$(yt-dlp --no-warnings -q --js-runtimes node " + files.ytdlp_extra(st) + "-f 'bv*[height<=480][ext=mp4]/b[height<=480]/bv*[height<=720]/b' -g " + url + " | head -1); "
               "test -n \"$u\"; for i in $(seq 1 " + str(n) + "); do t=$((D*i/" + str(n + 1) + ")); ffmpeg -loglevel error -y -ss $t -i \"$u\" -frames:v 1 -q:v 3 -vf scale=480:-2 /tmp/fr_${id}_$i.jpg; done; "
               "ffmpeg -loglevel error -y -start_number 1 -i /tmp/fr_${id}_%d.jpg -filter_complex 'tile=" + tile + ":padding=4:margin=4' -q:v 4 " + d + "/frames/$id.jpg; "
               "chown www-data:www-data " + d + "/frames/$id.jpg; "

@@ -64,6 +64,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "storage_max_gb": "20",         # потолок хранилища на сервере-хранилище
     "storage_ttl_hours": "72",      # сколько держать файлы
     "storage_proxy": "",            # прокси для yt-dlp на хранилище (http://user:pass@host:port или socks5://…), если YouTube режет IP хранилища
+    "storage_cookies": "",          # путь к cookies.txt (формат Netscape) на хранилище для yt-dlp, если YouTube требует вход «не бот»
     "rights_policy": "balanced",    # авторские права в календаре: strict = только «проходит», balanced = и «с оговорками», off = только пометка
     "rights_llm_max": "40",         # сколько произведений за прогон спрашивать у модели про правообладателя
     "rights_recheck_max": "400",    # сколько чужих нарезок перепроверять за прогон на сносы
@@ -96,6 +97,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "pipeline_auto_review": "0",    # одобрять клипы без ручного ревью (QC и оригинальность проверяет auto-shorts)
     "pipeline_autopublish": "0",    # ставить пакеты на автозалив сразу
     "pipeline_privacy": "public",
+    "pipeline_publish_now": "0",    # 0 = в ближайший слот плана канала, 1 = заливать сразу
     "pipeline_max_per_tick": "20",
     "pipeline_banner_bottom": "",   # id варианта баннера auto-shorts для нижней трети (по умолчанию для всех)
     "pipeline_banner_top": "",      # id варианта для верха кадра: ставится, когда по кадрам внизу занято, а верх свободен

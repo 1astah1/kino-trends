@@ -30,7 +30,7 @@ SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token", "autoshor
 TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy",
              "pop_regions", "pop_categories", "pop_cc_queries", "pop_lang", "pop_audience",
              "autoshorts_url", "autoshorts_login", "pipeline_channel_film", "pipeline_channel_video", "pipeline_niche_film", "pipeline_niche_video",
-             "pipeline_rights_default", "pipeline_rights_note", "pipeline_privacy", "storage_proxy")
+             "pipeline_rights_default", "pipeline_rights_note", "pipeline_privacy", "storage_proxy", "storage_cookies")
 _bg_lock = threading.Lock()
 _SCHED_STOP = threading.Event()
 

@@ -64,7 +64,18 @@ def storage(conn: sqlite3.Connection) -> dict:
         "url": (s.get("storage_url") or "").strip().rstrip("/"),
         "max_gb": float(s.get("storage_max_gb") or 20), "ttl_hours": int(s.get("storage_ttl_hours") or 72),
         "proxy": (s.get("storage_proxy") or "").strip(),
+        "cookies": (s.get("storage_cookies") or "").strip(),
     }
+
+
+def ytdlp_extra(st: dict) -> str:
+    """Общие флаги yt-dlp для хранилища: прокси и cookies, если заданы."""
+    parts = []
+    if st.get("proxy"):
+        parts.append(f"--proxy {shlex.quote(st['proxy'])}")
+    if st.get("cookies"):
+        parts.append(f"--cookies {shlex.quote(st['cookies'])}")
+    return (" ".join(parts) + " ") if parts else ""
 
 
 def _ssh(st: dict, command: str, timeout: int = 60) -> subprocess.CompletedProcess:
@@ -216,7 +227,7 @@ def _download(video_id: str, url: str, st: dict) -> None:
             name = f"{_safe(video_id)}.mp4"
             if st["remote"]:
                 remote_path = f"{st['dir']}/{name}"
-                proxy = f"--proxy {shlex.quote(st['proxy'])} " if st.get("proxy") else ""
+                proxy = ytdlp_extra(st)
                 ytdlp = (f"yt-dlp --no-warnings --quiet --js-runtimes node {proxy}-f {shlex.quote(FORMAT)} --merge-output-format mp4 --no-playlist "
                          f"-o {shlex.quote(remote_path)} {shlex.quote(url)} && chown www-data:www-data {shlex.quote(remote_path)} && stat -c %s {shlex.quote(remote_path)}")
                 try:
