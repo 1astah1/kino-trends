@@ -364,9 +364,12 @@ def film_sources_summary(c: sqlite3.Connection, title_ids: list[str]) -> dict[st
     out = {}
     for tid, d in best.items():
         f = files.get(d.get("video_id") or "")
+        err = (f.get("error") or None) if f else None
+        if err and len(err) > 120:
+            err = files._short_error(err)  # старые записи хранят сырой хвост yt-dlp
         out[tid] = {"video_id": d.get("video_id"), "url": d.get("url"), "label": d.get("label"), "channel": d.get("channel"),
                     "duration_s": d.get("duration_s"), "language": d.get("language"), "verified": bool(d.get("verified")),
-                    "file_status": f["status"] if f else None, "file_error": (f.get("error") or None) if f else None}
+                    "file_status": f["status"] if f else None, "file_error": err}
     return out
 
 
