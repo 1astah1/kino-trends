@@ -118,6 +118,10 @@ class AutoShorts:
     def package(self, pid) -> dict:
         return self.get(f"/api/v1/packages/{pid}")
 
+    def checklist(self, pid, code: str, done: bool = True) -> dict:
+        """Отметить пункт чек-листа пакета (например content_id — проверка Content ID лицензированного источника)."""
+        return self._req("PATCH", f"/api/v1/packages/{pid}/checklist", body={"code": code, "done": done})
+
     def autopublish(self, pid, now: bool = False, privacy: str = "public") -> dict:
         """now=False: пакет встаёт в ближайший свободный слот плана канала; now=True: заливать немедленно."""
         body = {"privacy": privacy}
@@ -483,6 +487,13 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             _set(conn, iid, as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses}))
             if settings.get("pipeline_autopublish", "0") == "1" and pkgs:
                 for pid in pkgs:
+                    # лицензированный источник: пункт «Content ID» чек-листа закрывает проверка прав Кино-трендов
+                    # (сносы чужих нарезок, правообладатель, заявки Content ID) — без отметки автозалив заблокирован
+                    if (item.get("rights_type") or settings.get("pipeline_rights_default") or "").startswith("licensed_"):
+                        try:
+                            asc.checklist(pid, "content_id", True)
+                        except ASError as e:
+                            log(f"конвейер: чек-лист content_id для пакета {pid}: {e}", "warn")
                     asc.autopublish(pid, now=settings.get("pipeline_publish_now", "0") == "1", privacy=settings.get("pipeline_privacy") or "public")
                 _set(conn, iid, status="publishing")
                 return "publishing"

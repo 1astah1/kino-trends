@@ -16,6 +16,7 @@ class FakeAS:
     configured = True
 
     def __init__(self):
+        self.checked = []
         self.calls = []
         self.source_polls = 0
         self.job_status = "processing"
@@ -38,6 +39,10 @@ class FakeAS:
     def clips(self, sid, items):
         self.calls.append(("clips", items))
         return [{"id": 11}]
+
+    def checklist(self, pid, code, done=True):
+        self.checked.append((pid, code, done))
+        return {"id": pid}
 
     def job(self, jid):
         return {"id": jid, "status": self.job_status}
