@@ -218,3 +218,20 @@ def test_top_candidates_prefers_popular_unblocked_titles_without_sources(monkeyp
     assert [t["title_id"] for t in picked] == ["A", "E"]
     assert picked[0]["label"] == "Фильм без исходника" and picked[1]["kind"] == "anime"
     assert sources.top_candidates(None, limit=1)[0]["title_id"] == "A"
+
+
+def test_retry_of_file_item_requests_fresh_download(conn, monkeypatch):
+    pipeline.init(conn)
+    conn.execute("""INSERT INTO pipeline_items(kind, ref_id, label, channel, source_url, source_video_id, direct_url, license, is_short, duration_s, hint,
+                    clip_min_s, clip_max_s, niche_id, channel_slug, status, note, metrics, created_at, updated_at)
+                    VALUES ('video','vid1','Ролик','Канал','https://www.youtube.com/watch?v=vid1','vid1',NULL,NULL,1,30,NULL,NULL,58,'vpn','ch','failed',
+                    NULL, '{"file_retry": "2026-10-24T14:50:22Z"}', '2026-10-24T14:00:00Z', '2026-10-24T14:00:00Z')""")
+    conn.commit()
+    item_id = conn.execute("SELECT id FROM pipeline_items WHERE ref_id = 'vid1'").fetchone()["id"]
+    calls = []
+    monkeypatch.setattr(files, "init", lambda c: None)
+    monkeypatch.setattr(files, "request", lambda c, title_id, video_id, url: calls.append((title_id, video_id, url)) or {"ok": True, "status": {"status": "running"}})
+    out = pipeline.retry(conn, item_id)
+    assert out["status"] == "file_pending" and out["last_error"] is None
+    assert calls == [(None, "vid1", "https://www.youtube.com/watch?v=vid1")]
+    assert "file_retry" not in (db.loads(out["metrics"], {}) if isinstance(out["metrics"], str) else (out["metrics"] or {}))

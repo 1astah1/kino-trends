@@ -538,6 +538,14 @@ def retry(conn: sqlite3.Connection, item_id: int) -> dict | None:
     back = "new" if not it.get("as_source_id") else "sent" if not it["as_jobs"] else "cutting"
     if it["status"] == "file_pending" or (back == "new" and not it.get("direct_url") and it.get("source_video_id")):
         back = "file_pending"  # файл так и не готов: заказать заново, YouTube-ссылку напрямую в auto-shorts не отдаём
+        # ручной повтор — это новая попытка: сбрасываем автоповтор и сразу заказываем файл, иначе шаг увидит
+        # старую ошибку загрузки и тут же снова уронит задание с прежним текстом
+        m = dict(it.get("metrics") or {})
+        m.pop("file_retry", None)
+        files.init(conn)
+        res = files.request(conn, it["ref_id"] if it["kind"] == "film" else None, it["source_video_id"], it["source_url"])
+        _set(conn, item_id, status=back, metrics=dumps(m), last_error=None if res.get("ok") else f"файл: {res.get('error')}")
+        return _row(conn, item_id)
     _set(conn, item_id, status=back, last_error=None)
     return _row(conn, item_id)
 
