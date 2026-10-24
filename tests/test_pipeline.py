@@ -234,3 +234,13 @@ def test_retry_of_file_item_requests_fresh_download(conn, monkeypatch):
     assert out["status"] == "file_pending" and out["last_error"] is None
     assert calls == [(None, "vid1", "https://www.youtube.com/watch?v=vid1")]
     assert "file_retry" not in (db.loads(out["metrics"], {}) if isinstance(out["metrics"], str) else (out["metrics"] or {}))
+
+
+def test_short_error_recognises_geo_block_tail():
+    from kinotrends.files import _short_error
+
+    assert _short_error("…Zambia, Zimbabwe\nYou might want to use a VPN or a proxy server (with --proxy) to workaround.") == (
+        "видео недоступно из страны хранилища (гео-блок автора)"
+    )
+    assert _short_error("ERROR: [youtube] x: The uploader has not made this video available in your country. This video is available in Albania, …").startswith("видео недоступно")
+    assert _short_error("ERROR: [youtube] x: Sign in to confirm you’re not a bot.").startswith("YouTube требует вход")

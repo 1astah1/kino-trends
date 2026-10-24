@@ -231,7 +231,8 @@ _watch_lock = threading.Lock()
 
 def _short_error(log: str) -> str:
     low = log.lower()
-    if "available in your country" in low or "not available in the country" in low or ("geo" in low and "restricted" in low):
+    if ("available in your country" in low or "not available in the country" in low or ("geo" in low and "restricted" in low)
+            or "use a vpn or a proxy" in low):
         return "видео недоступно из страны хранилища (гео-блок автора)"
     if "sign in to confirm" in low or "not a bot" in low:
         return "YouTube требует вход (бот-проверка): нужны cookies или прокси хранилища"
@@ -259,7 +260,8 @@ def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bo
         if not hold:
             _running[video_id] = True
         probe = (f"if [ -f {q(remote_path + '.ok')} ]; then echo OK; cat {q(remote_path + '.ok')}; "
-                 f"elif [ -f {q(remote_path + '.fail')} ]; then echo FAIL; tail -c 1500 {q(remote_path + '.log')} 2>/dev/null; "
+                 f"elif [ -f {q(remote_path + '.fail')} ]; then echo FAIL; "
+                 f"(grep -E '^ERROR' {q(remote_path + '.log')} | cut -c1-600 | tail -n 3; tail -c 300 {q(remote_path + '.log')}) 2>/dev/null; "
                  f"elif pgrep -f {q('[y]t-dlp.*' + remote_path)} >/dev/null; then echo RUN; else echo GONE; fi")
         started = time.monotonic()
         while True:
