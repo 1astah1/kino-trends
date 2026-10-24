@@ -344,18 +344,19 @@ def pick_banner_variant(zones: list[str] | None, settings: dict) -> int | None:
 
 
 SHORT_TITLE_TOP = 560  # у шортсов с чужими надписями свой заголовок уводим из верхней трети, где обычно стоит хук автора ролика
-SHORT_ONSCREEN_TOP = 700  # тезисы — сразу под заголовком, а не над ним
+SHORT_ONSCREEN_TOP = 740  # тезисы — сразу под заголовком (полоса субтитров у шортсов свободна: своих субтитров нет)
 
 
 def _job_options(item: dict, settings: dict) -> dict:
     """Параметры ролика для auto-shorts: ниша источника (не ниша канала!), баннер по свободным зонам,
-    у вертикальных шортсов — только авторские субтитры (у них свои вшитые, две дорожки налезают друг на друга)
-    и заголовок ниже чужой плашки-хука."""
+    у вертикальных шортсов — без своих субтитров (у них свои вшитые) и заголовок с тезисами ниже чужого хука."""
     m = item.get("metrics") if isinstance(item.get("metrics"), dict) else {}
     zones = m.get("free_zones")
     is_short = item.get("is_short") == 1 or m.get("orientation") == "vertical"
-    layer = {"mode": "llm_draft", "captions": "author" if is_short else "both", "voice": "tts", "hook_text": None, "title_overlay": None}
-    if is_short and (m.get("text_overlay") or m.get("subtitles")):
+    # у вертикальных шортсов почти всегда свои вшитые субтитры и хук сверху: наши субтитры с ними сливаются в кашу,
+    # поэтому текст у нас — только заголовок и тезисы (ниже чужого хука), а голос автора идёт поверх
+    layer = {"mode": "llm_draft", "captions": "none" if is_short else "both", "voice": "tts", "hook_text": None, "title_overlay": None}
+    if is_short:
         layer["layout"] = {"mode": "manual", "title_top": SHORT_TITLE_TOP, "onscreen_top": SHORT_ONSCREEN_TOP}
     opts = {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"}, "author_layer": layer}
     if item.get("niche_id"):
