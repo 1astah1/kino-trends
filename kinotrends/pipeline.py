@@ -30,6 +30,15 @@ START_STATES = ("new", "needs_rights", "file_pending", "retry_wait")  # ещё �
 WORK_STATES = ("sent", "cutting", "review")  # занимают хранилище и воркеры auto-shorts
 
 
+AUTO_RETRY_MAX = 2  # сколько раз конвейер сам перезапускает клип после временного сбоя
+
+
+def _transient(job: dict) -> bool:
+    """Клип упал на временной ошибке (повтор с той же стадии может пройти), а не на браке или правах."""
+    err = str(job.get("error") or "")
+    return err.startswith("RetryableError") or job.get("error_class") in ("retryable", "network", "tts")
+
+
 def _in_work(conn: sqlite3.Connection, row) -> bool:
     """Задание уже тратит ресурсы: в auto-shorts (скачивание, распознавание, нарезка) или его файл качается
     на хранилище. Новое с готовым файлом и ждущее прав — ещё нет."""
@@ -498,9 +507,20 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             return "cutting"
         if st in ("cutting", "review"):
             statuses = {}
+            m_retry = dict((item.get("metrics") or {}).get("auto_retry") or {})
             for jid in item["as_jobs"]:
                 j = asc.job(jid)
                 js = j.get("status")
+                if js == "failed" and _transient(j) and int(m_retry.get(str(jid)) or 0) < AUTO_RETRY_MAX:
+                    # временный сбой (озвучка Microsoft молчит, сеть): перезапуск с упавшей стадии, а не «ошибка» задания
+                    try:
+                        asc.retry_job(jid)
+                        m_retry[str(jid)] = int(m_retry.get(str(jid)) or 0) + 1
+                        _set(conn, iid, metrics=dumps({**(item.get("metrics") or {}), "auto_retry": m_retry}))
+                        log(f"конвейер: «{item.get('label')}»: клип {jid} перезапущен после сбоя ({j.get('stage')})")
+                        js = "processing"
+                    except ASError as e:
+                        log(f"конвейер: перезапуск клипа {jid}: {e}", "warn")
                 if js == "pending_review" and settings.get("pipeline_auto_review", "0") == "1":
                     try:
                         asc.review(jid, "approve", "pending_review", "автоодобрение Кино-трендов: QC и оригинальность пройдены")
@@ -512,14 +532,14 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             if any(v in ("queued", "processing", "draft", "rework") for v in vals):
                 return st
             if any(v == "qc_failed" for v in vals) and not any(v in ("approved", "published") for v in vals):
-                _set(conn, iid, status="qc_failed", last_error="клипы не прошли QC в auto-shorts", metrics=dumps({"jobs": statuses}))
+                _set(conn, iid, status="qc_failed", last_error="клипы не прошли QC в auto-shorts", metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
                 return "qc_failed"
             if any(v == "pending_review" for v in vals):
-                _set(conn, iid, status="review", metrics=dumps({"jobs": statuses}))
+                _set(conn, iid, status="review", metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
                 return "review"
             good = [jid for jid, v in statuses.items() if v in ("approved", "published")]
             if not good:
-                _set(conn, iid, status="failed", last_error="все клипы отклонены или не собрались: " + ", ".join(f"{k}:{v}" for k, v in statuses.items()), metrics=dumps({"jobs": statuses}))
+                _set(conn, iid, status="failed", last_error="все клипы отклонены или не собрались: " + ", ".join(f"{k}:{v}" for k, v in statuses.items()), metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
                 return "failed"
             pkgs = []
             for jid in good:
@@ -529,7 +549,7 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                         pkgs.append(p["id"])
                 except ASError as e:
                     log(f"конвейер: пакет для {jid}: {e}", "warn")
-            _set(conn, iid, as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses}))
+            _set(conn, iid, as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
             if settings.get("pipeline_autopublish", "0") == "1" and pkgs:
                 for pid in pkgs:
                     _autopublish(asc, item, settings, pid, log)

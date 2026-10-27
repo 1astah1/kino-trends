@@ -23,6 +23,7 @@ class FakeAS:
         self.pub_ref = None              # как в API auto-shorts: одна ссылка на заливку, поле publication
         self.ap = None                   # блок autopublish пакета
         self.no_package = False          # пакет ещё не собран: GET /jobs/{id}/package → 404
+        self.job_error = None
 
     def health(self):
         return {"status": "ok"}
@@ -47,7 +48,7 @@ class FakeAS:
         return {"id": pid}
 
     def job(self, jid):
-        return {"id": jid, "status": self.job_status}
+        return {"id": jid, "status": self.job_status, "stage": "author_voice", "error": self.job_error}
 
     def retry_job(self, jid):
         self.calls.append(("retry", jid))
@@ -475,3 +476,27 @@ def test_expired_file_is_ordered_again(conn, monkeypatch):
     iid = _put_item(conn, "gone", "file_pending", source_video_id="gonefile001", source_url="https://rutube.ru/video/x/")
     pipeline.tick(conn, dict(db.all_settings(conn), pipeline_max_per_tick="1"), log=lambda *a, **k: None, asc=FakeAS())
     assert asked and pipeline._row(conn, iid)["status"] == "file_pending"
+
+
+def test_transient_clip_failure_is_retried_twice_then_given_up(conn):
+    conn.execute("UPDATE pipeline_items SET status = 'cancelled' WHERE status IN ('new','sent','cutting','review','file_pending','approved','publishing','retry_wait')")
+    conn.commit()
+    iid = _put_item(conn, "tts-down", "cutting", as_jobs=pipeline.dumps([71]))
+    fake = FakeAS()
+    s = db.all_settings(conn)
+    for _ in range(2):
+        fake.job_status, fake.job_error = "failed", "RetryableError: TTS edge не ответил: NoAudioReceived"
+        pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+        assert pipeline._row(conn, iid)["status"] == "cutting"
+    assert [c for c in fake.calls if c[0] == "retry"] == [("retry", 71), ("retry", 71)]
+    fake.job_status = "failed"
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    assert pipeline._row(conn, iid)["status"] == "failed"  # третий раз не крутим
+
+
+def test_permanent_clip_failure_is_not_retried(conn):
+    iid = _put_item(conn, "bad-rights", "cutting", as_jobs=pipeline.dumps([72]))
+    fake = FakeAS()
+    fake.job_status, fake.job_error = "failed", "PermanentError: У источника не записаны права"
+    pipeline.step(conn, fake, pipeline._row(conn, iid), db.all_settings(conn), log=lambda *a, **k: None)
+    assert pipeline._row(conn, iid)["status"] == "failed" and not any(c[0] == "retry" for c in fake.calls)
