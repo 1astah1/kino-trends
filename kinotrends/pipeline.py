@@ -25,8 +25,22 @@ from . import files, popular
 from .db import dumps, loads, now_iso
 
 STATES = ("new", "file_pending", "needs_rights", "sent", "cutting", "review", "qc_failed", "approved", "publishing", "published", "failed", "cancelled")
-ACTIVE = ("new", "needs_rights", "file_pending", "sent", "cutting", "review", "approved", "publishing")
-STATE_RU = {"new": "в очереди", "file_pending": "готовится файл", "needs_rights": "нужен тип прав", "sent": "источник в auto-shorts", "cutting": "нарезка",
+ACTIVE = ("new", "needs_rights", "file_pending", "retry_wait", "sent", "cutting", "review", "approved", "publishing")
+START_STATES = ("new", "needs_rights", "file_pending", "retry_wait")  # ещё не в auto-shorts: на них действует pipeline_max_per_tick
+WORK_STATES = ("sent", "cutting", "review")  # занимают хранилище и воркеры auto-shorts
+
+
+def _in_work(conn: sqlite3.Connection, row) -> bool:
+    """Задание уже тратит ресурсы: в auto-shorts (скачивание, распознавание, нарезка) или его файл качается
+    на хранилище. Новое с готовым файлом и ждущее прав — ещё нет."""
+    st = row["status"]
+    if st in WORK_STATES:
+        return True
+    if st == "file_pending" and row["source_video_id"]:
+        fs = files.status(conn, row["source_video_id"])
+        return bool(fs) and fs.get("status") == "running"
+    return False
+STATE_RU = {"new": "в очереди", "file_pending": "готовится файл", "retry_wait": "ждёт повтора нарезки", "needs_rights": "нужен тип прав", "sent": "источник в auto-shorts", "cutting": "нарезка",
             "review": "ждёт ревью", "qc_failed": "не прошёл QC", "approved": "одобрено, ждёт залива", "publishing": "на автозаливе", "published": "опубликовано",
             "failed": "ошибка", "cancelled": "отменено"}
 RIGHTS_TYPES = ("own", "licensed_written", "licensed_platform", "cc_by", "public_domain")
@@ -108,6 +122,10 @@ class AutoShorts:
 
     def job(self, jid) -> dict:
         return self.get(f"/api/v1/jobs/{jid}")
+
+    def retry_job(self, jid) -> dict:
+        """Перезапуск упавшего ролика с его стадии."""
+        return self.post(f"/api/v1/jobs/{jid}/retry", {})
 
     def review(self, jid, decision: str, expected: str, comment: str | None = None) -> dict:
         return self.post(f"/api/v1/jobs/{jid}/review", {"decision": decision, "expected_status": expected, "comment": comment})
@@ -227,11 +245,8 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
                         status, note, fields.get("metrics"), ts, ts))
     conn.commit()
     item_id = cur.lastrowid
-    if status == "file_pending" and fields["source_video_id"]:
-        files.init(conn)
-        res = files.request(conn, ref_id if kind == "film" else None, fields["source_video_id"], fields["source_url"])
-        if not res.get("ok"):
-            _set(conn, item_id, status="failed", last_error=f"файл: {res.get('error')}")
+    # файл на хранилище здесь не заказываем: его закажет тик, когда освободится место в работе
+    # (pipeline_max_in_work) — иначе ночной календарь разом качал два десятка фильмов и забивал диск
     return _row(conn, item_id)
 
 
@@ -352,8 +367,9 @@ SHORT_ONSCREEN_TOP = 740  # тезисы — сразу под заголовк�
 
 
 def _job_options(item: dict, settings: dict) -> dict:
-    """Параметры ролика для auto-shorts: ниша источника (не ниша канала!), баннер по свободным зонам,
-    у вертикальных шортсов — без своих субтитров (у них свои вшитые) и заголовок с тезисами ниже чужого хука."""
+    """Параметры ролика для auto-shorts (тело ClipBatchItem, лишние поля там запрещены → 422): баннер по свободным
+    зонам, у вертикальных шортсов — без своих субтитров (у них свои вшитые) и заголовок с тезисами ниже чужого хука.
+    Нишу ролик берёт у источника (source_from_url передаёт niche_id задания), в заказе клипа её нет."""
     m = item.get("metrics") if isinstance(item.get("metrics"), dict) else {}
     zones = m.get("free_zones")
     is_short = item.get("is_short") == 1 or m.get("orientation") == "vertical"
@@ -363,12 +379,21 @@ def _job_options(item: dict, settings: dict) -> dict:
     if is_short:
         layer["layout"] = {"mode": "manual", "title_top": SHORT_TITLE_TOP, "onscreen_top": SHORT_ONSCREEN_TOP}
     opts = {"channel_id": item.get("channel_slug") or "", "priority": 100, "start": True, "reframe": {"mode": "auto"}, "author_layer": layer}
-    if item.get("niche_id"):
-        opts["niche_id"] = item["niche_id"]
     variant = pick_banner_variant(zones, settings)
     if variant:
         opts["banner_variant_id"] = variant
     return opts
+
+
+def _autopublish(asc: "AutoShorts", item: dict, settings: dict, pid, log=print) -> None:
+    """Поставить пакет в автозалив. Лицензированный источник: пункт «Content ID» чек-листа закрывает проверка
+    прав Кино-трендов (сносы чужих нарезок, правообладатель, заявки Content ID) — без отметки автозалив заблокирован."""
+    if (item.get("rights_type") or settings.get("pipeline_rights_default") or "").startswith("licensed_"):
+        try:
+            asc.checklist(pid, "content_id", True)
+        except ASError as e:
+            log(f"конвейер: чек-лист content_id для пакета {pid}: {e}", "warn")
+    asc.autopublish(pid, now=settings.get("pipeline_publish_now", "0") == "1", privacy=settings.get("pipeline_privacy") or "public")
 
 
 # ---------- шаг конвейера ----------
@@ -392,7 +417,7 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     return st
                 _set(conn, iid, status="failed", last_error=f"файл не скачался: {fs.get('error')}")
                 return "failed"
-            if not fs:
+            if not fs or fs.get("status") == "expired":  # файла ещё не было или его уже убрала очистка — заказать
                 files.init(conn)
                 res = files.request(conn, item["ref_id"] if item["kind"] == "film" else None, item["source_video_id"], item["source_url"])
                 if not res.get("ok"):
@@ -400,6 +425,12 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     return "failed"
             return st
         if st in ("new", "needs_rights"):
+            if item.get("source_video_id") and item.get("direct_url"):
+                fs = files.status(conn, item["source_video_id"])
+                if fs and fs.get("status") == "expired":
+                    # пока ждали очереди, файл на хранилище убрала очистка: заказать заново, иначе auto-shorts получит 404
+                    _set(conn, iid, status="file_pending", direct_url=None, last_error="файл хранилища истёк, заказан заново")
+                    return "file_pending"
             rights = rights_for(item, settings)
             if not rights:
                 if st != "needs_rights":
@@ -439,8 +470,11 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     # модель не нашла моментов (мало речи): один раз пробуем эвристику по паузам и темпу, потом сдаёмся
                     m = dict(item.get("metrics") or {})
                     if not m.get("heuristic_retry"):
-                        opts = dict(_options(item, settings), selector="heuristic")
-                        asc.post(f"/api/v1/sources/{item['as_source_id']}/select", {"options": opts})
+                        # SourceSelectRequest: параметры на верхнем уровне тела, без обёртки options
+                        body = dict(_options(item, settings), selector="heuristic")
+                        if item.get("niche_id"):
+                            body["niche_id"] = item["niche_id"]
+                        asc.post(f"/api/v1/sources/{item['as_source_id']}/select", body)
                         m["heuristic_retry"] = now_iso()
                         _set(conn, iid, metrics=dumps(m), last_error="модель не нашла моментов, запущен подбор эвристикой")
                         return st
@@ -450,6 +484,17 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             ids = [j.get("id") for j in jobs if j.get("id") is not None]
             _set(conn, iid, status="cutting", as_jobs=dumps(ids), last_error=None)
             log(f"конвейер: «{item.get('label')}»: клипов поставлено {len(ids)}")
+            return "cutting"
+        if st == "retry_wait":
+            # клипы упали по сбою стенда (например, удалённый файл хранилища): перезапускаем их, когда
+            # дошла очередь по лимиту «в работе», а не все разом
+            again = 0
+            for jid in item["as_jobs"]:
+                if asc.job(jid).get("status") == "failed":
+                    asc.retry_job(jid)
+                    again += 1
+            _set(conn, iid, status="cutting", last_error=None)
+            log(f"конвейер: «{item.get('label')}»: перезапущено клипов {again}")
             return "cutting"
         if st in ("cutting", "review"):
             statuses = {}
@@ -487,28 +532,52 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             _set(conn, iid, as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses}))
             if settings.get("pipeline_autopublish", "0") == "1" and pkgs:
                 for pid in pkgs:
-                    # лицензированный источник: пункт «Content ID» чек-листа закрывает проверка прав Кино-трендов
-                    # (сносы чужих нарезок, правообладатель, заявки Content ID) — без отметки автозалив заблокирован
-                    if (item.get("rights_type") or settings.get("pipeline_rights_default") or "").startswith("licensed_"):
-                        try:
-                            asc.checklist(pid, "content_id", True)
-                        except ASError as e:
-                            log(f"конвейер: чек-лист content_id для пакета {pid}: {e}", "warn")
-                    asc.autopublish(pid, now=settings.get("pipeline_publish_now", "0") == "1", privacy=settings.get("pipeline_privacy") or "public")
+                    _autopublish(asc, item, settings, pid, log)
                 _set(conn, iid, status="publishing")
                 return "publishing"
             _set(conn, iid, status="approved")
             return "approved"
         if st in ("approved", "publishing"):
-            pubs = []
-            for pid in item["as_packages"]:
+            pkgs = list(item["as_packages"] or [])
+            if not pkgs:
+                # пакет не успел собраться к моменту одобрения клипов: добираем его по заданиям
+                for jid in item["as_jobs"]:
+                    try:
+                        p = asc.package_of_job(jid)
+                    except ASError:
+                        continue
+                    if p.get("id") is not None:
+                        pkgs.append(p["id"])
+                if not pkgs:
+                    return st
+                _set(conn, iid, as_packages=dumps(pkgs))
+            pubs, active, idle, errors = [], 0, [], []
+            for pid in pkgs:
                 p = asc.package(pid)
-                for ref in (p.get("publications") or []):
-                    if ref.get("id") is not None:
-                        pubs.append(ref["id"])
-            if pubs:
-                _set(conn, iid, status="published", as_publications=dumps(pubs), published_at=now_iso())
+                # API пакета отдаёт одну заливку в поле publication; список publications — на будущее
+                refs = list(p.get("publications") or []) + ([p["publication"]] if p.get("publication") else [])
+                ids = [r["id"] for r in refs if r.get("id") is not None]
+                ap = p.get("autopublish") or {}
+                if ids:
+                    pubs += ids
+                elif ap.get("state") in ("scheduled", "uploading"):
+                    active += 1
+                elif ap.get("state") == "failed":
+                    # упавший автозалив сам не повторяем (квота, блок чек-листа): причина видна в задании
+                    errors.append(f"пакет {pid}: {ap.get('error') or 'автозалив не удался'}")
+                else:
+                    idle.append(pid)  # в автозалив не ставили или сняли
+            if settings.get("pipeline_autopublish", "0") == "1" and st == "approved" and idle and not active:
+                for pid in idle:
+                    _autopublish(asc, item, settings, pid, log)
+                _set(conn, iid, status="publishing", as_publications=dumps(pubs), last_error=None)
+                return "publishing"
+            if pubs and not active:
+                _set(conn, iid, status="published", as_publications=dumps(pubs), published_at=item.get("published_at") or now_iso(),
+                     last_error="; ".join(errors)[:300] or None)
                 return "published"
+            if errors:
+                _set(conn, iid, last_error="автозалив: " + "; ".join(errors)[:280])
             return st
         if st == "published":
             last = (item.get("metrics") or {}).get("metrics_at")
@@ -529,8 +598,22 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
     return st
 
 
+_TICK_LOCK = threading.Lock()
+
+
 def tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts | None = None) -> dict:
-    """Проходит по активным заданиям и двигает каждое на шаг."""
+    """Проходит по активным заданиям и двигает каждое на шаг. Два тика сразу (фоновый цикл и кнопка «Сдвинуть»)
+    отправляли один исходник дважды и заказывали шортсу два одинаковых клипа — второй тик ждёт не дольше пары
+    секунд и пропускается."""
+    if not _TICK_LOCK.acquire(timeout=2):
+        return {"processed": 0, "sent": 0, "changed": 0, "errors": 0, "skipped": "предыдущий тик ещё идёт", "health": None}
+    try:
+        return _tick(conn, settings, log, asc)
+    finally:
+        _TICK_LOCK.release()
+
+
+def _tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts | None = None) -> dict:
     out = {"processed": 0, "sent": 0, "changed": 0, "errors": 0, "skipped": "", "health": None}
     asc = asc or client_from_settings(settings)
     if not asc.configured:
@@ -541,11 +624,26 @@ def tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts | 
     if h.get("status") != "ok":
         out["skipped"] = f"auto-shorts не готов: {h.get('status')}"
         return out
-    rows = conn.execute(f"SELECT * FROM pipeline_items WHERE status IN ({','.join('?' * (len(ACTIVE) + 1))}) ORDER BY created_at LIMIT ?",
-                        (*ACTIVE, "published", int(settings.get("pipeline_max_per_tick") or 20))).fetchall()
+    # Лимит тика — только на запуск новых исходников (скачать и распознать — тяжело для хранилища). Задания, которые
+    # уже в работе, двигаются каждый тик: раньше LIMIT по created_at давал старым зависшим заданиям занять все места,
+    # и свежие стояли в «отправлено» сутками.
+    # «По чуть-чуть»: запуск нового (заказ файла на хранилище или отправка в auto-shorts) — не больше
+    # pipeline_max_per_tick за тик и только пока в работе меньше pipeline_max_in_work заданий.
+    limit = int(settings.get("pipeline_max_per_tick") or 1)
+    max_in_work = int(settings.get("pipeline_max_in_work") or 3)
+    rows = conn.execute(f"SELECT * FROM pipeline_items WHERE status IN ({','.join('?' * (len(ACTIVE) + 1))}) ORDER BY created_at",
+                        (*ACTIVE, "published")).fetchall()
+    files.init(conn)
+    in_work = sum(1 for r in rows if _in_work(conn, r))
+    starts = 0
     for r in rows:
         item = _hydrate(dict(r))
         before = item["status"]
+        if before in START_STATES and not _in_work(conn, r):
+            if starts >= limit or in_work >= max_in_work:
+                continue
+            starts += 1
+            in_work += 1
         after = step(conn, asc, item, settings, log)
         out["processed"] += 1
         if after != before:

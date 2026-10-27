@@ -991,7 +991,7 @@ async function renderToday(main) {
 }
 
 // ---------- конвейер: Кино-тренды → auto-shorts ----------
-const PIPE_CLS = { new: 'tag-accent', file_pending: 'tag-accent', needs_rights: 'tag-warn', sent: 'tag-accent', cutting: 'tag-accent', review: 'tag-warn', qc_failed: 'tag-bad', approved: 'tag-good', publishing: 'tag-accent', published: 'tag-good', failed: 'tag-bad', cancelled: '' };
+const PIPE_CLS = { new: 'tag-accent', file_pending: 'tag-accent', retry_wait: 'tag-warn', needs_rights: 'tag-warn', sent: 'tag-accent', cutting: 'tag-accent', review: 'tag-warn', qc_failed: 'tag-bad', approved: 'tag-good', publishing: 'tag-accent', published: 'tag-good', failed: 'tag-bad', cancelled: '' };
 const RIGHTS_OPTS = [['', 'ждать решения'], ['licensed_platform', 'лицензия платформы'], ['licensed_written', 'письменная лицензия'], ['own', 'своё'], ['public_domain', 'общественное достояние'], ['cc_by', 'CC BY']];
 const enqueueBtn = (kind, refId) => h('button', { class: 'btn btn-sm', type: 'button', title: 'поставить в очередь auto-shorts: нарезка, оформление, ревью, залив', html: ICON.play + ' в конвейер', onclick: async e => { e.target.disabled = true; try { const r = await post('api/pipeline/enqueue', { kind, ref_id: refId }); toast(`В конвейере: ${r.status_ru}`); } catch (x) { toast(x.message); e.target.disabled = false; } } });
 async function renderPipeline(main) {

@@ -100,7 +100,8 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "pipeline_autopublish": "0",    # ставить пакеты на автозалив сразу
     "pipeline_privacy": "public",
     "pipeline_publish_now": "0",    # 0 = в ближайший слот плана канала, 1 = заливать сразу
-    "pipeline_max_per_tick": "20",
+    "pipeline_max_per_tick": "1",   # новых запусков за тик (заказ файла или отправка в auto-shorts)
+    "pipeline_max_in_work": "3",    # заданий одновременно в работе: хранилище и стенд — один VPS на 30 ГБ
     "pipeline_banner_bottom": "",   # id варианта баннера auto-shorts для нижней трети (по умолчанию для всех)
     "pipeline_banner_top": "",      # id варианта для верха кадра: ставится, когда по кадрам внизу занято, а верх свободен
     "pop_auto_pick": "1",           # чистые с баллом от pop_pick_min_score сами идут в подборку
