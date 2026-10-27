@@ -36,7 +36,8 @@ AUTO_RETRY_MAX = 2  # сколько раз конвейер сам переза
 def _transient(job: dict) -> bool:
     """Клип упал на временной ошибке (повтор с той же стадии может пройти), а не на браке или правах."""
     err = str(job.get("error") or "")
-    return err.startswith("RetryableError") or job.get("error_class") in ("retryable", "network", "tts")
+    # worker_lost — задачу потеряли при перезапуске воркера, сам клип исправен
+    return err.startswith("RetryableError") or job.get("error_class") in ("retryable", "network", "tts", "worker_lost")
 
 
 def _in_work(conn: sqlite3.Connection, row) -> bool:
@@ -549,45 +550,72 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                         pkgs.append(p["id"])
                 except ASError as e:
                     log(f"конвейер: пакет для {jid}: {e}", "warn")
-            _set(conn, iid, as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
-            if settings.get("pipeline_autopublish", "0") == "1" and pkgs:
-                for pid in pkgs:
-                    _autopublish(asc, item, settings, pid, log)
-                _set(conn, iid, status="publishing")
-                return "publishing"
-            _set(conn, iid, status="approved")
-            return "approved"
+            # в автозалив ставит только шаг approved/publishing: он видит, что уже запланировано, и добирает
+            # поздние пакеты — так задание можно вернуть в нарезку (перезапуск клипа) без двойной постановки
+            _set(conn, iid, status="approved", as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
+            item = {**item, "status": "approved", "as_packages": pkgs, "metrics": {"jobs": statuses, "auto_retry": m_retry}}
+            st = "approved"
         if st in ("approved", "publishing"):
             pkgs = list(item["as_packages"] or [])
-            if not pkgs:
-                # пакет не успел собраться к моменту одобрения клипов: добираем его по заданиям
-                for jid in item["as_jobs"]:
-                    try:
-                        p = asc.package_of_job(jid)
-                    except ASError:
-                        continue
-                    if p.get("id") is not None:
-                        pkgs.append(p["id"])
-                if not pkgs:
-                    return st
-                _set(conn, iid, as_packages=dumps(pkgs))
-            pubs, active, idle, errors = [], 0, [], []
-            for pid in pkgs:
-                p = asc.package(pid)
-                # API пакета отдаёт одну заливку в поле publication; список publications — на будущее
-                refs = list(p.get("publications") or []) + ([p["publication"]] if p.get("publication") else [])
+            jobs_map = (item.get("metrics") or {}).get("jobs") or {}
+            good = [int(k) for k, v in jobs_map.items() if v in ("approved", "published")] or list(item["as_jobs"])
+            # соседний клип упал по временной причине (воркер перезапускали, TTS молчал): вернуть его в нарезку,
+            # уже запланированные пакеты при этом не трогаются
+            m_retry = dict((item.get("metrics") or {}).get("auto_retry") or {})
+            retried = False
+            for k, v in jobs_map.items():
+                if v != "failed" or int(m_retry.get(str(k)) or 0) >= AUTO_RETRY_MAX:
+                    continue
+                j = asc.job(int(k))
+                if j.get("status") == "failed" and _transient(j):
+                    asc.retry_job(int(k))
+                    m_retry[str(k)] = int(m_retry.get(str(k)) or 0) + 1
+                    retried = True
+                    log(f"конвейер: «{item.get('label')}»: клип {k} перезапущен после сбоя ({j.get('stage')})")
+                else:
+                    m_retry[str(k)] = AUTO_RETRY_MAX  # брак или права: больше не проверяем
+            if m_retry != ((item.get("metrics") or {}).get("auto_retry") or {}):
+                _set(conn, iid, metrics=dumps({**(item.get("metrics") or {}), "auto_retry": m_retry}))
+            if retried:
+                _set(conn, iid, status="cutting", last_error=None)
+                return "cutting"
+            pubs, idle, errors, covered, active_pk = [], [], [], set(), []
+
+            def take(pid, pk):
+                refs = list(pk.get("publications") or []) + ([pk["publication"]] if pk.get("publication") else [])
                 ids = [r["id"] for r in refs if r.get("id") is not None]
-                ap = p.get("autopublish") or {}
+                ap = pk.get("autopublish") or {}
+                if pk.get("job_id") is not None:
+                    covered.add(int(pk["job_id"]))
                 if ids:
-                    pubs += ids
+                    pubs.extend(ids)
                 elif ap.get("state") in ("scheduled", "uploading"):
-                    active += 1
+                    active_pk.append(pid)
                 elif ap.get("state") == "failed":
                     # упавший автозалив сам не повторяем (квота, блок чек-листа): причина видна в задании
                     errors.append(f"пакет {pid}: {ap.get('error') or 'автозалив не удался'}")
-                else:
-                    idle.append(pid)  # в автозалив не ставили или сняли
-            if settings.get("pipeline_autopublish", "0") == "1" and st == "approved" and idle and not active:
+                elif not ap:
+                    idle.append(pid)  # в автозалив ещё не ставили; снятый вручную (cancelled) не трогаем
+
+            for pid in pkgs:
+                take(pid, asc.package(pid))
+            # пакет клипа мог собраться позже одобрения (или позже соседнего клипа): добираем по заданиям
+            for jid in good:
+                if jid in covered:
+                    continue
+                try:
+                    pk = asc.package_of_job(jid)
+                except ASError:
+                    continue
+                if pk.get("id") is not None and pk["id"] not in pkgs:
+                    pkgs.append(pk["id"])
+                    take(pk["id"], pk)
+            active = len(active_pk)
+            if pkgs != list(item["as_packages"] or []):
+                _set(conn, iid, as_packages=dumps(pkgs))
+            if not pkgs:
+                return st
+            if settings.get("pipeline_autopublish", "0") == "1" and idle:
                 for pid in idle:
                     _autopublish(asc, item, settings, pid, log)
                 _set(conn, iid, status="publishing", as_publications=dumps(pubs), last_error=None)

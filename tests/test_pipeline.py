@@ -24,6 +24,8 @@ class FakeAS:
         self.ap = None                   # блок autopublish пакета
         self.no_package = False          # пакет ещё не собран: GET /jobs/{id}/package → 404
         self.job_error = None
+        self.pkg_id = 5                  # id пакета, который отдаёт GET /jobs/{id}/package
+        self.pkg_job: dict = {}          # пакет → задание
 
     def health(self):
         return {"status": "ok"}
@@ -63,10 +65,11 @@ class FakeAS:
     def package_of_job(self, jid):
         if self.no_package:
             raise pipeline.ASError("GET /api/v1/jobs/x/package: HTTP 404: У ролика ещё нет пакета")
-        return {"id": 5}
+        self.pkg_job[self.pkg_id] = jid
+        return self.package(self.pkg_id)
 
     def package(self, pid):
-        return {"id": pid, "publication": self.pub_ref, "autopublish": self.ap}
+        return {"id": pid, "job_id": self.pkg_job.get(pid), "publication": self.pub_ref, "autopublish": self.ap}
 
     def autopublish(self, pid, now=True, privacy="public"):
         self.calls.append(("autopublish", pid, privacy))
@@ -393,6 +396,7 @@ def test_failed_autopublish_is_shown_not_retried(conn):
     s = dict(db.all_settings(conn), pipeline_autopublish="1")
     iid = _put_item(conn, "ap-failed", "publishing", as_jobs=pipeline.dumps([32]), as_packages=pipeline.dumps([6]))
     fake = FakeAS()
+    fake.pkg_id, fake.pkg_job = 6, {6: 32}
     fake.ap = {"state": "failed", "error": "квота YouTube на сутки исчерпана"}
     pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
     cur = pipeline._row(conn, iid)
@@ -500,3 +504,37 @@ def test_permanent_clip_failure_is_not_retried(conn):
     fake.job_status, fake.job_error = "failed", "PermanentError: У источника не записаны права"
     pipeline.step(conn, fake, pipeline._row(conn, iid), db.all_settings(conn), log=lambda *a, **k: None)
     assert pipeline._row(conn, iid)["status"] == "failed" and not any(c[0] == "retry" for c in fake.calls)
+
+
+def test_late_package_of_second_clip_is_autopublished_too(conn):
+    """Два клипа одобрены, пакет второго собрался позже: он тоже уходит в автозалив, а не теряется."""
+    s = dict(db.all_settings(conn), pipeline_autopublish="1")
+    iid = _put_item(conn, "two-clips", "publishing", as_jobs=pipeline.dumps([81, 82]), as_packages=pipeline.dumps([7]),
+                    metrics=pipeline.dumps({"jobs": {"81": "approved", "82": "approved"}}))
+    fake = FakeAS()
+    fake.pkg_job = {7: 81}
+    fake.ap = {"state": "scheduled"}
+    fake.pkg_id = 8
+    real_package = fake.package
+    fake.package = lambda pid: {**real_package(pid), "autopublish": {"state": "scheduled"} if pid == 7 else None}
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    assert cur["as_packages"] == [7, 8] and ("autopublish", 8, "public") in fake.calls
+    assert ("autopublish", 7, "public") not in fake.calls
+
+
+def test_lost_worker_counts_as_transient():
+    assert pipeline._transient({"error_class": "worker_lost", "error": "heartbeat старше 180 с"})
+    assert not pipeline._transient({"error_class": "author_script_blocked", "error": "PermanentError: …"})
+
+
+def test_publishing_item_sends_transiently_failed_clip_back_to_cutting(conn):
+    s = dict(db.all_settings(conn), pipeline_autopublish="1")
+    iid = _put_item(conn, "pub-with-lost", "publishing", as_jobs=pipeline.dumps([91, 92]), as_packages=pipeline.dumps([9]),
+                    metrics=pipeline.dumps({"jobs": {"91": "approved", "92": "failed"}}))
+    fake = FakeAS()
+    fake.job_status, fake.job_error = "failed", "heartbeat старше 180 с"
+    fake.job = lambda jid: {"id": jid, "status": "failed", "stage": "author_voice", "error_class": "worker_lost", "error": "heartbeat"}
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    assert cur["status"] == "cutting" and ("retry", 92) in fake.calls and cur["metrics"]["auto_retry"] == {"92": 1}
