@@ -609,3 +609,21 @@ def test_chart_video_picks_are_off_for_the_film_channel(conn, monkeypatch):
     s = dict(db.all_settings(conn), pipeline_enqueue_videos="1", pipeline_channel_video="kadr-dnya", pipeline_channel_film="kadr-dnya")
     out = pipeline.enqueue_today(conn, s)
     assert not [q for q in out["queued"] if q["kind"] == "video"]
+
+
+def test_item_waits_for_package_of_a_newly_approved_clip(conn):
+    """Два клипа уже залиты, третий только одобрен и пакета ещё нет — задание не закрывается."""
+    s = dict(db.all_settings(conn), pipeline_autopublish="1")
+    iid = _put_item(conn, "late-third", "approved", as_jobs=pipeline.dumps([101, 102, 103]), as_packages=pipeline.dumps([11, 12]),
+                    metrics=pipeline.dumps({"jobs": {"101": "published", "102": "published", "103": "approved"}}))
+    fake = FakeAS()
+    fake.pkg_job = {11: 101, 12: 102}
+    fake.pub_ref = {"id": 5}
+    fake.no_package = True
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    assert pipeline._row(conn, iid)["status"] == "approved"
+    fake.no_package, fake.pkg_id = False, 13
+    real = fake.package
+    fake.package = lambda pid: {**real(pid), "publication": None if pid == 13 else {"id": 5}, "autopublish": None}
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    assert pipeline._row(conn, iid)["status"] == "publishing" and ("autopublish", 13, "public") in fake.calls

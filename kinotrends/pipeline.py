@@ -668,14 +668,19 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             for pid in pkgs:
                 take(pid, asc.package(pid))
             # пакет клипа мог собраться позже одобрения (или позже соседнего клипа): добираем по заданиям
+            waiting_pkg = False
             for jid in good:
                 if jid in covered:
                     continue
                 try:
                     pk = asc.package_of_job(jid)
                 except ASError:
+                    waiting_pkg = True  # пакет ещё собирается — задание не закрываем
                     continue
-                if pk.get("id") is not None and pk["id"] not in pkgs:
+                if pk.get("id") is None:
+                    waiting_pkg = True
+                    continue
+                if pk["id"] not in pkgs:
                     pkgs.append(pk["id"])
                     take(pk["id"], pk)
             active = len(active_pk)
@@ -688,7 +693,7 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     _autopublish(asc, item, settings, pid, log)
                 _set(conn, iid, status="publishing", as_publications=dumps(pubs), last_error=None)
                 return "publishing"
-            if pubs and not active:
+            if pubs and not active and not waiting_pkg:
                 _set(conn, iid, status="published", as_publications=dumps(pubs), published_at=item.get("published_at") or now_iso(),
                      last_error="; ".join(errors)[:300] or None)
                 return "published"
