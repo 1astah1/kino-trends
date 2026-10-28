@@ -114,3 +114,55 @@ def market(conn: sqlite3.Connection, llm: LLM | None, period: str = "7", limit: 
         if len(out) >= limit:
             break
     return out
+
+
+# ---------------------------------------------------------------- смешное: комедии и смешные мультсериалы
+
+FUN_GENRES = ("комеди", "ситком", "sitcom", "пародия", "кинопарод", "сатир", "буффонад", "чёрный юмор", "черный юмор")
+KIDS_GENRES = ("детский", "детская")  # детское на канал с рекламой не ставим: пометка «для детей» режет рекламу
+
+
+KIDS_TITLES = ("барбоскин", "смешарик", "фиксик", "маша и медвед", "синий трактор", "три кота", "лунтик", "буба", "кошечки-собачки",
+               "царевны", "свинка пеппа", "щенячий патруль", "малышарики", "ми-ми-мишки")
+
+
+def is_funny(it: dict) -> bool:
+    g = " ".join(it.get("genres") or []).lower()
+    label = str(it.get("label") or "").lower()
+    if any(k in g for k in KIDS_GENRES) or any(k in label for k in KIDS_TITLES):
+        return False
+    return any(k in g for k in FUN_GENRES)
+
+
+def fun_market(conn: sqlite3.Connection, llm: LLM | None, limit: int = 40, validate_top: int = 60) -> list[dict]:
+    """Смешные хиты: комедии и смешные мультсериалы, которые режут хотя бы два автора (неделя, затем месяц),
+    без детского; ложные совпадения по слову отсеивает та же проверка моделью."""
+    from . import stats
+    from .stats import Filters
+
+    this_year = datetime.now(timezone.utc).year
+    seen: set[str] = set()
+    items: list[dict] = []
+    for per in ("7", "30"):
+        got = []
+        for it in stats.films(conn, Filters(per, lang="ru"), limit=600, sort="score")["items"]:
+            if it["title_id"] in seen or it.get("kind") not in KINDS or not is_funny(it):
+                continue
+            if (it.get("n_channels") or 0) < 2:
+                continue
+            if it.get("kind") in ("film", "animated") and (it.get("year") or 0) >= this_year:
+                continue  # новинка года — полных версий нет, на YouTube подделки
+            it["trend"] = trend_score(it)
+            got.append(it)
+            seen.add(it["title_id"])
+        items += sorted(got, key=lambda it: -it["trend"])
+    out: list[dict] = []
+    for it in items[:validate_top]:
+        v = validate(conn, llm, it["title_id"], it["label"], it.get("year"), it.get("label_en"))
+        if v.get("ok") is False:
+            continue
+        it["trend_share"] = v.get("share")
+        out.append(it)
+        if len(out) >= limit:
+            break
+    return out

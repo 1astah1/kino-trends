@@ -33,7 +33,16 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
     day_list = _days(start, days)
     ts = now_iso()
     trend_rank: dict[str, float] = {}
-    if (get_setting(conn, "calendar_mode") or "trend") == "trend":
+    mode = get_setting(conn, "calendar_mode") or "trend"
+    if mode == "fun":
+        # смешное: комедии и смешные мультсериалы из трендов (без детского)
+        from . import db as _db
+        from . import trend
+        from .llm import llm_from_settings
+        hits = trend.fun_market(conn, llm_from_settings(_db.all_settings(conn)))
+        trend_rank = {it["title_id"]: it["trend"] for it in hits}
+        recs = [r for r in recommend.today(conn, f, limit=400)["items"] if r["title_id"] in trend_rank]
+    elif mode == "trend":
         # хиты рынка: что массово режут и смотрят сейчас (а не «свободные ниши» с малоизвестным)
         from . import db as _db
         from . import trend

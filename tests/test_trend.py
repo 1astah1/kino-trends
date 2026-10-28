@@ -41,3 +41,11 @@ def test_game_movie_is_junk_source():
     assert sources.JUNK.search("Мстители: Судный день — Игрофильм (все катсцены)")
     assert not sources.verdict_ok({"is_full": True, "trust": 0.9, "language": "русский дубляж", "note": "игрофильм на русском"},
                                   ["мстители судныи день"], {"title": "Мстители: Судный день полный фильм"}, russian_made=False)
+
+
+def test_funny_means_comedy_but_not_kids():
+    assert trend.is_funny({"label": "Гриффины", "genres": ["комедийный телесериал", "сатира"]})
+    assert trend.is_funny({"label": "Бриллиантовая рука", "genres": ["буффонада", "криминальная комедия"]})
+    assert not trend.is_funny({"label": "Барбоскины", "genres": ["комедийный телесериал"]})
+    assert not trend.is_funny({"label": "Смешарики", "genres": ["детский телевизионный сериал", "комедийный"]})
+    assert not trend.is_funny({"label": "Великая Отечественная", "genres": ["документальный сериал"]})
