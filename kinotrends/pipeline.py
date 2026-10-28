@@ -456,6 +456,25 @@ def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, setti
     return True
 
 
+def _channel_targets(asc: "AutoShorts", item: dict, settings: dict, jopts: dict) -> list[tuple[str, int | None]]:
+    """Каналы для роликов задания: основной (канал задания) и второй (`pipeline_channel_film_2`), если к нему
+    подключён YouTube с правом заливки. Стикер — по каналу (`pipeline_banner_by_channel`), иначе как в jopts."""
+    from .db import loads as _loads
+
+    by_channel = _loads(settings.get("pipeline_banner_by_channel"), {}) or {}
+    main = item.get("channel_slug") or jopts.get("channel_id") or ""
+    out = [(main, by_channel.get(main) or jopts.get("banner_variant_id"))]
+    second = (settings.get("pipeline_channel_film_2") or "").strip()
+    if item.get("kind") == "film" and second and second != main:
+        try:
+            conn_st = asc.get(f"/api/v1/channels/{second}/oauth/youtube")
+        except ASError:
+            conn_st = {}
+        if conn_st.get("connected") and conn_st.get("can_upload"):
+            out.append((second, by_channel.get(second)))
+    return out
+
+
 def _scene_picks(conn: sqlite3.Connection, item: dict, settings: dict, cands: list[dict], n: int) -> list[dict]:
     """Моменты, совпадающие со сценами, которые сейчас режут в Shorts (разбор сайта)."""
     from . import content_check
@@ -539,9 +558,18 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 cands = [c for c in asc.candidates(item["as_source_id"]) if not c.get("blocked")]
                 cands.sort(key=lambda c: -(c.get("final_score") or 0))
                 n = max(1, int(settings.get("pipeline_clips_per_source") or 3))
-                picked = _scene_picks(conn, item, settings, cands, n) if item["kind"] == "film" else []
+                targets = _channel_targets(asc, item, settings, jopts)
+                picked = _scene_picks(conn, item, settings, cands, n * len(targets)) if item["kind"] == "film" else []
                 chosen = picked + [c for c in cands if c not in picked]
-                items = [{"candidate_id": c["id"], "start_sec": c["start_sec"], "end_sec": c["end_sec"], **jopts} for c in chosen[:n]]
+                # у каждого канала свои моменты фильма (лучшие — первому), своё оформление и свой стикер:
+                # разные ролики, а не одна копия на два канала
+                items = []
+                for k, (slug, variant) in enumerate(targets):
+                    jo = dict(jopts, channel_id=slug)
+                    if variant:
+                        jo["banner_variant_id"] = variant
+                    items += [{"candidate_id": c["id"], "start_sec": c["start_sec"], "end_sec": c["end_sec"], **jo}
+                              for c in chosen[k * n:(k + 1) * n]]
                 if picked:
                     log(f"конвейер: «{item.get('label')}»: моменты по трендовым сценам — {len(picked)} из {len(items)}")
                 if not items:

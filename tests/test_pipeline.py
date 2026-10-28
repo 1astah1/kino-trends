@@ -640,3 +640,34 @@ def test_rebuilt_package_replaces_the_superseded_one(conn):
     pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
     cur = pipeline._row(conn, iid)
     assert cur["as_packages"] == [31] and ("autopublish", 31, "public") in fake.calls
+
+
+def test_film_clips_split_between_two_channels_with_own_stickers(conn, monkeypatch):
+    from tests.test_content_check import FakeLLM
+    monkeypatch.setattr("kinotrends.llm.llm_from_settings", lambda s: FakeLLM({"is_work": True, "russian": True, "what": "film", "confidence": 0.9}))
+    monkeypatch.setattr("kinotrends.neuro.get_insights", lambda c, tid: {})
+    iid = _film_item(conn, "Qtwo")
+    fake = FilmAS(["Немцы! Тревога! Держитесь, братья."] * 40)
+    fake.candidates = lambda sid: [{"id": i, "start_sec": i * 60.0, "end_sec": i * 60.0 + 40, "final_score": 1 - i / 10} for i in range(1, 6)]
+    base_get = fake.get
+    fake.get = lambda path, **p: {"connected": True, "can_upload": True} if path.endswith("/oauth/youtube") else base_get(path, **p)
+    s = dict(db.all_settings(conn), pipeline_clips_per_source="2", pipeline_channel_film_2="bpn-shorts",
+             pipeline_banner_by_channel='{"kadr-dnya": 3, "bpn-shorts": 4}')
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    clips = next(c for c in fake.calls if c[0] == "clips")[1]
+    got = [(x["candidate_id"], x["channel_id"], x["banner_variant_id"]) for x in clips]
+    assert got == [(1, "kadr-dnya", 3), (2, "kadr-dnya", 3), (3, "bpn-shorts", 4), (4, "bpn-shorts", 4)]
+
+
+def test_second_channel_waits_until_youtube_is_connected(conn, monkeypatch):
+    from tests.test_content_check import FakeLLM
+    monkeypatch.setattr("kinotrends.llm.llm_from_settings", lambda s: FakeLLM({"is_work": True, "russian": True, "what": "film", "confidence": 0.9}))
+    monkeypatch.setattr("kinotrends.neuro.get_insights", lambda c, tid: {})
+    iid = _film_item(conn, "Qone")
+    fake = FilmAS(["Немцы! Тревога! Держитесь, братья."] * 40)
+    base_get = fake.get
+    fake.get = lambda path, **p: {"connected": False} if path.endswith("/oauth/youtube") else base_get(path, **p)
+    s = dict(db.all_settings(conn), pipeline_clips_per_source="1", pipeline_channel_film_2="bpn-shorts")
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    clips = next(c for c in fake.calls if c[0] == "clips")[1]
+    assert {x["channel_id"] for x in clips} == {"kadr-dnya"}
