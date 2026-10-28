@@ -457,8 +457,9 @@ def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, setti
 
 
 def _channel_targets(asc: "AutoShorts", item: dict, settings: dict, jopts: dict) -> list[tuple[str, int | None]]:
-    """Каналы для роликов задания: основной (канал задания) и второй (`pipeline_channel_film_2`), если к нему
-    подключён YouTube с правом заливки. Стикер — по каналу (`pipeline_banner_by_channel`), иначе как в jopts."""
+    """Каналы для роликов фильма: основной (канал задания) и второй (`pipeline_channel_film_2`). Стикер/баннер —
+    по каналу (`pipeline_banner_by_channel`). Подключение к YouTube проверяется при заливке, а не здесь:
+    ролик второго канала собирается и ждёт приёмки, даже пока канал не подключён."""
     from .db import loads as _loads
 
     by_channel = _loads(settings.get("pipeline_banner_by_channel"), {}) or {}
@@ -466,13 +467,29 @@ def _channel_targets(asc: "AutoShorts", item: dict, settings: dict, jopts: dict)
     out = [(main, by_channel.get(main) or jopts.get("banner_variant_id"))]
     second = (settings.get("pipeline_channel_film_2") or "").strip()
     if item.get("kind") == "film" and second and second != main:
-        try:
-            conn_st = asc.get(f"/api/v1/channels/{second}/oauth/youtube")
-        except ASError:
-            conn_st = {}
-        if conn_st.get("connected") and conn_st.get("can_upload"):
-            out.append((second, by_channel.get(second)))
+        out.append((second, by_channel.get(second)))
     return out
+
+
+def _rr_next(conn: sqlite3.Connection, n: int) -> int:
+    """Счётчик чередования каналов: вернуть текущее значение и сдвинуть на n клипов."""
+    r = conn.execute("SELECT value FROM settings WHERE key = 'pipeline_rr_counter'").fetchone()
+    cur = int(r[0]) if r and str(r[0]).isdigit() else 0
+    conn.execute("INSERT INTO settings(key, value) VALUES ('pipeline_rr_counter', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                 (str(cur + n),))
+    conn.commit()
+    return cur
+
+
+def _channel_ready(asc: "AutoShorts", channel_id: str, cache: dict) -> bool:
+    """Канал подключён к YouTube с правом заливки (кэш на один шаг)."""
+    if channel_id not in cache:
+        try:
+            st = asc.get(f"/api/v1/channels/{channel_id}/oauth/youtube")
+            cache[channel_id] = bool(st.get("connected") and st.get("can_upload"))
+        except ASError:
+            cache[channel_id] = False
+    return cache[channel_id]
 
 
 def _scene_picks(conn: sqlite3.Connection, item: dict, settings: dict, cands: list[dict], n: int) -> list[dict]:
@@ -559,17 +576,17 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 cands.sort(key=lambda c: -(c.get("final_score") or 0))
                 n = max(1, int(settings.get("pipeline_clips_per_source") or 3))
                 targets = _channel_targets(asc, item, settings, jopts)
-                picked = _scene_picks(conn, item, settings, cands, n * len(targets)) if item["kind"] == "film" else []
-                chosen = picked + [c for c in cands if c not in picked]
-                # у каждого канала свои моменты фильма (лучшие — первому), своё оформление и свой стикер:
-                # разные ролики, а не одна копия на два канала
+                picked = _scene_picks(conn, item, settings, cands, n) if item["kind"] == "film" else []
+                chosen = (picked + [c for c in cands if c not in picked])[:n]
+                # каналы чередуются по общему счётчику клипов: поровну на каждый, у каждого своё оформление
+                start = _rr_next(conn, len(chosen)) if len(targets) > 1 else 0
                 items = []
-                for k, (slug, variant) in enumerate(targets):
+                for k, cnd in enumerate(chosen):
+                    slug, variant = targets[(start + k) % len(targets)]
                     jo = dict(jopts, channel_id=slug)
                     if variant:
                         jo["banner_variant_id"] = variant
-                    items += [{"candidate_id": c["id"], "start_sec": c["start_sec"], "end_sec": c["end_sec"], **jo}
-                              for c in chosen[k * n:(k + 1) * n]]
+                    items.append({"candidate_id": cnd["id"], "start_sec": cnd["start_sec"], "end_sec": cnd["end_sec"], **jo})
                 if picked:
                     log(f"конвейер: «{item.get('label')}»: моменты по трендовым сценам — {len(picked)} из {len(items)}")
                 if not items:
@@ -725,10 +742,23 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             if not pkgs:
                 return st
             if settings.get("pipeline_autopublish", "0") == "1" and idle:
+                ready_cache: dict = {}
+                waiting = []
+                started = 0
                 for pid in idle:
+                    ch = ((asc.package(pid).get("channel") or {}).get("id")) or ""
+                    if ch and not _channel_ready(asc, ch, ready_cache):
+                        waiting.append(ch)  # канал не подключён к YouTube: ролик одобрен и ждёт подключения
+                        continue
                     _autopublish(asc, item, settings, pid, log)
-                _set(conn, iid, status="publishing", as_publications=dumps(pubs), last_error=None)
-                return "publishing"
+                    started += 1
+                note = ("ждёт подключения YouTube: " + ", ".join(sorted(set(waiting)))) if waiting else None
+                if started:
+                    _set(conn, iid, status="publishing", as_publications=dumps(pubs), last_error=note)
+                    return "publishing"
+                if note:
+                    _set(conn, iid, last_error=note)
+                    return st
             if pubs and not active and not waiting_pkg:
                 _set(conn, iid, status="published", as_publications=dumps(pubs), published_at=item.get("published_at") or now_iso(),
                      last_error="; ".join(errors)[:300] or None)
