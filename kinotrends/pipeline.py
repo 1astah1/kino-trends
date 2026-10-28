@@ -27,7 +27,8 @@ from .db import dumps, loads, now_iso
 STATES = ("new", "file_pending", "needs_rights", "sent", "cutting", "review", "qc_failed", "approved", "publishing", "published", "failed", "cancelled")
 ACTIVE = ("new", "needs_rights", "file_pending", "retry_wait", "sent", "cutting", "review", "approved", "publishing")
 START_STATES = ("new", "needs_rights", "file_pending", "retry_wait")  # ещё не в auto-shorts: на них действует pipeline_max_per_tick
-WORK_STATES = ("sent", "cutting", "review")  # занимают хранилище и воркеры auto-shorts
+WORK_STATES = ("sent", "cutting")  # в производстве: занимают хранилище и воркеры auto-shorts
+REVIEW_BACKLOG_ITEMS = 4  # фильмов, ждущих приёмки: больше не готовим, пока владелец не разберёт
 
 
 AUTO_RETRY_MAX = 2  # сколько раз конвейер сам перезапускает клип после временного сбоя
@@ -481,6 +482,36 @@ def _rr_next(conn: sqlite3.Connection, n: int) -> int:
     return cur
 
 
+def _publish_approved_now(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, settings: dict, statuses: dict, log=print) -> None:
+    """Пока соседние клипы фильма ждут приёмки или рендера, уже одобренные ставим в автозалив."""
+    pkgs = list(item.get("as_packages") or [])
+    cache: dict = {}
+    changed = False
+    for jid, v in statuses.items():
+        if v != "approved":
+            continue
+        try:
+            pk = asc.package_of_job(int(jid))
+        except ASError:
+            continue  # пакет ещё собирается — на следующем тике
+        pid = pk.get("id")
+        if pid is None or pk.get("publication") or (pk.get("autopublish") or {}).get("state"):
+            if pid is not None and pid not in pkgs:
+                pkgs.append(pid); changed = True
+            continue
+        ch = (pk.get("channel") or {}).get("id") or ""
+        if ch and not _channel_ready(asc, ch, cache):
+            continue
+        _autopublish(asc, item, settings, pid, log)
+        if pid not in pkgs:
+            pkgs.append(pid)
+        changed = True
+        log(f"конвейер: «{item.get('label')}»: клип {jid} одобрен — в план канала {ch or '?'}")
+    if changed:
+        _set(conn, item["id"], as_packages=dumps(pkgs))
+        item["as_packages"] = pkgs
+
+
 def _channel_ready(asc: "AutoShorts", channel_id: str, cache: dict) -> bool:
     """Канал подключён к YouTube с правом заливки (кэш на один шаг)."""
     if channel_id not in cache:
@@ -643,6 +674,10 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                         log(f"конвейер: автоодобрение {jid}: {e}", "warn")
                 statuses[jid] = js
             vals = list(statuses.values())
+            # одобренный клип уходит в план своего канала сразу, не дожидаясь решения по соседним клипам
+            if settings.get("pipeline_autopublish", "0") == "1" and any(v == "approved" for v in vals) \
+                    and any(v in ("queued", "processing", "draft", "rework", "pending_review") for v in vals):
+                _publish_approved_now(conn, asc, item, settings, statuses, log)
             if any(v in ("queued", "processing", "draft", "rework") for v in vals):
                 return st
             if any(v == "qc_failed" for v in vals) and not any(v in ("approved", "published") for v in vals):
@@ -822,12 +857,15 @@ def _tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts |
                         (*ACTIVE, "published")).fetchall()
     files.init(conn)
     in_work = sum(1 for r in rows if _in_work(conn, r))
+    # поток в приёмку: ждущие одобрения не держат производство, но очередь приёмки не растёт бесконечно
+    backlog = sum(1 for r in rows if r["status"] == "review")
+    backlog_max = int(settings.get("pipeline_review_backlog") or REVIEW_BACKLOG_ITEMS)
     starts = 0
     for r in rows:
         item = _hydrate(dict(r))
         before = item["status"]
         if before in START_STATES and not _in_work(conn, r):
-            if starts >= limit or in_work >= max_in_work:
+            if starts >= limit or in_work >= max_in_work or backlog >= backlog_max:
                 continue
             starts += 1
             in_work += 1

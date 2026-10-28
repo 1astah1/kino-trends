@@ -679,3 +679,35 @@ def test_publish_waits_for_channel_connection(conn):
     connected["v"] = True
     pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
     assert pipeline._row(conn, iid)["status"] == "publishing" and ("autopublish", 41, "public") in fake.calls
+
+
+def test_approved_clip_is_scheduled_while_sibling_waits_for_review(conn):
+    s = dict(db.all_settings(conn), pipeline_autopublish="1")
+    iid = _put_item(conn, "half-approved", "review", as_jobs=pipeline.dumps([131, 132]))
+    fake = FakeAS()
+    st = {131: "approved", 132: "pending_review"}
+    fake.job = lambda jid: {"id": jid, "status": st[jid], "stage": "qc", "error": None}
+    fake.pkg_id = 51
+    real = fake.package
+    fake.package = lambda pid: {**real(pid), "autopublish": None, "publication": None}
+    real_poj = fake.package_of_job
+    fake.package_of_job = lambda jid: {**real_poj(jid), "autopublish": None, "publication": None}
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    assert cur["status"] == "review" and ("autopublish", 51, "public") in fake.calls and 51 in cur["as_packages"]
+
+
+def test_review_backlog_caps_new_starts(conn):
+    conn.execute("UPDATE pipeline_items SET status = 'cancelled' WHERE status IN ('new','sent','cutting','review','file_pending','approved','publishing','retry_wait')")
+    conn.commit()
+    for i in range(2):
+        _put_item(conn, f"in-review-{i}", "review", as_jobs=pipeline.dumps([140 + i]))
+    fresh = _put_item(conn, "fresh-new", "new", direct_url="http://1.2.3.4/files/x.mp4", license="creativeCommon", channel="A", source_url="u")
+    fake = FakeAS()
+    fake.job_status = "pending_review"
+    s = dict(db.all_settings(conn), pipeline_review_backlog="2", pipeline_max_in_work="3")
+    pipeline.tick(conn, s, log=lambda *a, **k: None, asc=fake)
+    assert pipeline._row(conn, fresh)["status"] == "new"  # приёмка полна — новое не начинаем
+    s["pipeline_review_backlog"] = "3"
+    pipeline.tick(conn, s, log=lambda *a, **k: None, asc=fake)
+    assert pipeline._row(conn, fresh)["status"] == "sent"  # место в приёмке есть — пошло в работу
