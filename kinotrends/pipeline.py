@@ -265,7 +265,9 @@ def enqueue_today(conn: sqlite3.Connection, settings: dict) -> dict:
     """Всё, что на сегодня: слоты календаря кино и подборка видео."""
     from . import schedule
     out = {"queued": [], "skipped": []}
-    v = schedule.view(conn, days=1, back=0)
+    # поток в приёмку: берём слоты календаря и на дни вперёд (лимиты производства и приёмки держит тик)
+    ahead = max(0, min(6, int(settings.get("pipeline_enqueue_days_ahead") or 0)))
+    v = schedule.view(conn, days=1 + ahead, back=0)
     for d in v["days"]:
         for it in d["items"]:
             if not it["title_id"] or it["status"] != "planned":
