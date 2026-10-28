@@ -627,3 +627,16 @@ def test_item_waits_for_package_of_a_newly_approved_clip(conn):
     fake.package = lambda pid: {**real(pid), "publication": None if pid == 13 else {"id": 5}, "autopublish": None}
     pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
     assert pipeline._row(conn, iid)["status"] == "publishing" and ("autopublish", 13, "public") in fake.calls
+
+
+def test_rebuilt_package_replaces_the_superseded_one(conn):
+    s = dict(db.all_settings(conn), pipeline_autopublish="1")
+    iid = _put_item(conn, "rebuilt", "publishing", as_jobs=pipeline.dumps([111]), as_packages=pipeline.dumps([30]),
+                    metrics=pipeline.dumps({"jobs": {"111": "approved"}}))
+    fake = FakeAS()
+    fake.pkg_job, fake.pkg_id = {30: 111}, 31
+    real = fake.package
+    fake.package = lambda pid: {**real(pid), "status": "superseded" if pid == 30 else "ready", "autopublish": None}
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    assert cur["as_packages"] == [31] and ("autopublish", 31, "public") in fake.calls

@@ -650,6 +650,8 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             pubs, idle, errors, covered, active_pk = [], [], [], set(), []
 
             def take(pid, pk):
+                if pk.get("status") == "superseded":
+                    return  # пакет пересобран (новые тексты, новый рендер): актуальный доберём по заданию
                 refs = list(pk.get("publications") or []) + ([pk["publication"]] if pk.get("publication") else [])
                 ids = [r["id"] for r in refs if r.get("id") is not None]
                 ap = pk.get("autopublish") or {}
@@ -665,8 +667,12 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 elif not ap:
                     idle.append(pid)  # в автозалив ещё не ставили; снятый вручную (cancelled) не трогаем
 
-            for pid in pkgs:
-                take(pid, asc.package(pid))
+            superseded_ids: set = set()
+            for pid in list(pkgs):
+                pk = asc.package(pid)
+                if pk.get("status") == "superseded":
+                    superseded_ids.add(pid)
+                take(pid, pk)
             # пакет клипа мог собраться позже одобрения (или позже соседнего клипа): добираем по заданиям
             waiting_pkg = False
             for jid in good:
@@ -684,7 +690,9 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     pkgs.append(pk["id"])
                     take(pk["id"], pk)
             active = len(active_pk)
-            if pkgs != list(item["as_packages"] or []):
+            live = [pid for pid in pkgs if pid not in superseded_ids]
+            if live != list(item["as_packages"] or []):
+                pkgs = live
                 _set(conn, iid, as_packages=dumps(pkgs))
             if not pkgs:
                 return st
