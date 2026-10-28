@@ -32,7 +32,8 @@ SYSTEM_CHECK = (
     "звука видео — отрывки из разных мест. Реши, это само произведение (фильм или серия: диалоги и реплики персонажей) "
     "на русском языке (дубляж, закадровая озвучка или отечественный оригинал)? Не годятся: стрим или реакция с чатом и "
     "приветствиями зрителей, обзор, пересказ, аудиокнига или чтение книги, подкаст, трейлер, сборник нарезок, другое произведение, "
-    "речь не на русском. Отвечай только JSON: "
+    "катсцены из видеоигры («игрофильм»), фанатский или сгенерированный фильм, речь не на русском. Смотри и на название ролика "
+    "с каналом. Отвечай только JSON: "
     '{"is_work": true, "russian": true, "what": "film|episode|stream|review|audiobook|podcast|trailer|other_work|other", '
     '"confidence": 0.9, "reason": "коротко, до 12 слов"}'
 )
@@ -74,7 +75,8 @@ def excerpts(sentences: list[str], parts: int = 8, per: int = 4, cap: int = 2600
     return res
 
 
-def check_transcript(llm: LLM | None, title: str, year, kind: str | None, sentences: list[str], duration_sec: float | None = None) -> dict:
+def check_transcript(llm: LLM | None, title: str, year, kind: str | None, sentences: list[str], duration_sec: float | None = None,
+                     video_hint: str | None = None) -> dict:
     """{"ok": True|False|None, "reason": ..., ...}. None — модель не ответила, проверить позже."""
     text = " ".join(sentences)
     if len(text) < MIN_SPEECH_CHARS:
@@ -95,7 +97,8 @@ def check_transcript(llm: LLM | None, title: str, year, kind: str | None, senten
         return {"ok": True, "reason": "проверено только по языку: модель не настроена", "cyrillic": round(share, 3)}
     parts = excerpts(sentences)
     user = (f"Произведение: {title} ({year or 'год неизвестен'}, {kind or 'фильм'}).\n"
-            "Отрывки расшифровки:\n" + "\n".join(f"{i + 1}) {p}" for i, p in enumerate(parts)))
+            + (f"Видео: {video_hint}\n" if video_hint else "")
+            + "Отрывки расшифровки:\n" + "\n".join(f"{i + 1}) {p}" for i, p in enumerate(parts)))
     try:
         data, _usage = llm.ask_json(SYSTEM_CHECK, user, max_tokens=300)
     except LLMError as e:

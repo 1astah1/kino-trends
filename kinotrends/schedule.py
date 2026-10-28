@@ -32,7 +32,21 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
     start = start or today_msk()
     day_list = _days(start, days)
     ts = now_iso()
-    recs = recommend.today(conn, f, limit=80)["items"]
+    trend_rank: dict[str, float] = {}
+    if (get_setting(conn, "calendar_mode") or "trend") == "trend":
+        # хиты рынка: что массово режут и смотрят сейчас (а не «свободные ниши» с малоизвестным)
+        from . import db as _db
+        from . import trend
+        from .llm import llm_from_settings
+        hits = trend.market(conn, llm_from_settings(_db.all_settings(conn)), period="7", limit=60, validate_top=90)
+        trend_rank = {it["title_id"]: it["trend"] for it in hits}
+        recs = [r for r in recommend.today(conn, f, limit=400)["items"] if r["title_id"] in trend_rank]
+        # хитов не хватило на все слоты — добираем обычными рекомендациями, они встают ниже любого хита
+        if len(recs) < days * per_day:
+            have = {r["title_id"] for r in recs}
+            recs += [r for r in recommend.today(conn, f, limit=80)["items"] if r["title_id"] not in have]
+    else:
+        recs = recommend.today(conn, f, limit=80)["items"]
     pool = {r["title_id"]: r for r in recs}
     since = (datetime.strptime(start, "%Y-%m-%d") - timedelta(days=cooldown)).strftime("%Y-%m-%d")
     # проверка по авторским правам: не прошедшие политику уходят из пула и из незафиксированных слотов впереди
@@ -66,7 +80,8 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
                 last = used.get(tid)
                 if last and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(last, "%Y-%m-%d")).days < cooldown:
                     continue
-                score = r["opportunity"] + (0 if tid in ready else -1000)
+                base = (trend_rank[tid] * 10 + 500) if tid in trend_rank else r["opportunity"]
+                score = base + (0 if tid in ready else -1000)
                 if prev_kind and r["kind_ru"] == prev_kind:
                     score -= 12  # чередуем типы
                 if r["n_fresh7"]:

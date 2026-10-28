@@ -428,8 +428,11 @@ def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, setti
         log(f"конвейер: «{item.get('label')}»: расшифровка для проверки: {e}", "warn")
         return item["status"]
     sents = [str(x.get("text") or "") for x in (t.get("sentences") or [])]
+    src_row = conn.execute("SELECT label, channel FROM title_sources WHERE title_id = ? AND video_id = ?",
+                           (item["ref_id"], item.get("source_video_id"))).fetchone() if item.get("source_video_id") else None
+    hint = f"«{src_row['label']}», канал «{src_row['channel']}»" if src_row else (f"канал «{item.get('channel')}»" if item.get("channel") else None)
     res = content_check.check_transcript(llm_from_settings(settings), item.get("label") or "", m.get("year"), m.get("title_kind"), sents,
-                                         duration_sec=t.get("duration_sec"))
+                                         duration_sec=t.get("duration_sec"), video_hint=hint)
     res.update(tries=tries + 1, at=now_iso())
     m["content_check"] = res
     if res["ok"] is None:

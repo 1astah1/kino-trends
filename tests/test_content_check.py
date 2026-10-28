@@ -8,6 +8,7 @@ EN = ["A secret organization was great with superheroes.", "Mr. Incredible Bob w
 
 class FakeLLM:
     configured = True
+    model = "fake-model"
 
     def __init__(self, answer=None, fail=False):
         self.answer, self.fail, self.calls = answer, fail, []
