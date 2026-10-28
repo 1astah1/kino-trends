@@ -232,7 +232,7 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
     srcs = get_sources(conn, title_id)
     expl = get_explain(conn, title_id)
     yt_src = next((x for x in srcs if x["verified"] and "youtube.com" in x["url"]), None)
-    any_src = next((x for x in srcs if x["verified"]), srcs[0] if srcs else None)
+    any_src = next((x for x in srcs if x["verified"]), None)  # непроверенный исходник в работу не идёт
     main_src = yt_src or any_src
     alt_src = next((x for x in srcs if x["verified"] and x is not main_src), None)
     from .files import status as dl_status
@@ -264,8 +264,8 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
         "references": [{"url": v["url"], "title": v["title"], "views": v["views"], "duration_s": v["duration_s"], "channel": v["channel_name"]} for v in d["videos"][:8]],
         "deliverable": {
             "title": d["title"]["label"], "year": d["title"]["year"], "kind": d["title"]["kind"],
-            "source_url": next((x["url"] for x in srcs if x["verified"]), srcs[0]["url"] if srcs else None),
-            "source_label": next((x["label"] for x in srcs if x["verified"]), srcs[0]["label"] if srcs else None),
+            "source_url": next((x["url"] for x in srcs if x["verified"]), None),
+            "source_label": next((x["label"] for x in srcs if x["verified"]), None),
             "scenes": [{"name": sc["name"], "what_to_cut": sc["what_to_cut"], "quotes": sc.get("quotes", []), "where": sc.get("where", ""),
                         "reference_urls": [t["url"] for t in sc.get("top", [])]} for sc in (ins or {}).get("scenes", [])],
             "hooks": (ins or {}).get("hooks", []), "duration": plan.get("duration"), "hashtags": plan.get("hashtags"), "best_time": plan.get("best_time"),

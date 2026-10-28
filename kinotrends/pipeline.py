@@ -274,7 +274,10 @@ def enqueue_today(conn: sqlite3.Connection, settings: dict) -> dict:
                 out["queued"].append({"kind": "film", "ref_id": it["title_id"], "label": it["label"], "id": r["id"], "status": r["status"]})
             except ValueError as e:
                 out["skipped"].append({"kind": "film", "ref_id": it["title_id"], "label": it["label"], "why": str(e)})
-    for p in popular.picks(conn):
+    # подборка роликов из чартов YouTube (игры, влоги) — не для кино-канала: только если явно включено
+    # и для неё задан отдельный канал (pipeline_channel_video не совпадает с каналом кино)
+    videos_on = settings.get("pipeline_enqueue_videos", "0") == "1" and (settings.get("pipeline_channel_video") or "") not in ("", settings.get("pipeline_channel_film") or "")
+    for p in (popular.picks(conn) if videos_on else []):
         try:
             r = enqueue(conn, "video", p["video_id"], settings, note="подборка")
             out["queued"].append({"kind": "video", "ref_id": p["video_id"], "label": p["title"], "id": r["id"], "status": r["status"]})
@@ -406,6 +409,60 @@ def _autopublish(asc: "AutoShorts", item: dict, settings: dict, pid, log=print) 
     asc.autopublish(pid, now=settings.get("pipeline_publish_now", "0") == "1", privacy=settings.get("pipeline_privacy") or "public")
 
 
+CONTENT_CHECK_MAX_TRIES = 12  # модель не отвечает час — задание падает с понятной причиной
+
+
+def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, settings: dict, log=print):
+    """Исходник фильма проверен по содержанию (русская речь, само произведение)? True — дальше; иначе статус."""
+    from . import content_check, sources
+    from .llm import llm_from_settings
+
+    m = dict(item.get("metrics") or {})
+    cc = m.get("content_check") or {}
+    if cc.get("ok") is True:
+        return True
+    tries = int(cc.get("tries") or 0)
+    try:
+        t = asc.get(f"/api/v1/sources/{item['as_source_id']}/transcript")
+    except ASError as e:
+        log(f"конвейер: «{item.get('label')}»: расшифровка для проверки: {e}", "warn")
+        return item["status"]
+    sents = [str(x.get("text") or "") for x in (t.get("sentences") or [])]
+    res = content_check.check_transcript(llm_from_settings(settings), item.get("label") or "", m.get("year"), m.get("title_kind"), sents,
+                                         duration_sec=t.get("duration_sec"))
+    res.update(tries=tries + 1, at=now_iso())
+    m["content_check"] = res
+    if res["ok"] is None:
+        if tries + 1 >= CONTENT_CHECK_MAX_TRIES:
+            _set(conn, item["id"], status="failed", metrics=dumps(m), last_error="исходник не проверен: модель не отвечала час, повторите позже")
+            return "failed"
+        _set(conn, item["id"], metrics=dumps(m))
+        return item["status"]
+    if res["ok"] is False:
+        if item.get("source_video_id"):
+            sources.mark_bad(conn, item["ref_id"], item["source_video_id"], res["reason"])
+        try:
+            asc._req("DELETE", f"/api/v1/sources/{item['as_source_id']}", params={"purge_files": "true"})
+        except ASError as e:
+            log(f"конвейер: удалить негодный исходник {item['as_source_id']}: {e}", "warn")
+        _set(conn, item["id"], status="failed", metrics=dumps(m), last_error=f"исходник не годится: {res['reason']} — в следующий раз возьмём другой")
+        log(f"конвейер: «{item.get('label')}»: исходник отбракован — {res['reason']}")
+        return "failed"
+    _set(conn, item["id"], metrics=dumps(m))
+    log(f"конвейер: «{item.get('label')}»: исходник проверен по содержанию ({res.get('what') or 'язык'})")
+    return True
+
+
+def _scene_picks(conn: sqlite3.Connection, item: dict, settings: dict, cands: list[dict], n: int) -> list[dict]:
+    """Моменты, совпадающие со сценами, которые сейчас режут в Shorts (разбор сайта)."""
+    from . import content_check
+    from .llm import llm_from_settings
+    from .neuro import get_insights
+
+    ins = get_insights(conn, item["ref_id"]) or {}
+    return content_check.pick_by_scenes(llm_from_settings(settings), item.get("label") or "", ins.get("scenes") or [], cands, n)
+
+
 # ---------- шаг конвейера ----------
 def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, log=print) -> str:
     """Один шаг для одного задания. Возвращает новый статус."""
@@ -467,6 +524,10 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 return "failed"
             if s != "ready":
                 return st
+            if item["kind"] == "film":
+                gate = _content_gate(conn, asc, item, settings, log)
+                if gate is not True:
+                    return gate
             jopts = _job_options(item, settings)
             if item.get("is_short") == 1 or (item.get("duration_s") or 0) <= 60:
                 dur = float(src.get("duration_sec") or item.get("duration_s") or 58)
@@ -475,7 +536,11 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 cands = [c for c in asc.candidates(item["as_source_id"]) if not c.get("blocked")]
                 cands.sort(key=lambda c: -(c.get("final_score") or 0))
                 n = max(1, int(settings.get("pipeline_clips_per_source") or 3))
-                items = [{"candidate_id": c["id"], "start_sec": c["start_sec"], "end_sec": c["end_sec"], **jopts} for c in cands[:n]]
+                picked = _scene_picks(conn, item, settings, cands, n) if item["kind"] == "film" else []
+                chosen = picked + [c for c in cands if c not in picked]
+                items = [{"candidate_id": c["id"], "start_sec": c["start_sec"], "end_sec": c["end_sec"], **jopts} for c in chosen[:n]]
+                if picked:
+                    log(f"конвейер: «{item.get('label')}»: моменты по трендовым сценам — {len(picked)} из {len(items)}")
                 if not items:
                     # модель не нашла моментов (мало речи): один раз пробуем эвристику по паузам и темпу, потом сдаёмся
                     m = dict(item.get("metrics") or {})

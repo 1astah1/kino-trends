@@ -33,7 +33,8 @@ def test_heuristic_filters_junk_and_rewards_official():
 def test_find_sources_with_fake_search_and_llm(monkeypatch):
     c = db.connect(TMP / "sources.sqlite")
     db.init_db(c)
-    c.execute("INSERT OR IGNORE INTO titles(id, label_ru, year, kind, sitelinks, updated_at) VALUES ('Q9','Брат 2',2000,'film',10,?)", (db.now_iso(),))
+    # отечественный фильм: «оригинал» у него и есть русская речь (иначе нужен дубляж или озвучка)
+    c.execute("INSERT OR IGNORE INTO titles(id, label_ru, year, kind, sitelinks, countries, updated_at) VALUES ('Q9','Брат 2',2000,'film',10,'[\"Россия\"]',?)", (db.now_iso(),))
     c.commit()
     fake_results = [
         {"video_id": "full1", "title": "Брат 2 | фильм | Балабанов", "channel": "Кинокомпания «СТВ»", "duration_s": 122 * 60, "views": 61000, "url": "https://www.youtube.com/watch?v=full1"},

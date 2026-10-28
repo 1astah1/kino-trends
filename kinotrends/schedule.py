@@ -50,6 +50,9 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
     for (day, _slot), r in existing.items():
         if r["title_id"] and r["status"] != "skipped":
             used[r["title_id"]] = max(used.get(r["title_id"], ""), day)
+    # в конвейер идут только произведения с проверенным исходником (русская речь, сам фильм): их ставим первыми,
+    # остальные — только если готовых не хватило
+    ready = {r[0] for r in conn.execute("SELECT DISTINCT title_id FROM title_sources WHERE verified = 1")}
     prev_kind: str | None = None
     for day in day_list:
         for slot in range(per_day):
@@ -63,7 +66,7 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
                 last = used.get(tid)
                 if last and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(last, "%Y-%m-%d")).days < cooldown:
                     continue
-                score = r["opportunity"]
+                score = r["opportunity"] + (0 if tid in ready else -1000)
                 if prev_kind and r["kind_ru"] == prev_kind:
                     score -= 12  # чередуем типы
                 if r["n_fresh7"]:

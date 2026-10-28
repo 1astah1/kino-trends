@@ -37,7 +37,9 @@ SYSTEM_VERIFY = (
     "нарезкой, другим фильмом с похожим названием), какая это серия и сезон, на каком языке (русский дубляж, оригинал, другой). "
     'Отвечай только JSON: {"items": [{"id": "youtube id", "is_full": true, "type": "film|episode|pack|other", "season": 1, "episode": 1, '
     '"language": "русский дубляж", "trust": 0.9, "note": "коротко"}], "best": ["id лучшего источника", "следующий"]}. '
-    "Лучший источник: официальный канал правообладателя, русская озвучка, нормальная длительность, без обрезаний. Поле note не длиннее 8 слов."
+    "Лучший источник: официальный канал правообладателя, русская озвучка, нормальная длительность, без обрезаний. Поле note не длиннее 8 слов. "
+    "language пиши точно: «русский дубляж», «русская озвучка», «оригинал (русский)», «английский», «другой». "
+    "Если это другой фильм, стрим, реакция, обзор, аудиокнига или сборник нарезок — is_full=false."
 )
 
 
@@ -177,12 +179,11 @@ def find_sources(conn: sqlite3.Connection, llm: LLM | None, title: dict, log=pri
     ts = now_iso()
     conn.execute("DELETE FROM title_sources WHERE title_id = ?", (title["title_id"],))
     names = title_names(conn, title["title_id"], label, title.get("label_en"))
+    russian_made = is_russian_made(conn, title["title_id"])
     rows = []
     for c in cands:
         v = verdicts.get(c["video_id"], {})
-        note_l = str(v.get("note") or "").lower()
-        name_ok = name_matches(names, c["title"]) or float(v.get("trust") or 0) >= 0.9
-        verified = 1 if v.get("is_full") and float(v.get("trust") or 0) >= 0.6 and name_ok and "не совпада" not in note_l and "другой" not in note_l else 0
+        verified = 1 if verdict_ok(v, names, c, russian_made) else 0
         if UNSUITABLE.search(c["title"] or ""):
             verified = 0
             v = dict(v, note=((v.get("note") or "") + " · версия с тифлокомментариями, для нарезки не годится").strip(" ·"))
@@ -197,6 +198,68 @@ def find_sources(conn: sqlite3.Connection, llm: LLM | None, title: dict, log=pri
     conn.execute("INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (f"sources_checked:{title['title_id']}", ts))
     conn.commit()
     return get_sources(conn, title["title_id"])
+
+
+# пометки модели, после которых исходник не годится, даже если «полный»: не тот фильм, не та речь, не само кино
+BAD_NOTE = re.compile(r"не совпада|другой|не тот|не то\b|англ|english|оригинал на|субтитр[ыа]? на|стрим|трансляци|обзор|реакци|"
+                      r"аудиокниг|пересказ|трейлер|разбор|подкаст|сокращ|фрагмент|отрыв|нарезк|игра|прохождени", re.IGNORECASE)
+RUSSIAN_LANG = re.compile(r"рус|многоголос|дубляж\b|закадров", re.IGNORECASE)
+RU_COUNTRIES = {"россия", "ссср", "российская федерация", "беларусь", "белоруссия"}
+
+
+def is_russian_made(conn: sqlite3.Connection, title_id: str) -> bool:
+    """Отечественное произведение: у него «оригинал» — это и есть русская речь."""
+    r = conn.execute("SELECT countries FROM titles WHERE id = ?", (title_id,)).fetchone()
+    countries = {str(x).strip().lower() for x in (loads(r["countries"], []) if r else [])}
+    return bool(countries & RU_COUNTRIES)
+
+
+def verdict_ok(v: dict, names: list[str], cand: dict, russian_made: bool) -> bool:
+    """Исходник годится в нарезку: модель признала полным фильмом или серией именно этого произведения,
+    речь русская (дубляж, озвучка или отечественный оригинал), название совпадает с найденным видео,
+    в пометке нет «другой фильм», «английский», «стрим», «аудиокнига» и т. п."""
+    if not v or not v.get("is_full") or float(v.get("trust") or 0) < 0.6:
+        return False
+    if not name_matches(names, cand.get("title") or cand.get("label") or ""):
+        return False  # раньше высокая уверенность модели отменяла эту проверку — так «Водителем» стал другой фильм
+    lang = str(v.get("language") or "")
+    if not (RUSSIAN_LANG.search(lang) or (russian_made and "оригинал" in lang.lower())):
+        return False  # «Суперсемейка» на английском проходила как «полный фильм»
+    if BAD_NOTE.search(str(v.get("note") or "")) or JUNK.search(cand.get("title") or cand.get("label") or ""):
+        return False
+    return not UNSUITABLE.search(cand.get("title") or cand.get("label") or "")
+
+
+def recheck_verified(conn: sqlite3.Connection) -> dict:
+    """Пересчитать «проверено» у всех сохранённых исходников по нынешним правилам (без новых вызовов модели)."""
+    out = {"total": 0, "verified_before": 0, "verified_after": 0}
+    names_cache: dict[str, list[str]] = {}
+    made_cache: dict[str, bool] = {}
+    for r in conn.execute("SELECT ts.*, t.label_ru, t.label_en FROM title_sources ts LEFT JOIN titles t ON t.id = ts.title_id").fetchall():
+        d = dict(r)
+        tid = d["title_id"]
+        if tid not in names_cache:
+            names_cache[tid] = title_names(conn, tid, d.get("label_ru") or "", d.get("label_en"))
+            made_cache[tid] = is_russian_made(conn, tid)
+        v = {"is_full": d.get("kind") in ("film", "episode", "pack") and d.get("trust") is not None, "trust": d.get("trust") or 0,
+             "language": d.get("language"), "note": d.get("note")}
+        ok = 1 if (d["verified"] and verdict_ok(v, names_cache[tid], d, made_cache[tid])) else 0
+        out["total"] += 1
+        out["verified_before"] += 1 if d["verified"] else 0
+        out["verified_after"] += ok
+        if ok != d["verified"]:
+            conn.execute("UPDATE title_sources SET verified = ?, note = ? WHERE title_id = ? AND video_id = ?",
+                         (ok, ((d.get("note") or "") + " · не прошёл новую проверку (язык, название или тип)").strip(" ·")[:200] if not ok else d.get("note"),
+                          tid, d["video_id"]))
+    conn.commit()
+    return out
+
+
+def mark_bad(conn: sqlite3.Connection, title_id: str, video_id: str, why: str) -> None:
+    """Исходник оказался не тем (проверка по содержанию после загрузки): больше его не брать."""
+    conn.execute("UPDATE title_sources SET verified = 0, score = score - 10, note = ? WHERE title_id = ? AND video_id = ?",
+                 (f"не годится: {why}"[:200], title_id, video_id))
+    conn.commit()
 
 
 # типы произведений, для которых ищем исходники (franchise — зонтик без своего видео)

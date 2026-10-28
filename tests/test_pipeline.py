@@ -538,3 +538,74 @@ def test_publishing_item_sends_transiently_failed_clip_back_to_cutting(conn):
     pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
     cur = pipeline._row(conn, iid)
     assert cur["status"] == "cutting" and ("retry", 92) in fake.calls and cur["metrics"]["auto_retry"] == {"92": 1}
+
+
+class FilmAS(FakeAS):
+    """Источник фильма готов, расшифровка — русские реплики или стрим."""
+
+    def __init__(self, sentences):
+        super().__init__()
+        self.sentences, self.deleted = sentences, []
+        self.source_polls = 5
+
+    def get(self, path, **params):
+        assert path.endswith("/transcript")
+        return {"sentences": [{"text": t} for t in self.sentences]}
+
+    def _req(self, method, path, body=None, params=None, retry=True):
+        self.deleted.append((method, path, params))
+        return {}
+
+    def candidates(self, sid):
+        return [{"id": 7, "start_sec": 3.0, "end_sec": 33.0, "final_score": 0.9, "title": "Скучно"},
+                {"id": 8, "start_sec": 40.0, "end_sec": 80.0, "final_score": 0.5, "title": "Тревога"}]
+
+
+def _film_item(conn, ref):
+    iid = _put_item(conn, ref, "sent", as_source_id="41", source_video_id=f"src-{ref}", duration_s=7200,
+                    metrics=pipeline.dumps({"year": 2010, "title_kind": "film"}))
+    conn.execute("UPDATE pipeline_items SET kind = 'film', is_short = 0 WHERE id = ?", (iid,))
+    conn.commit()
+    return iid
+
+
+def test_bad_film_source_is_rejected_marked_and_deleted(conn, monkeypatch):
+    from tests.test_content_check import FakeLLM
+    monkeypatch.setattr("kinotrends.llm.llm_from_settings", lambda s: FakeLLM({"is_work": False, "russian": True, "what": "stream", "confidence": 0.9, "reason": "стрим с чатом"}))
+    marked = []
+    monkeypatch.setattr("kinotrends.sources.mark_bad", lambda c, tid, vid, why: marked.append((tid, vid, why)))
+    iid = _film_item(conn, "Qstream")
+    fake = FilmAS(["Привет чат, Александр, спасибо за донат."] * 40)
+    pipeline.step(conn, fake, pipeline._row(conn, iid), db.all_settings(conn), log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    assert cur["status"] == "failed" and "стрим с чатом" in cur["last_error"]
+    assert marked == [("Qstream", "src-Qstream", "стрим с чатом")]
+    assert fake.deleted and fake.deleted[0][0] == "DELETE" and fake.deleted[0][2] == {"purge_files": "true"}
+    assert not any(c[0] == "clips" for c in fake.calls)
+
+
+def test_good_film_source_orders_clips_by_trending_scenes(conn, monkeypatch):
+    from tests.test_content_check import FakeLLM
+
+    class TwoAnswers(FakeLLM):
+        def ask_json(self, system, user, max_tokens=700, image=None):
+            if "Трендовые сцены" in user:
+                return {"picked": [{"id": 8}]}, None
+            return {"is_work": True, "russian": True, "what": "film", "confidence": 0.9}, None
+
+    monkeypatch.setattr("kinotrends.llm.llm_from_settings", lambda s: TwoAnswers())
+    monkeypatch.setattr("kinotrends.neuro.get_insights", lambda c, tid: {"scenes": [{"name": "Тревога", "what_to_cut": "нападение"}]})
+    iid = _film_item(conn, "Qgood")
+    fake = FilmAS(["Немцы! Тревога! Держитесь, братья."] * 40)
+    pipeline.step(conn, fake, pipeline._row(conn, iid), dict(db.all_settings(conn), pipeline_clips_per_source="1"), log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    clips = next(c for c in fake.calls if c[0] == "clips")[1]
+    assert cur["status"] == "cutting" and [x["candidate_id"] for x in clips] == [8]
+    assert cur["metrics"]["content_check"]["ok"] is True
+
+
+def test_chart_video_picks_are_off_for_the_film_channel(conn, monkeypatch):
+    monkeypatch.setattr("kinotrends.popular.picks", lambda c: [{"video_id": "ccshort00001", "title": "Roblox"}])
+    s = dict(db.all_settings(conn), pipeline_enqueue_videos="1", pipeline_channel_video="kadr-dnya", pipeline_channel_film="kadr-dnya")
+    out = pipeline.enqueue_today(conn, s)
+    assert not [q for q in out["queued"] if q["kind"] == "video"]
