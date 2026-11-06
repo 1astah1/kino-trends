@@ -16,13 +16,13 @@ import httpx
 from kinotrends.db import now_iso
 from kinotrends.llm import LLM, LLMError, parse_json, record_usage
 
-from . import bible, store
+from . import bible, series, store
 
 WRITER_MODEL = "anthropic/claude-sonnet-5.5"
 CHIEF_MODEL = "google/gemini-3.8-flash"
 ROUNDS = 3                 # сценарий + до двух доработок
-WPS = 2.7                  # слов в секунду у русской озвучки
-MIN_S, MAX_S = 30, 58
+WPS = 2.3                  # слов в секунду у русской озвучки (Gemini TTS с интонацией, замер 06.11)
+MIN_S, MAX_S = 30, 55
 
 SCRIPT_SCHEMA = """{
   "drafts": {"hooks": ["5 коротких вариантов первой реплики"], "twists": ["3 варианта поворота"]},
@@ -30,8 +30,8 @@ SCRIPT_SCHEMA = """{
   "format": "ключ формата",
   "logline": "суть серии одним предложением",
   "set": "локация из списка",
-  "cast": ["gosha", "nika"],
-  "lines": [{"who": "gosha|nika|palych|guest", "text": "реплика ≤ 12 слов", "emotion": "из списка", "action": "что персонаж делает в кадре", "shot": "план из списка"}],
+  "cast": ["ключи героев серии"],
+  "lines": [{"who": "ключ героя", "text": "реплика ≤ 12 слов", "emotion": "из словаря", "action": "действие из словаря", "shot": "план из словаря", "prop": "предмет из словаря или пусто", "tv": "надпись на экране ТВ (≤ 4 слов) или пусто"}],
   "twist_at": 0, "punchline_at": 0,
   "loop": "чем конец рифмуется с началом",
   "guest": "кто гость, если есть, иначе пусто",
@@ -80,14 +80,14 @@ def wiki_fact(title: str) -> dict | None:
     return None
 
 
-def _write(conn: sqlite3.Connection, settings: dict, fmt: str, seed: str, fact: dict | None, recent: list[str],
+def _write(conn: sqlite3.Connection, settings: dict, key: str, fmt: str, seed: str, fact: dict | None, recent: list[str],
            prev: dict | None = None, notes: list[str] | None = None) -> dict:
     llm = _llm(settings, "writer")
-    system = (bible.text() + "\n\nТЫ — ГЛАВНЫЙ СЦЕНАРИСТ сериала. Пишешь серию так, чтобы её досмотрели до конца и пересмотрели. "
+    system = (series.text(key) + "\n\nТЫ — ГЛАВНЫЙ СЦЕНАРИСТ сериала. Пишешь серию так, чтобы её досмотрели до конца и пересмотрели. "
               "В поле drafts коротко перечисли 5 вариантов хука и 3 поворота, выбери самые неожиданные и по ним пиши серию. "
               "Ответ — ТОЛЬКО один JSON-объект без текста до и после; внутри строк кавычки только «ёлочки», не \". Схема:\n"
               + SCRIPT_SCHEMA)
-    task = [f"Формат серии: {fmt} — {bible.FORMATS[fmt]}", f"Повод/идея: {seed}"]
+    task = [f"Формат серии: {fmt} — {series.S[key]['formats'].get(fmt, fmt)}", f"Повод/идея: {seed}"]
     if fact:
         task.append(f"ИСТОЧНИК ФАКТОВ (Википедия, «{fact['title']}»), бери факты ТОЛЬКО отсюда:\n{fact['text']}")
     if recent:
@@ -98,14 +98,28 @@ def _write(conn: sqlite3.Connection, settings: dict, fmt: str, seed: str, fact: 
     text, usage = llm.chat([{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(task)}],
                            max_tokens=7000, temperature=0.9)
     record_usage(conn, "toon.writer", llm.model, usage)
-    script = parse_json(text)
+    try:
+        script = parse_json(text)
+    except LLMError:
+        script = _repair(conn, settings, text)
     script["format"] = fmt
     return script
 
 
-def _review(conn: sqlite3.Connection, settings: dict, script: dict, fact: dict | None, recent: list[str]) -> dict:
+def _repair(conn: sqlite3.Connection, settings: dict, text: str) -> dict:
+    """Сценарист иногда ломает JSON (прямые кавычки в репликах) — дешёвая модель чинит синтаксис, не меняя слов."""
+    if not text.strip():
+        raise LLMError("пустой ответ модели")
     llm = _llm(settings, "chief")
-    system = (bible.text() + "\n\nТЫ — НАЧАЛЬНИК (шоураннер). Принимаешь сценарии перед монтажом. Ты строгий: пропускаешь только то, "
+    fixed, usage = llm.chat([{"role": "user", "content": "Исправь синтаксис JSON: экранируй кавычки внутри строк, закрой скобки. Не меняй ни слова "
+                              "в значениях. Ответ — только исправленный JSON.\n\n" + text}], max_tokens=8000, temperature=0)
+    record_usage(conn, "toon.json_fix", llm.model, usage)
+    return parse_json(fixed)
+
+
+def _review(conn: sqlite3.Connection, settings: dict, key: str, script: dict, fact: dict | None, recent: list[str]) -> dict:
+    llm = _llm(settings, "chief")
+    system = (series.text(key) + "\n\nТЫ — НАЧАЛЬНИК (шоураннер). Принимаешь сценарии перед монтажом. Ты строгий: пропускаешь только то, "
               "что зритель досмотрит в ленте Shorts, где он листает за полсекунды. Оцени каждую шкалу 0–10 честно (7 — крепко, "
               "9–10 — редкость). Флаги ставь при любом нарушении запретов. verdict: approve — если hook, twist и punchline ≥ 7, "
               "среднее ≥ 7.5 и нет флагов; reject — если идея мертва и правками не спасти; иначе revise с конкретными правками "
@@ -135,20 +149,20 @@ def _review(conn: sqlite3.Connection, settings: dict, script: dict, fact: dict |
     return rev
 
 
-def produce_script(conn: sqlite3.Connection, settings: dict, fmt: str, seed: str, fact: dict | None = None, log=print) -> int:
+def produce_script(conn: sqlite3.Connection, settings: dict, key: str, fmt: str, seed: str, fact: dict | None = None, log=print) -> int:
     """Сценарий через круги «сценарист → начальник». Возвращает id серии (статус script_ok или script_rejected)."""
     store.init(conn)
-    recent = store.recent_loglines(conn)
-    ep = store.create(conn, fmt, seed, fact)
+    recent = store.recent_loglines(conn, key)
+    ep = store.create(conn, fmt, seed, fact, key)
     script, rev, prev = None, None, None
     for rnd in range(1, ROUNDS + 1):
         try:
-            script = _write(conn, settings, fmt, seed, fact, recent, prev, (rev or {}).get("notes") if rev else None)
+            script = _write(conn, settings, key, fmt, seed, fact, recent, prev, (rev or {}).get("notes") if rev else None)
         except LLMError as e:
             store.event(conn, ep, "сценарист", "ошибка", str(e)[:300])
             continue
         store.event(conn, ep, "сценарист", f"версия {rnd}", f"«{script.get('title')}» — {seconds(script)} с")
-        rev = _review(conn, settings, script, fact, recent)
+        rev = _review(conn, settings, key, script, fact, recent)
         store.event(conn, ep, "начальник", rev.get("verdict", "?"),
                     f"среднее {rev.get('avg')}; флаги: {', '.join(rev['flags']) or 'нет'}; {rev.get('summary', '')}", rev)
         log(f"серия {ep}, круг {rnd}: «{script.get('title')}» → {rev.get('verdict')} ({rev.get('avg')})")

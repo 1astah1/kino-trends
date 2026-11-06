@@ -3,5 +3,8 @@
 <style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
 <script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script>
 </head><body>
-<script type="module" src="./scene.js"></script>
+<script type="module">
+const scene = new URLSearchParams(location.search).get('scene') || 'voxel';
+import(`./scenes/${scene}.js`);
+</script>
 </body></html>

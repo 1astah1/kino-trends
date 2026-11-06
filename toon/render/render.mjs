@@ -13,7 +13,7 @@ const { chromium } = require(PW);
 const CHROME = process.env.TOON_CHROME || (process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
   : process.env.HOME + '/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell');
 const ROOT = path.dirname(new URL(import.meta.url).pathname);
-const MIME = { '.html': 'text/html', '.js': 'text/javascript' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.ttf': 'font/ttf' };
 
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf('--' + k); return i >= 0 ? args[i + 1] : d; };
@@ -35,7 +35,7 @@ const browser = await chromium.launch({ executablePath: CHROME, env,
 try {
   const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
   page.on('pageerror', e => console.error('[сцена]', e.message));
-  await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?w=${W}&h=${H}`);
+  await page.goto(`http://127.0.0.1:${srv.address().port}/index.html?w=${W}&h=${H}&scene=${tl.scene || 'voxel'}`);
   await page.waitForFunction(() => window.__ready === true, null, { timeout: 60000 });
   const info = await page.evaluate(t => window.__load(t), tl);
   info.gl = await page.evaluate(() => window.__gl());

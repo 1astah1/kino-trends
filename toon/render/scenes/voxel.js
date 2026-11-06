@@ -71,6 +71,10 @@ const SPEC = {
           style: 'bob', phones: 0x222226, scale: 0.94 },
   palych: { skin: 0xc98f6e, hair: 0x2a2420, top: 0x2d2f36, inner: 0xd8d8d8, pants: 0x2d2f36, shoe: 0x120f0e, eye: 0x1a1a1a, brow: 0x1e1a18,
             style: 'bald', chain: 0xe0b23a, scale: 1.22 },
+  batya: { skin: 0xd8a07c, hair: 0x2f2a26, top: 0xeeeae2, inner: 0xeeeae2, pants: 0x2d3340, shoe: 0x6a4a3a, eye: 0x2a2a2a, brow: 0x2a2420,
+           style: 'dad', mustache: 0x3a2e26, glasses: 0x222222, tank: 1, scale: 1.04 },
+  timur: { skin: 0xe9bf9c, hair: 0x5a3b26, top: 0x2b2f3d, inner: 0x2b2f3d, pants: 0x3a4660, shoe: 0xf0f0f0, eye: 0x2a2a2a, brow: 0x4a3020,
+           style: 'teen', phones: 0x2f7fe0, hood: 1, scale: 0.96 },
   guest: { skin: 0xe2b08c, hair: 0x4a3524, top: 0x6d7f3a, inner: 0x6d7f3a, pants: 0x3b3a44, shoe: 0x2a2018, eye: 0x2a2a2a, brow: 0x3a2a1c,
            style: 'short', scale: 1.0 },
 };
@@ -90,9 +94,15 @@ function makeChar(key, p) {
     if (p.style === 'bald') return (y >= 9 && z <= 2) ? p.hair : p.skin;
     if (p.style === 'bob') { if (y >= 8 || z <= 2 || ((x <= 1 || x >= 8) && y >= 2)) return p.hair; if (y === 7 && z >= 8 && x >= 2 && x <= 7) return p.hair; return p.skin; }
     if (p.style === 'cap') { if (y >= 8) return p.cap; if (z <= 2 && y >= 4) return p.hair; if (p.stubble && y <= 2 && z >= 6 && (x <= 2 || x >= 7 || y <= 1)) return p.stubble; return p.skin; }
+    if (p.style === 'dad') return (y >= 9 || (z <= 1 && y >= 4)) ? ((x + z) % 4 === 0 ? 0x8a847c : p.hair) : p.skin;
+    if (p.style === 'teen') return (y >= 8 || z <= 2 || ((x === 0 || x === 9) && y >= 5) || (y === 7 && z >= 7 && (x % 3 !== 1))) ? p.hair : p.skin;
     return (y >= 8 || z <= 1) ? p.hair : p.skin;
   });
   neck.add(head);
+  if (p.mustache) { const m = box(6, 1.2, 0.6, p.mustache); m.position.set(0, 3.4, 5.25); neck.add(m); }
+  if (p.glasses) { for (const sx of [-2.4, 2.4]) { const fr = box(3.0, 0.4, 0.3, p.glasses); fr.position.set(sx, 6.6, 5.2); neck.add(fr);
+      const fb = box(3.0, 0.4, 0.3, p.glasses); fb.position.set(sx, 3.9, 5.2); neck.add(fb); } const br = box(1.2, 0.4, 0.3, p.glasses); br.position.set(0, 5.6, 5.2); neck.add(br); }
+  if (p.hood) { const hood = voxMesh(8, 3, 3, -4, 0, -1.5, () => p.top); hood.position.set(0, -2, -6); neck.add(hood); }
   if (p.style === 'cap') { const visor = box(10, 1, 4, p.cap); visor.position.set(0, 8.3, 6.5); neck.add(visor);
     const logo = box(3, 1.4, 0.2, 0xffd34d, { emissive: true }); logo.position.set(0, 9.2, 5.05); neck.add(logo); }
   if (p.phones) { const band = voxMesh(12, 2, 2, -6, 0, -1, (x, y) => (x <= 1 || x >= 10) ? p.phones : (y === 1 ? p.phones : 0)); band.position.set(0, -1.5, 1); neck.add(band); }
@@ -105,7 +115,7 @@ function makeChar(key, p) {
   const mouth = new THREE.Group(); mouth.position.set(0, 2.4, 5.04); neck.add(mouth);
   const lip = new THREE.Mesh(new THREE.BoxGeometry(3.6, 1, 0.1), mouthM); mouth.add(lip);
   const arm = (side) => { const g = new THREE.Group(); g.position.set(side * 6.5, 19, 0);
-    g.add(voxMesh(3, 11, 3, -1.5, -11, -1.5, (x, y) => y >= 3 ? p.top : p.skin)); root.add(g); return g; };
+    g.add(voxMesh(3, 11, 3, -1.5, -11, -1.5, (x, y) => (p.tank || y < 3) ? p.skin : p.top)); root.add(g); return g; };
   const shoulders = [arm(-1), arm(1)];
   const tape = box(4, 6, 1.2, 0x15151a); tape.visible = false; tape.position.set(0, -11, 1.8); shoulders[1].add(tape);
   const label = box(3.2, 2.6, 0.1, 0xe94b6a, { emissive: true }); label.position.set(0, 0.6, 0.65); tape.add(label);
@@ -201,14 +211,65 @@ function buildClub() {
   const rim = new THREE.DirectionalLight(0x5cc8ff, 0.9); rim.position.set(120, 60, -160); scene.add(rim);
 }
 
+function patternTexture(draw, w = 256, h = 256) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; return t;
+}
+function buildFlat() {
+  scene.background = new THREE.Color(0x15121a); scene.fog = new THREE.Fog(0x15121a, 280, 560);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(260, 200), new THREE.MeshToonMaterial({ color: 0x6b4a32, gradientMap: ramp }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  for (let i = -12; i <= 12; i++) { const plank = box(10, 0.2, 200, i % 2 ? 0x74513a : 0x684631); plank.castShadow = false; plank.position.set(i * 10.5, 0.1, 0); scene.add(plank); }
+  const paper = patternTexture((g, w, h) => { g.fillStyle = '#c9b48a'; g.fillRect(0, 0, w, h); g.fillStyle = '#b39b70';
+    for (let y = 0; y < h; y += 32) for (let x = (y / 32) % 2 * 16; x < w; x += 32) { g.beginPath(); g.arc(x + 8, y + 8, 5, 0, 7); g.fill(); } });
+  paper.wrapS = paper.wrapT = THREE.RepeatWrapping; paper.repeat.set(6, 3);
+  const wallMat = new THREE.MeshToonMaterial({ map: paper, gradientMap: ramp });
+  const back = new THREE.Mesh(new THREE.BoxGeometry(260, 110, 4), wallMat); back.position.set(0, 55, -82); back.receiveShadow = true; scene.add(back);
+  const left = new THREE.Mesh(new THREE.BoxGeometry(4, 110, 200), wallMat); left.position.set(-130, 55, 0); scene.add(left);
+  // ковёр на стене
+  const rug = patternTexture((g, w, h) => { g.fillStyle = '#8e1f24'; g.fillRect(0, 0, w, h); g.strokeStyle = '#e0b04a'; g.lineWidth = 6; g.strokeRect(10, 10, w - 20, h - 20);
+    g.fillStyle = '#1f2a55'; g.fillRect(28, 28, w - 56, h - 56); g.fillStyle = '#e0b04a';
+    for (let k = 0; k < 5; k++) { g.save(); g.translate(w / 2, h / 2); g.rotate(Math.PI / 4); const r = 90 - k * 16; g.strokeStyle = k % 2 ? '#e0b04a' : '#c7343a'; g.lineWidth = 7; g.strokeRect(-r / 2, -r / 2, r, r); g.restore(); }
+    for (let x = 40; x < w - 40; x += 22) { g.fillRect(x, 34, 8, 8); g.fillRect(x, h - 42, 8, 8); } }, 256, 192);
+  const carpet = new THREE.Mesh(new THREE.PlaneGeometry(110, 80), new THREE.MeshToonMaterial({ map: rug, gradientMap: ramp })); carpet.position.set(-20, 58, -79.7); scene.add(carpet);
+  // диван, тумба, телевизор, приставка, коробка «Денди»
+  const sofa = box(70, 12, 22, 0x2f6b4a); sofa.position.set(-20, 6, -40); scene.add(sofa);
+  const sofaBack = box(70, 18, 6, 0x2a5e41); sofaBack.position.set(-20, 15, -52); scene.add(sofaBack);
+  for (const sx of [-58, 18]) { const arm = box(6, 16, 22, 0x295a3e); arm.position.set(sx, 8, -40); scene.add(arm); }
+  const stand = box(40, 14, 16, 0x5a3a26); stand.position.set(-20, 7, 45); scene.add(stand);
+  const tv = box(34, 22, 6, 0x111114); tv.position.set(-20, 26, 45); scene.add(tv);
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(30, 18), new THREE.MeshBasicMaterial({ map: tvTex, fog: false })); screen.rotation.y = Math.PI; screen.position.set(-20, 26, 41.9); scene.add(screen);
+  const console_ = box(10, 3, 8, 0xf2f2f2); console_.position.set(-6, 15.5, 45); scene.add(console_);
+  const dendy = box(12, 4, 9, 0x2a2a2e); dendy.position.set(-34, 15.9, 46); scene.add(dendy);
+  const dendyLabel = box(6, 0.2, 4, 0xd9483b, { emissive: true }); dendyLabel.position.set(-34, 18, 46); scene.add(dendyLabel);
+  const tvL = new THREE.PointLight(0x7fb8ff, 2600, 140, 2); tvL.position.set(-20, 26, 30); scene.add(tvL);
+  // сервант с посудой
+  const cab = box(40, 60, 16, 0x5a3a26); cab.position.set(75, 30, -72); scene.add(cab);
+  const glass = box(34, 26, 0.4, 0x9fc4d8, { emissive: true }); glass.material.transparent = true; glass.material.opacity = 0.25; glass.position.set(75, 42, -63.6); scene.add(glass);
+  for (let k = 0; k < 6; k++) { const cup = box(4, 5, 4, [0xf2f2f2, 0xe0b04a, 0xd9483b][k % 3]); cup.position.set(60 + k * 6, 33 + (k > 2 ? 12 : 0), -68); scene.add(cup); }
+  // окно и торшер
+  const win = box(36, 44, 1, 0x1a2a4a, { emissive: true }); win.position.set(-128, 60, -30); win.rotation.y = Math.PI / 2; scene.add(win);
+  for (let k = 0; k < 14; k++) { const lit = box(2.5, 2.5, 0.4, 0xffd27a, { emissive: true }); lit.rotation.y = Math.PI / 2; lit.position.set(-127.4, 44 + (k * 7) % 30, -46 + (k * 13) % 32); scene.add(lit); }
+  const lamp = box(3, 46, 3, 0x2a2a2a); lamp.position.set(30, 23, -60); scene.add(lamp);
+  const shade = box(14, 10, 14, 0xf2d48a, { emissive: true }); shade.position.set(30, 50, -60); scene.add(shade);
+  const lampL = new THREE.PointLight(0xffc27a, 5200, 200, 2); lampL.position.set(30, 46, -55); lampL.castShadow = false; scene.add(lampL);
+  scene.add(new THREE.HemisphereLight(0x8a7aa0, 0x1a120e, 1.15));
+  const key = new THREE.DirectionalLight(0xffe2c0, 1.7); key.position.set(80, 160, 120); key.castShadow = true; key.shadow.mapSize.set(1024, 1024);
+  Object.assign(key.shadow.camera, { left: -140, right: 140, top: 120, bottom: -40, near: 20, far: 420 }); key.shadow.bias = -0.0008; scene.add(key);
+}
+
+const SITS = { 'диван у телевизора': true };   // здесь герои сидят
 // где стоят герои в каждой локации: [x, z, поворот]
 const SPOTS = {
-  'стойка с кассой': { gosha: [-55, -30, 0.15], nika: [-28, -2, -0.6], palych: [-62, 18, 0.35], guest: [-62, 16, 0.25] },
+  'стойка с кассой': { gosha: [-60, -30, 0.5], nika: [-22, -14, -0.95], palych: [-78, 4, 0.75], guest: [-40, 6, -0.25] },   // вполоборота к камере, как в ситкоме
   'ряд компьютеров': { gosha: [72, -10, 0.9], nika: [100, -24, 1.35], palych: [70, 18, 1.1], guest: [96, 10, 1.5] },
-  'диван у ЭЛТ-телевизора': { gosha: [40, -20, -0.35], nika: [70, -22, 0.35], palych: [55, 30, 3.0], guest: [55, -32, 0] },
+  'диван у ЭЛТ-телевизора': { gosha: [40, -20, -0.35], nika: [70, -22, 0.35], palych: [98, -6, -1.1], guest: [16, -6, 1.0] },
   'полки с кассетами': { gosha: [-60, -50, 0.35], nika: [-25, -48, -0.4], palych: [-42, -20, 3.0], guest: [-42, -24, 0] },
   'вход с неоновой вывеской': { gosha: [-80, 30, -1.1], nika: [-80, 58, -1.9], palych: [-110, 50, 1.55], guest: [-110, 46, 1.55] },
   'подсобка': { gosha: [-20, -40, 0.3], nika: [10, -40, -0.3], palych: [-5, -12, 3.1], guest: [-5, -14, 3.1] },
+  'диван у телевизора': { batya: [-31, -36, 0.12], timur: [-9, -36, -0.12] },
+  'кухня': { batya: [40, 0, -0.5], timur: [10, 20, 0.6] },
+  'у серванта с ковром': { batya: [55, -50, 0.2], timur: [20, -40, 0.5] },
 };
 
 // ---------- монтажный план ----------
@@ -221,6 +282,9 @@ function env(who, i) { const e = (TL.env || {})[who]; return e ? (e[Math.min(e.l
 function pose(c, t, i, seg, prev) {
   const sp = spot(c.key); const active = (seg.cast || TL.cast).includes(c.key);
   c.root.visible = active || (TL.cast.includes(c.key) && !seg.cast);
+  // герой в кадре только с первой своей реплики (Палыч «в худший момент»), главные двое — сразу
+  const first = TL.segments.find(x => x.who === c.key);
+  if (first && first.t0 > 0.5 && !['gosha', 'nika', 'batya', 'timur'].includes(c.key) && t < first.t0) c.root.visible = false;
   if (!c.root.visible) return;
   const mine = seg.who === c.key;
   const emo = EMO[(mine ? seg.emotion : seg.react?.[c.key]) || 'спокойно'] || EMO['спокойно'];
@@ -235,6 +299,8 @@ function pose(c, t, i, seg, prev) {
   else { c.hips[0].rotation.x = c.hips[1].rotation.x = 0; }
   if (act.jump && mine) y = Math.max(0, Math.sin(clamp((t - seg.t0) / 0.5, 0, 1) * Math.PI)) * 6;
   if (act.bounce) y = Math.abs(Math.sin(t * 6)) * 1.2;
+  const sit = SITS[TL.set] && !(act.walk && mine) && !act.jump;
+  if (sit) { y += 12.5 - 9 * (SPEC[c.key]?.scale || 1); c.hips[0].rotation.x = c.hips[1].rotation.x = -1.5; }
   c.root.position.set(x, y, z); c.root.rotation.y = ry;
   if (!act.walk || !mine) for (const [n, side] of [[0, 'la'], [1, 'ra']]) {
     const [ax, az] = act[side] || [0, 0], [bx, bz] = pAct[side] || [0, 0];
@@ -271,13 +337,16 @@ function cameraFor(seg, t) {
   const who = seg.focus || seg.who; let fov = 34;
   const shot = seg.shot || 'двое';
   if (shot.startsWith('крупно')) {
-    const w = shot.includes('Гоша') ? 'gosha' : shot.includes('Ника') ? 'nika' : shot.includes('Палыч') ? 'palych' : shot.includes('гость') ? 'guest' : who;
+    const w = shot.includes('Гоша') ? 'gosha' : shot.includes('Ника') ? 'nika' : shot.includes('Палыч') ? 'palych' : shot.includes('гость') ? 'guest' : shot.includes('Батя') ? 'batya' : shot.includes('Тимур') ? 'timur' : who;
     const h = head(CAST[w] ? w : who), ry = spot(CAST[w] ? w : who)[2]; SH.copy(fwd(h, ry + 0.18, 58)); SH.y = h.y + 2; TG.set(h.x, h.y - 3.5, h.z); fov = 30;
   } else if (shot === 'общий') { SH.set(center.x + 10, 48, center.z + 150); TG.set(center.x, 30, center.z - 20); fov = 40; }
-  else if (shot === 'через плечо') {
+  else if (shot === 'через плечо') {   // 06.11: затылок соседа закрывал кадр — везде три четверти спереди на говорящего
+    const other = seg.to || cast.find(w => w !== who) || who; const a = head(other), b = head(who);
+    const side = Math.sign(b.x - a.x) || 1; SH.set(b.x + side * 20, b.y + 4, b.z + 46); TG.set(b.x - side * 4, b.y - 4, b.z); fov = 34;
+  } else if (shot === 'через плечо') {
     const other = seg.to || cast.find(w => w !== who) || who; const a = head(other), b = head(who);
     const dir = b.clone().sub(a).setY(0).normalize(); SH.copy(a).addScaledVector(dir, -22); SH.x += 9; SH.y = a.y + 6; TG.copy(b); fov = 32;
-  } else if (shot === 'экран ТВ') { SH.set(55, 31, -10); TG.set(55, 31, -50); fov = 26; }
+  } else if (shot === 'экран ТВ') { if (TL.world === 'flat') { SH.set(-20, 27, 0); TG.set(-20, 26, 45); } else { SH.set(55, 31, -10); TG.set(55, 31, -50); } fov = 26; }
   else { // «двое» и «наезд»: оба героя реплики в кадре
     const other = seg.to || cast.find(w => w !== who) || who; const m = mid(head(who), head(other));
     const span = head(who).distanceTo(head(other)); SH.set(m.x + 8, m.y + 12, m.z + 52 + span * 1.35); TG.set(m.x, m.y - 4, m.z); fov = 34;
@@ -286,6 +355,7 @@ function cameraFor(seg, t) {
   if (move === 'push') { const k = ease(clamp(lt / dur, 0, 1)); SH.lerp(TG, 0.32 * k); }
   else if (move === 'drift') { SH.x += lt * 1.4; }
   else if (move === 'shake') { SH.x += Math.sin(t * 60) * 0.6; SH.y += Math.cos(t * 53) * 0.6; }
+  if (TL.world === 'flat' && SH.z > 36) { const k = (SH.z - TG.z) / Math.max(1, 36 - TG.z); SH.z = 36; fov = Math.min(64, fov * Math.min(1.9, k)); }  // не за телевизором
   camera.fov = fov; camera.position.copy(SH); camera.updateProjectionMatrix(); camera.lookAt(TG);
 }
 
@@ -298,29 +368,11 @@ function renderFrame(i) {
 }
 
 // ---------- API для драйвера ----------
-window.__load = (tl) => {
-  TL = tl; FPS = tl.fps || 30;
-  for (const key of new Set([...tl.cast, ...tl.segments.flatMap(s => s.cast || [])])) if (SPEC[key]) CAST[key] = makeChar(key, { ...SPEC[key], ...(tl.looks || {})[key] });
-  renderFrame(0); return { frames: Math.round(tl.duration * FPS), tris: renderer.info.render.triangles, calls: renderer.info.render.calls };
-};
-window.__gl = () => { const ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); };
-window.__png = (i) => { renderFrame(i); return canvas.toDataURL('image/png'); };
-let enc = null, chunks = [], encErr = null;
-const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); };
-window.__wcInit = async (codec, bitrate) => {
-  chunks = []; encErr = null;
-  enc = new VideoEncoder({ output: (ch) => { const b = new Uint8Array(ch.byteLength); ch.copyTo(b); chunks.push(b); }, error: (e) => { encErr = e.message; } });
-  enc.configure({ codec, width: W, height: H, bitrate, framerate: FPS, latencyMode: 'quality', avc: { format: 'annexb' } });
-};
-const drain = () => { const out = chunks.map(b64); chunks = []; return out; };
-window.__wcFrame = async (i) => {
-  renderFrame(i);
-  const vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
-  enc.encode(vf, { keyFrame: i % (FPS * 2) === 0 }); vf.close();
-  while (enc.encodeQueueSize > 3) await new Promise(r => enc.addEventListener('dequeue', r, { once: true }));
-  if (encErr) throw new Error(encErr);
-  return drain();
-};
-window.__wcFlush = async () => { await enc.flush(); enc.close(); return drain(); };
-buildClub();
-window.__ready = true;
+import { install } from '../capture.js';
+install({
+  canvas, renderFrame,
+  load: (tl) => { TL = tl; FPS = tl.fps || 30; (tl.world === 'flat' ? buildFlat : buildClub)();
+    for (const key of new Set([...tl.cast, ...tl.segments.flatMap(s => s.cast || [])])) if (SPEC[key]) CAST[key] = makeChar(key, { ...SPEC[key], ...(tl.looks || {})[key] });
+    return { tris: renderer.info.render.triangles }; },
+  info: () => { const ext = gl.getExtension('WEBGL_debug_renderer_info'); return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER); },
+});

@@ -12,17 +12,19 @@ def init(conn: sqlite3.Connection) -> None:
     conn.executescript("""
 CREATE TABLE IF NOT EXISTS toon_episodes(
   id INTEGER PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, status TEXT NOT NULL, format TEXT, seed TEXT,
-  fact TEXT, title TEXT, logline TEXT, script TEXT, review TEXT, video TEXT, package_id INTEGER, channel TEXT);
+  fact TEXT, title TEXT, logline TEXT, script TEXT, review TEXT, video TEXT, package_id INTEGER, channel TEXT, series TEXT);
 CREATE TABLE IF NOT EXISTS toon_events(
   id INTEGER PRIMARY KEY, episode_id INTEGER NOT NULL, ts TEXT NOT NULL, agent TEXT, action TEXT, detail TEXT, data TEXT);
 """)
+    if "series" not in {r[1] for r in conn.execute("PRAGMA table_info(toon_episodes)")}:
+        conn.execute("ALTER TABLE toon_episodes ADD COLUMN series TEXT")
     conn.commit()
 
 
-def create(conn: sqlite3.Connection, fmt: str, seed: str, fact: dict | None) -> int:
+def create(conn: sqlite3.Connection, fmt: str, seed: str, fact: dict | None, key: str = "katscena") -> int:
     ts = now_iso()
-    cur = conn.execute("INSERT INTO toon_episodes(created_at, updated_at, status, format, seed, fact) VALUES (?, ?, 'writing', ?, ?, ?)",
-                       (ts, ts, fmt, seed, json.dumps(fact, ensure_ascii=False) if fact else None))
+    cur = conn.execute("INSERT INTO toon_episodes(created_at, updated_at, status, format, seed, fact, series) VALUES (?, ?, 'writing', ?, ?, ?, ?)",
+                       (ts, ts, fmt, seed, json.dumps(fact, ensure_ascii=False) if fact else None, key))
     conn.commit()
     return int(cur.lastrowid)
 
@@ -47,8 +49,8 @@ def event(conn: sqlite3.Connection, ep: int, agent: str, action: str, detail: st
     conn.commit()
 
 
-def recent_loglines(conn: sqlite3.Connection, n: int = 30) -> list[str]:
-    rows = conn.execute("SELECT title, logline FROM toon_episodes WHERE logline IS NOT NULL ORDER BY id DESC LIMIT ?", (n,)).fetchall()
+def recent_loglines(conn: sqlite3.Connection, key: str | None = None, n: int = 30) -> list[str]:
+    rows = conn.execute("SELECT title, logline FROM toon_episodes WHERE logline IS NOT NULL AND (? IS NULL OR series = ?) ORDER BY id DESC LIMIT ?", (key, key, n)).fetchall()
     return [f"«{r[0]}» — {r[1]}" for r in reversed(rows)]
 
 
