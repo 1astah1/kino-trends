@@ -95,15 +95,35 @@ def _write(conn: sqlite3.Connection, settings: dict, key: str, fmt: str, seed: s
     if prev and notes:
         task.append("Прошлая версия:\n" + json.dumps(prev, ensure_ascii=False) + "\n\nПРАВКИ НАЧАЛЬНИКА (выполнить все):\n- " + "\n- ".join(notes))
     task.append(f"Длина: {MIN_S}–{MAX_S} секунд озвучки (≈{int(MIN_S * WPS)}–{int((MAX_S - 6) * WPS)} слов во всех репликах).")
-    text, usage = llm.chat([{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(task)}],
-                           max_tokens=7000, temperature=0.9)
-    record_usage(conn, "toon.writer", llm.model, usage)
+    if (settings.get("toon_writer_backend") or "claude") == "claude":
+        text = _claude(system, "\n\n".join(task), settings)          # сценарист — Claude Code по подписке, без оплаты API
+        record_usage(conn, "toon.writer", "claude-code-cli", None, note="подписка")
+    else:
+        text, usage = llm.chat([{"role": "system", "content": system}, {"role": "user", "content": "\n\n".join(task)}],
+                               max_tokens=7000, temperature=0.9)
+        record_usage(conn, "toon.writer", llm.model, usage)
     try:
         script = parse_json(text)
     except LLMError:
         script = _repair(conn, settings, text)
     script["format"] = fmt
     return script
+
+
+def _claude(system: str, task: str, settings: dict) -> str:
+    """Сценарий пишет Claude Code в фоне (`claude -p`, подписка владельца, 06.11.2026: «сценаристом ты же можешь быть»).
+    Без инструментов и без истории; ответ — текст результата. Не вошли в Claude Code — ошибка, а не тихая оплата API."""
+    import subprocess
+    cmd = ["claude", "-p", task, "--output-format", "json", "--tools", "", "--no-session-persistence",
+           "--system-prompt", system, "--model", settings.get("toon_writer_claude_model") or "opus"]
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=600, cwd="/tmp")
+    try:
+        out = json.loads(r.stdout or "{}")
+    except json.JSONDecodeError:
+        raise LLMError(f"claude: не JSON: {(r.stdout or r.stderr)[:200]}")
+    if out.get("is_error"):
+        raise LLMError(f"claude: {str(out.get('result'))[:200]} — нужен вход: claude /login на сервере")
+    return out.get("result") or ""
 
 
 def _repair(conn: sqlite3.Connection, settings: dict, text: str) -> dict:
