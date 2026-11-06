@@ -80,3 +80,60 @@ def test_audiobook_and_thin_russian_voiceover_are_rejected():
     thin = content_check.check_transcript(FakeLLM({"is_work": True, "russian": True, "what": "series", "confidence": 0.9}), "Истинное образование", None,
                                           "series", RU, duration_sec=54 * 60 * 10)
     assert thin["ok"] is False and "слов в минуту" in thin["reason"]
+
+
+def test_reversed_voice_is_rejected_by_asr_confidence():
+    from kinotrends import content_check as cc
+    good = [{"w": "слово", "p": 0.96}] * 400 + [{"w": "эээ", "p": 0.4}] * 4
+    bad = [{"w": "базян", "p": 0.43}] * 150 + [{"w": "встань", "p": 0.7}] * 250
+    assert cc.speech_quality(good)["ok"] is True
+    q = cc.speech_quality(bad)
+    assert q["ok"] is False and "перевёрнут" in q["reason"]
+    assert cc.speech_quality([{"w": "x", "p": 0.2}] * 10)["ok"] is None  # мало слов — не решаем
+    sents = ["Встань. Ну наем что умее. месе свои лицоми."] * 40
+    res = cc.check_transcript(None, "Мегамозг", 2010, "animated", sents, duration_sec=5735, words=bad)
+    assert res["ok"] is False and res["what"] == "garbled"
+
+
+def test_resolution_gate():
+    from kinotrends import content_check as cc
+    assert cc.check_resolution(368, 208)["ok"] is False
+    assert cc.check_resolution(1280, 720)["ok"] is True
+    assert cc.check_resolution(None, None)["ok"] is None
+
+
+def test_frames_check_rejects_game_and_mirror():
+    from kinotrends import content_check as cc
+
+    class FakeLLM:
+        configured, model = True, "fake"
+
+        def __init__(self, data):
+            self.data = data
+
+        def ask_json(self, system, user, image=None, max_tokens=0):
+            assert image == b"jpg" and "раскадровк" in user
+            return self.data, None
+
+    game = cc.check_frames(FakeLLM({"is_work": False, "kind": "game", "confidence": 0.9}), "Симпсоны", 1989, "animated_series", b"jpg")
+    assert game["ok"] is False and "игр" in game["reason"]
+    mirror = cc.check_frames(FakeLLM({"is_work": True, "kind": "film", "mirrored": True, "confidence": 0.8}), "Мегамозг", 2010, "animated", b"jpg")
+    assert mirror["ok"] is False and "зеркал" in mirror["reason"]
+    fine = cc.check_frames(FakeLLM({"is_work": True, "kind": "film", "confidence": 0.9}), "Мегамозг", 2010, "animated", b"jpg")
+    assert fine["ok"] is True
+    unsure = cc.check_frames(FakeLLM({"is_work": False, "kind": "other", "confidence": 0.3}), "X", None, None, b"jpg")
+    assert unsure["ok"] is True  # модель не уверена — не браковать
+
+
+def test_frames_check_passes_when_model_safety_filter_refuses():
+    from kinotrends import content_check as cc
+    from kinotrends.llm import LLMError
+
+    class Blocked:
+        configured, model = True, "fake"
+
+        def ask_json(self, *a, **k):
+            raise LLMError("нет choices: {'error': {'message': 'Gemini blocked the request: PROHIBITED_CONTENT'}}")
+
+    res = cc.check_frames(Blocked(), "Теория большого взрыва", 2007, "series", b"jpg")
+    assert res["ok"] is True and res.get("blocked") is True

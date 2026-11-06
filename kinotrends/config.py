@@ -19,7 +19,8 @@ USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 )
-WIKIDATA_UA = "kino-trends/0.1 (local research tool; contact: owner)"
+# Wikimedia с 2026 отвечает 403 на User-Agent без адреса для связи (политика UA) — указываем сайт сервиса
+WIKIDATA_UA = "kino-trends/0.2 (+https://hubproxy.win/kt-d3764d18/) python-httpx"
 
 # Умолчания настроек, редактируемых из интерфейса. Ключи только латиницей.
 DEFAULT_SETTINGS: dict[str, str] = {
@@ -66,6 +67,8 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "storage_proxy": "",            # прокси для yt-dlp на хранилище (http://user:pass@host:port или socks5://…), если YouTube режет IP хранилища
     "storage_cookies": "",          # путь к cookies.txt (формат Netscape) на хранилище для yt-dlp, если YouTube требует вход «не бот»
     "rights_policy": "balanced",    # авторские права в календаре: strict = только «проходит», balanced = и «с оговорками», off = только пометка
+    "pipeline_film_one_channel": "1",  # все клипы фильма — на один канал: одинаковое кино на нескольких наших каналах YouTube считает сетью перезаливов
+    "exclude_ru_enforced": "1",     # российские (ТВ, онлайн-кинотеатры) и японские правообладатели блокируют нарезки в России — не брать (outcomes.ru_enforced)
     "pop_refresh_hours": "2",       # как часто между полными прогонами обновлять чарты и разбор популярных видео (0 — только в прогоне)
     "sources_top_max": "30",        # для скольких популярных произведений без исходника искать исходник за прогон
     "rights_llm_max": "40",         # сколько произведений за прогон спрашивать у модели про правообладателя
@@ -86,6 +89,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "autoshorts_url": "",           # API auto-shorts, например http://127.0.0.1:18300
     "autoshorts_login": "",         # оператор auto-shorts (роль operator), под ним конвейер пишет в API
     "autoshorts_password": "",
+    "pipeline_gate_since": "",      # ворота каналов считают ролики начиная с этой даты (смена формата)
     "pipeline_enabled": "0",        # фоновый цикл: двигать очередь раз в pipeline_tick_min минут
     "pipeline_tick_min": "5",
     "pipeline_auto_enqueue": "0",   # после прогона самому ставить в очередь слоты дня и подборку видео

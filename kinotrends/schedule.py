@@ -34,7 +34,19 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
     ts = now_iso()
     trend_rank: dict[str, float] = {}
     mode = get_setting(conn, "calendar_mode") or "trend"
-    if mode == "fun":
+    if mode == "hot":
+        # горячее (владелец 29.10: «интересное и популярное, а не скучный кал»): хиты рынка и смешные хиты вместе,
+        # по силе тренда — сколько авторов режет, сколько свежих шортсов, просмотры в день
+        from . import db as _db
+        from . import trend
+        from .llm import llm_from_settings
+        llm = llm_from_settings(_db.all_settings(conn))
+        for it in trend.market(conn, llm, period="7", limit=60, validate_top=90) + trend.fun_market(conn, llm):
+            if trend.is_kids(it):
+                continue  # «Смешарики» и т. п. — детское не ставим
+            trend_rank[it["title_id"]] = max(trend_rank.get(it["title_id"], 0.0), float(it["trend"]))
+        recs = [r for r in recommend.today(conn, f, limit=400)["items"] if r["title_id"] in trend_rank]
+    elif mode == "fun":
         # смешное: комедии и смешные мультсериалы из трендов (без детского)
         from . import db as _db
         from . import trend
@@ -63,6 +75,13 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
     future_ids = [r[0] for r in conn.execute("SELECT DISTINCT title_id FROM schedule WHERE title_id IS NOT NULL AND day >= ?", (start,))]
     lv = rights.levels(conn, list(pool) + future_ids)
     blocked = {tid for tid, r in lv.items() if not rights.allowed(r["level"], policy)}
+    if (get_setting(conn, "exclude_soviet") or "1") != "0":
+        from .sources import soviet_titles
+        blocked |= soviet_titles(conn, list(pool) + future_ids)  # советское не ставим (владелец 29.10)
+    # итоги наших публикаций: заблокированное, правообладатели в запрете и «блокирует и страйкует» — не ставим
+    from . import outcomes
+    blocked |= outcomes.banned_title_ids(conn, list(pool) + future_ids)
+    perf = outcomes.title_scores(conn)
     if blocked:
         conn.execute(f"DELETE FROM schedule WHERE day >= ? AND locked = 0 AND status = 'planned' AND title_id IN ({','.join('?' * len(blocked))})", (start, *blocked))
         pool = {k: v for k, v in pool.items() if k not in blocked}
@@ -75,7 +94,11 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
             used[r["title_id"]] = max(used.get(r["title_id"], ""), day)
     # в конвейер идут только произведения с проверенным исходником (русская речь, сам фильм): их ставим первыми,
     # остальные — только если готовых не хватило
-    ready = {r[0] for r in conn.execute("SELECT DISTINCT title_id FROM title_sources WHERE verified = 1")}
+    # YouTube с наших серверов не качается (бот-проверка) — «готовы» только те, у кого проверенный Rutube
+    if (get_setting(conn, "source_prefer") or "rutube") == "youtube":
+        ready = {r[0] for r in conn.execute("SELECT DISTINCT title_id FROM title_sources WHERE verified = 1")}
+    else:
+        ready = {r[0] for r in conn.execute("SELECT DISTINCT title_id FROM title_sources WHERE verified = 1 AND url LIKE '%rutube.ru%'")}
     prev_kind: str | None = None
     for day in day_list:
         for slot in range(per_day):
@@ -90,7 +113,7 @@ def build(conn: sqlite3.Connection, f: Filters, days: int = 7, per_day: int = 2,
                 if last and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(last, "%Y-%m-%d")).days < cooldown:
                     continue
                 base = (trend_rank[tid] * 10 + 500) if tid in trend_rank else r["opportunity"]
-                score = base + (0 if tid in ready else -1000)
+                score = base + (0 if tid in ready else -1000) + outcomes.score_bonus(perf.get(tid))
                 if prev_kind and r["kind_ru"] == prev_kind:
                     score -= 12  # чередуем типы
                 if r["n_fresh7"]:

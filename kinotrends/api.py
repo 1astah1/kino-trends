@@ -25,12 +25,13 @@ from .yt import flat
 app = FastAPI(title="Kino Trends", docs_url="/api/docs", openapi_url="/api/openapi.json")
 REC = Recognizer()
 JOBS: dict[str, dict] = {"dict_import": {"running": False, "last": None}, "recognize": {"running": False, "last": None}, "neuro": {"running": False, "last": None}, "sources_top": {"running": False, "last": None},
-                         "popular": {"running": False, "last": None}}
+                         "popular": {"running": False, "last": None}, "doctor": {"running": False, "last": None},
+                         "outcomes": {"running": False, "last": None}}
 SECRET_KEYS = ("youtube_api_key", "llm_api_key", "telegram_bot_token", "autoshorts_password")
 TEXT_KEYS = ("llm_base_url", "llm_model", "telegram_chat_id", "public_url", "storage_host", "storage_user", "storage_key", "storage_dir", "storage_url", "rights_policy",
              "pop_regions", "pop_categories", "pop_cc_queries", "pop_lang", "pop_audience",
              "autoshorts_url", "autoshorts_login", "pipeline_channel_film", "pipeline_channel_video", "pipeline_niche_film", "pipeline_niche_video",
-             "pipeline_rights_default", "pipeline_rights_note", "pipeline_privacy", "storage_proxy", "storage_cookies")
+             "pipeline_rights_default", "pipeline_rights_note", "pipeline_privacy", "storage_proxy", "storage_cookies", "pipeline_gate_since")
 _bg_lock = threading.Lock()
 _SCHED_STOP = threading.Event()
 
@@ -141,6 +142,49 @@ def _neuro_job(limit: int | None = None) -> None:
         JOBS["neuro"]["running"] = False
 
 
+def _doctor_job() -> None:
+    """Проход доктора системы (kinotrends/doctor.py): пробы стенда, хранилища и конвейера, самолечение, журнал."""
+    from . import doctor
+    JOBS["doctor"]["running"] = True
+    try:
+        c = _conn()
+        try:
+            rep = doctor.run(c, db.all_settings(c), log=lambda m, level="info": print(f"[доктор] {m}", flush=True))
+            JOBS["doctor"]["last"] = {"at": rep["at"], "status": rep["status"]}
+        finally:
+            c.close()
+    except Exception as e:  # noqa: BLE001
+        print(f"[доктор] проход упал: {e}", flush=True)
+    finally:
+        JOBS["doctor"]["running"] = False
+
+
+def _outcomes_due(c) -> bool:
+    from . import outcomes
+    last = db.get_meta(c, "outcomes_at", "")
+    if not last:
+        return True
+    started = datetime.strptime(last[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - started >= timedelta(minutes=outcomes.RUN_EVERY_MIN)
+
+
+def _outcomes_job() -> None:
+    """Итоги публикаций и обучение подбора (kinotrends/outcomes.py)."""
+    from . import outcomes
+    JOBS["outcomes"]["running"] = True
+    try:
+        c = _conn()
+        try:
+            res = outcomes.run(c, db.all_settings(c), log=lambda m, level="info": print(f"[итоги] {m}", flush=True))
+            JOBS["outcomes"]["last"] = {"at": db.now_iso(), "res": res}
+        finally:
+            c.close()
+    except Exception as e:  # noqa: BLE001
+        print(f"[итоги] проход упал: {e}", flush=True)
+    finally:
+        JOBS["outcomes"]["running"] = False
+
+
 def _scheduler() -> None:
     last_dict_check = 0.0
     while not _SCHED_STOP.wait(30):
@@ -148,6 +192,11 @@ def _scheduler() -> None:
             c = _conn()
             try:
                 now = time.time()
+                from . import doctor
+                if not JOBS["doctor"]["running"] and doctor.due(c):
+                    threading.Thread(target=_doctor_job, name="doctor", daemon=True).start()
+                if not JOBS["outcomes"]["running"] and _outcomes_due(c):
+                    threading.Thread(target=_outcomes_job, name="outcomes", daemon=True).start()
                 if ENTITIES_PATH.exists() and now - last_dict_check > 600 and not JOBS["dict_import"]["running"]:
                     last_dict_check = now
                     imported = db.get_meta(c, "dict_imported_at", "")
@@ -168,11 +217,14 @@ def _scheduler() -> None:
                 hours = db.get_int(c, "schedule_hours")
                 if hours > 0 and not STATE.running:
                     running_elsewhere = c.execute("SELECT 1 FROM runs WHERE status = 'running'").fetchone()
-                    last = c.execute("SELECT started_at FROM runs WHERE status != 'running' ORDER BY id DESC LIMIT 1").fetchone()
+                    last = c.execute("SELECT started_at, status FROM runs WHERE status != 'running' ORDER BY id DESC LIMIT 1").fetchone()
                     due = True
                     if last:
                         started = datetime.strptime(last[0][:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
-                        due = datetime.now(timezone.utc) - started >= timedelta(hours=hours)
+                        elapsed = datetime.now(timezone.utc) - started
+                        # прерванный перезапуском или упавший сбор не ждёт полный интервал: календарь и фильмы
+                        # для конвейера иначе не обновляются до 6 часов (доктор 29.10)
+                        due = elapsed >= timedelta(hours=hours) or (last[1] == "error" and elapsed >= timedelta(minutes=30))
                     if due and not running_elsewhere and REC.size > 0:
                         try:
                             _start_run("schedule")
@@ -190,7 +242,8 @@ def _startup() -> None:
     db.init_db(c)
     threading.Thread(target=pipeline.loop, args=(db.connect, lambda m, level="info": print(f"[конвейер:{level}] {m}", flush=True)), name="pipeline", daemon=True).start()
     files.init(c)
-    c.execute("UPDATE downloads SET status = 'error', error = 'процесс прерван' WHERE status = 'running'")
+    if not files.storage(c)["remote"]:  # yt-dlp на хранилище живёт отдельно (setsid): status() сам снова ждёт его итог
+        c.execute("UPDATE downloads SET status = 'error', error = 'процесс прерван' WHERE status = 'running'")
     try:
         files.cleanup(c)
     except Exception:  # noqa: BLE001
@@ -652,6 +705,59 @@ def api_pipeline_enqueue_today() -> dict:
     c = _conn()
     try:
         return pipeline.enqueue_today(c, db.all_settings(c))
+    finally:
+        c.close()
+
+
+@app.get("/api/results")
+def api_results() -> dict:
+    """Итоги наших публикаций: что залетает, что заблокировали, запреты подбора."""
+    from . import outcomes
+    c = _conn()
+    try:
+        out = outcomes.report(c)
+        out["running"] = JOBS["outcomes"]["running"]
+        return out
+    finally:
+        c.close()
+
+
+@app.post("/api/results/run")
+def api_results_run() -> dict:
+    from . import outcomes
+    if JOBS["outcomes"]["running"]:
+        raise HTTPException(409, "сбор итогов уже идёт")
+    _outcomes_job()
+    c = _conn()
+    try:
+        return outcomes.report(c)
+    finally:
+        c.close()
+
+
+@app.get("/api/system")
+def api_system() -> dict:
+    """Здоровье системы: последний отчёт доктора, открытые и недавно закрытые инциденты, история статусов."""
+    from . import doctor
+    c = _conn()
+    try:
+        out = doctor.latest(c)
+        out["running"] = JOBS["doctor"]["running"]
+        return out
+    finally:
+        c.close()
+
+
+@app.post("/api/system/run")
+def api_system_run() -> dict:
+    """Проверить сейчас (синхронно, 10–40 с), с самолечением."""
+    from . import doctor
+    if JOBS["doctor"]["running"]:
+        raise HTTPException(409, "проверка уже идёт")
+    _doctor_job()
+    c = _conn()
+    try:
+        return doctor.latest(c)
     finally:
         c.close()
 

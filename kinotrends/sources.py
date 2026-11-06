@@ -117,8 +117,15 @@ def title_names(conn: sqlite3.Connection, title_id: str, label: str, label_en: s
 
 
 def name_matches(names: list[str], video_title: str) -> bool:
-    vt = norm(video_title)
-    return any(fuzz.partial_ratio(n, vt) >= 60 for n in names)
+    """Название произведения стоит в заголовке видео целиком, отдельными словами. 01.11: при partial_ratio ≥ 60
+    «Кунг-фу» совпал с «Кунг-Фуд» (серия «Леди Баг» со случайного канала), «Менталист» — с «Менталисткой»."""
+    vt = " " + norm(video_title) + " "
+    for n in names:
+        if re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", vt):
+            return True
+        if len(n) >= 10 and fuzz.partial_ratio(n, vt) >= 90:
+            return True  # длинное название с опечаткой или другой пунктуацией
+    return False
 
 
 def find_sources(conn: sqlite3.Connection, llm: LLM | None, title: dict, log=print) -> list[dict]:
@@ -181,13 +188,21 @@ def find_sources(conn: sqlite3.Connection, llm: LLM | None, title: dict, log=pri
     conn.execute("DELETE FROM title_sources WHERE title_id = ?", (title["title_id"],))
     names = title_names(conn, title["title_id"], label, title.get("label_en"))
     russian_made = is_russian_made(conn, title["title_id"])
+    bans = banned_sources(conn)
     rows = []
     for c in cands:
         v = verdicts.get(c["video_id"], {})
         verified = 1 if verdict_ok(v, names, c, russian_made) else 0
+        if c["video_id"] in bans:
+            verified = 0
+            v = dict(v, note=f"не годится: {bans[c['video_id']]}")
         if UNSUITABLE.search(c["title"] or ""):
             verified = 0
             v = dict(v, note=((v.get("note") or "") + " · версия с тифлокомментариями, для нарезки не годится").strip(" ·"))
+        rt_bad = runtime_mismatch(conn, title["title_id"], kind, c.get("duration_s")) if verified else None
+        if rt_bad:
+            verified = 0
+            v = dict(v, note=((v.get("note") or "") + f" · {rt_bad}").strip(" ·"))
         bonus = (3 if c["video_id"] in best_ids[:1] else 1.5 if c["video_id"] in best_ids else 0) + (float(v.get("trust") or 0) * 2 if verified else -2 if v else 0)
         rows.append((title["title_id"], c["video_id"], c["url"], c["title"], c["channel"], c["duration_s"], c["views"],
                      v.get("type") or ("episode" if kind in ("series", "animated_series", "anime", "tv_show") else "film"),
@@ -202,7 +217,7 @@ def find_sources(conn: sqlite3.Connection, llm: LLM | None, title: dict, log=pri
 
 
 # пометки модели, после которых исходник не годится, даже если «полный»: не тот фильм, не та речь, не само кино
-BAD_NOTE = re.compile(r"не совпада|другой|не тот|не то\b|англ|english|оригинал на|субтитр[ыа]? на|стрим|трансляци|обзор|реакци|"
+BAD_NOTE = re.compile(r"не совпада|отлича|другой|не тот|не то\b|англ|english|оригинал на|субтитр[ыа]? на|стрим|трансляци|обзор|реакци|"
                       r"аудиокниг|пересказ|трейлер|разбор|подкаст|сокращ|фрагмент|отрыв|нарезк|игра|прохождени|игрофильм|катсцен|"
                       r"фанат|фан-фильм|подделк|нейросет", re.IGNORECASE)
 RUSSIAN_LANG = re.compile(r"рус|многоголос|дубляж\b|закадров", re.IGNORECASE)
@@ -214,6 +229,99 @@ def is_russian_made(conn: sqlite3.Connection, title_id: str) -> bool:
     r = conn.execute("SELECT countries FROM titles WHERE id = ?", (title_id,)).fetchone()
     countries = {str(x).strip().lower() for x in (loads(r["countries"], []) if r else [])}
     return bool(countries & RU_COUNTRIES)
+
+
+SOVIET_COUNTRIES = {"ссср", "ussr", "soviet union", "советский союз"}
+_CYR = re.compile(r"[а-яё]", re.IGNORECASE)
+
+
+def soviet_titles(conn: sqlite3.Connection, title_ids) -> set[str]:
+    """Советские фильмы и сериалы: страна СССР, или до 1991 года без страны и с русским оригинальным названием
+    («Ну, погоди!»). Владелец 29.10: «советские нахуй уберём — нихуя интересного»."""
+    ids = [t for t in {str(x) for x in title_ids if x}]
+    out: set[str] = set()
+    for i in range(0, len(ids), 500):
+        part = ids[i:i + 500]
+        for r in conn.execute(f"SELECT id, year, countries, original_title, label_en FROM titles WHERE id IN ({','.join('?' * len(part))})", part):
+            countries = {str(x).strip().lower() for x in (loads(r["countries"], []) or [])}
+            if countries & SOVIET_COUNTRIES:
+                out.add(r["id"])
+                continue
+            year = r["year"] or 0
+            orig = str(r["original_title"] or "")
+            if year and year <= 1991 and not countries and (not orig or _CYR.search(orig)) and not r["label_en"]:
+                out.add(r["id"])
+    return out
+
+
+# ---------- хронометраж: одноимённые экранизации («Отверженные» 2012 г. — 158 мин, а скачалась
+# чёрно-белая версия «Классики Голливуда» на 109 мин; викторина назвала бы неверный год, 29.10.2026)
+RUNTIME_KINDS = ("film", "animated")
+RUNTIME_TOLERANCE = 0.15  # доля длительности; PAL-ускорение и обрезки телеверсий укладываются
+RUNTIME_SLACK_MIN = 8
+NAMESAKE_TOLERANCE = 0.04  # одноимённая экранизация «узнаётся», если длина файла почти точно её
+_WD_UNITS = {"Q7727": 1.0, "Q11574": 1 / 60, "Q25235": 60.0}  # минута, секунда, час
+
+
+def _ensure_runtime_cols(conn: sqlite3.Connection) -> None:
+    have = {r[1] for r in conn.execute("PRAGMA table_info(titles)")}
+    if "runtime_min" not in have:
+        conn.execute("ALTER TABLE titles ADD COLUMN runtime_min TEXT")  # JSON-список минут из Wikidata (P2047)
+
+
+def runtime_min(conn: sqlite3.Connection, title_id: str, fetch: bool = True) -> list[int]:
+    """Хронометраж произведения в минутах из Wikidata (P2047; у фильма бывает несколько версий). Кеш в titles."""
+    _ensure_runtime_cols(conn)
+    row = conn.execute("SELECT runtime_min FROM titles WHERE id = ?", (title_id,)).fetchone()
+    if row is not None and row["runtime_min"] is not None:
+        return [int(x) for x in loads(row["runtime_min"], []) or []]
+    if not fetch or not re.fullmatch(r"Q\d+", title_id or ""):
+        return []
+    from .config import WIKIDATA_UA
+    try:
+        r = httpx.get("https://www.wikidata.org/w/api.php", timeout=20, headers={"User-Agent": WIKIDATA_UA},
+                      params={"action": "wbgetclaims", "entity": title_id, "property": "P2047", "format": "json"})
+        r.raise_for_status()
+        claims = (r.json().get("claims") or {}).get("P2047") or []
+    except (httpx.HTTPError, ValueError):
+        return []  # сеть — не кешируем, спросим в следующий раз
+    out: list[int] = []
+    for c in claims:
+        v = ((c.get("mainsnak") or {}).get("datavalue") or {}).get("value") or {}
+        unit = str(v.get("unit") or "").rsplit("/", 1)[-1]
+        try:
+            mins = round(float(v.get("amount")) * _WD_UNITS.get(unit, 1.0))
+        except (TypeError, ValueError):
+            continue
+        if 20 <= mins <= 400 and mins not in out:
+            out.append(mins)
+    conn.execute("UPDATE titles SET runtime_min = ? WHERE id = ?", (dumps(out), title_id))
+    conn.commit()
+    return out
+
+
+def runtime_mismatch(conn: sqlite3.Connection, title_id: str, kind: str | None, duration_s: float | None, fetch: bool = True) -> str | None:
+    """Почему исходник — другая версия (длина не та), или None. Сериалы и неизвестная длина не проверяются."""
+    if kind not in RUNTIME_KINDS or not duration_s:
+        return None
+    rts = runtime_min(conn, title_id, fetch=fetch)
+    if not rts:
+        return None
+    d = float(duration_s) / 60
+    if not any(abs(d - r) <= max(RUNTIME_TOLERANCE * r, RUNTIME_SLACK_MIN) for r in rts):
+        return f"другая версия: длина {round(d)} мин, а у фильма {'/'.join(str(r) for r in rts)} мин"
+    # допуск широкий (PAL-ускорение, телеверсии), поэтому сверяемся с одноимёнными экранизациями: 01.11 под
+    # «Гордостью и предубеждением» 2005 (127 мин) пришла версия 1940 (118 мин) — голос викторины назвал бы 2005 и Джо Райта
+    ours = min(abs(d - r) for r in rts)
+    label = conn.execute("SELECT label_ru FROM titles WHERE id = ?", (title_id,)).fetchone()
+    if not label or not label["label_ru"]:
+        return None
+    for tw in conn.execute(f"SELECT id, year FROM titles WHERE id != ? AND lower(label_ru) = lower(?) AND kind IN ({','.join('?' * len(RUNTIME_KINDS))})",
+                           (title_id, label["label_ru"], *RUNTIME_KINDS)).fetchall():
+        for r2 in runtime_min(conn, tw["id"], fetch=fetch):
+            if abs(d - r2) < ours and abs(d - r2) <= max(NAMESAKE_TOLERANCE * r2, 3):
+                return f"другая экранизация: длина {round(d)} мин — как у версии {tw['year'] or tw['id']} ({r2} мин), а у нашей {'/'.join(str(r) for r in rts)} мин"
+    return None
 
 
 def verdict_ok(v: dict, names: list[str], cand: dict, russian_made: bool) -> bool:
@@ -237,6 +345,7 @@ def recheck_verified(conn: sqlite3.Connection) -> dict:
     out = {"total": 0, "verified_before": 0, "verified_after": 0}
     names_cache: dict[str, list[str]] = {}
     made_cache: dict[str, bool] = {}
+    bans = banned_sources(conn)
     for r in conn.execute("SELECT ts.*, t.label_ru, t.label_en FROM title_sources ts LEFT JOIN titles t ON t.id = ts.title_id").fetchall():
         d = dict(r)
         tid = d["title_id"]
@@ -245,7 +354,7 @@ def recheck_verified(conn: sqlite3.Connection) -> dict:
             made_cache[tid] = is_russian_made(conn, tid)
         v = {"is_full": d.get("kind") in ("film", "episode", "pack") and d.get("trust") is not None, "trust": d.get("trust") or 0,
              "language": d.get("language"), "note": d.get("note")}
-        ok = 1 if (d["verified"] and verdict_ok(v, names_cache[tid], d, made_cache[tid])) else 0
+        ok = 1 if (d["verified"] and d["video_id"] not in bans and verdict_ok(v, names_cache[tid], d, made_cache[tid])) else 0
         out["total"] += 1
         out["verified_before"] += 1 if d["verified"] else 0
         out["verified_after"] += ok
@@ -257,8 +366,23 @@ def recheck_verified(conn: sqlite3.Connection) -> dict:
     return out
 
 
+def _ensure_bans(conn: sqlite3.Connection) -> None:
+    conn.execute("CREATE TABLE IF NOT EXISTS source_bans(video_id TEXT PRIMARY KEY, title_id TEXT, reason TEXT, at TEXT)")
+
+
+def banned_sources(conn: sqlite3.Connection) -> dict[str, str]:
+    """Навсегда забракованные видео-исходники: video_id → причина (игра, стрим, аудиокнига, не та речь)."""
+    _ensure_bans(conn)
+    return {r[0]: r[1] or "" for r in conn.execute("SELECT video_id, reason FROM source_bans")}
+
+
 def mark_bad(conn: sqlite3.Connection, title_id: str, video_id: str, why: str) -> None:
-    """Исходник оказался не тем (проверка по содержанию после загрузки): больше его не брать."""
+    """Исходник оказался не тем (проверка по содержанию, владелец в приёмке): больше его не брать никогда —
+    запрет переживает новый поиск исходников (find_sources стирает и заново проверяет список произведения)."""
+    _ensure_bans(conn)
+    conn.execute("INSERT INTO source_bans(video_id, title_id, reason, at) VALUES (?, ?, ?, ?) "
+                 "ON CONFLICT(video_id) DO UPDATE SET reason = excluded.reason, at = excluded.at",
+                 (video_id, title_id, why[:200], now_iso()))
     conn.execute("UPDATE title_sources SET verified = 0, score = score - 10, note = ? WHERE title_id = ? AND video_id = ?",
                  (f"не годится: {why}"[:200], title_id, video_id))
     conn.commit()

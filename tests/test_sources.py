@@ -54,3 +54,67 @@ def test_find_sources_with_fake_search_and_llm(monkeypatch):
     assert sources.checked_at(c, "Q9")
     # повторная проверка не нужна, пока свежая
     assert sources.ensure_for_titles(c, llm, [{"title_id": "Q9", "label": "Брат 2", "label_en": None, "year": 2000, "kind": "film"}], log=lambda *a, **k: None) == 0
+
+
+def test_banned_source_stays_unverified_after_recheck(tmp_path):
+    from kinotrends import db, sources
+    c = db.connect(tmp_path / "bans.sqlite")
+    db.init_db(c)
+    c.execute("INSERT INTO titles(id, label_ru, kind, updated_at) VALUES ('Q886', 'Симпсоны', 'animated_series', '2026-10-29T00:00:00Z')")
+    c.execute("INSERT INTO title_sources(title_id, video_id, url, label, channel, kind, language, trust, verified, note, score, found_at) "
+              "VALUES ('Q886', 'rt_game', 'https://rutube.ru/video/game/', 'симпсоны 1 серия', 'drags1', 'episode', 'ru', 0.9, 1, '', 5, '2026-10-29T00:00:00Z')")
+    c.commit()
+    sources.mark_bad(c, "Q886", "rt_game", "запись игры, не сериал")
+    assert sources.banned_sources(c) == {"rt_game": "запись игры, не сериал"}
+    c.execute("UPDATE title_sources SET verified = 1 WHERE video_id = 'rt_game'")  # как будто кто-то вернул отметку
+    c.commit()
+    sources.recheck_verified(c)
+    assert c.execute("SELECT verified FROM title_sources WHERE video_id = 'rt_game'").fetchone()[0] == 0
+
+
+def test_soviet_titles_detected(tmp_path):
+    from kinotrends import db, sources
+    c = db.connect(tmp_path / "soviet.sqlite")
+    db.init_db(c)
+    rows = [("Q1", "Афоня", 1975, '["СССР"]', None, None), ("Q2", "ДМБ", 2000, '["Россия"]', None, None),
+            ("Q3", "Ну, погоди!", 1969, "[]", "Ну, погоди!", None), ("Q4", "Том и Джерри", 1940, "[]", "Tom and Jerry", "Tom and Jerry"),
+            ("Q5", "Сваты", None, '["Украина"]', None, None)]
+    for tid, label, year, countries, orig, en in rows:
+        c.execute("INSERT INTO titles(id, label_ru, year, kind, countries, original_title, label_en, updated_at) VALUES (?,?,?,?,?,?,?,?)",
+                  (tid, label, year, "film", countries, orig, en, "2026-10-29T00:00:00Z"))
+    c.commit()
+    assert sources.soviet_titles(c, ["Q1", "Q2", "Q3", "Q4", "Q5"]) == {"Q1", "Q3"}
+
+
+def test_runtime_mismatch_catches_same_name_other_version():
+    """«Отверженные» 2012 г. — 158 мин; чёрно-белая одноимённая версия на 109 мин — не тот фильм и не тот год."""
+    c = db.connect(TMP / "runtime.sqlite")
+    db.init_db(c)
+    sources._ensure_runtime_cols(c)
+    c.execute("INSERT OR REPLACE INTO titles(id, label_ru, kind, year, updated_at, runtime_min) VALUES ('Q28234', 'Отверженные', 'film', 2012, 'now', '[158]')")
+    c.execute("INSERT OR REPLACE INTO titles(id, label_ru, kind, updated_at, runtime_min) VALUES ('Qser', 'Сериал', 'series', 'now', '[45]')")
+    c.execute("INSERT OR REPLACE INTO titles(id, label_ru, kind, updated_at, runtime_min) VALUES ('Qnone', 'Без данных', 'film', 'now', '[]')")
+    c.commit()
+    assert "109 мин" in sources.runtime_mismatch(c, "Q28234", "film", 6560) and "158" in sources.runtime_mismatch(c, "Q28234", "film", 6560)
+    assert sources.runtime_mismatch(c, "Q28234", "film", 158 * 60 * 0.96) is None  # PAL-ускорение 4 %
+    assert sources.runtime_mismatch(c, "Q28234", "film", 150 * 60) is None
+    assert sources.runtime_mismatch(c, "Qser", "series", 20 * 60) is None  # серии не сверяются
+    assert sources.runtime_mismatch(c, "Qnone", "film", 30 * 60) is None  # длина неизвестна — не мешаем
+    assert sources.runtime_min(c, "Q28234", fetch=False) == [158]
+
+
+def test_runtime_catches_namesake_adaptation(tmp_path):
+    """01.11: под «Гордостью и предубеждением» 2005 (127 мин) пришла версия 1940 (117 мин) — в допуске 15 %,
+    но длина файла точно как у одноимённой экранизации."""
+    from kinotrends import db, sources
+
+    c = db.connect(tmp_path / "rt.sqlite")
+    db.init_db(c)
+    sources.runtime_min(c, "Qnone", fetch=False)  # колонка runtime_min
+    for tid, year, rt in (("Q2005", 2005, "[127]"), ("Q1940", 1940, "[117]")):
+        c.execute("INSERT INTO titles(id, label_ru, year, kind, runtime_min, updated_at) VALUES (?, 'Гордость и предубеждение', ?, 'film', ?, 'now')",
+                  (tid, year, rt))
+    c.commit()
+    assert "1940" in sources.runtime_mismatch(c, "Q2005", "film", 118 * 60, fetch=False)
+    assert sources.runtime_mismatch(c, "Q2005", "film", 128 * 60, fetch=False) is None
+    assert sources.runtime_mismatch(c, "Q2005", "film", 123 * 60, fetch=False) is None  # PAL-ускорение своей версии

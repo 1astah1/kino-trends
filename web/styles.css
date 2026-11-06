@@ -324,3 +324,11 @@ details.fold > summary::before { content: "▸"; color: var(--ink-3); font-size:
 .filters-fold { margin-bottom: 10px; } .filters-fold > summary { font-size: .86rem; } .filters-fold .toolbar { margin: 6px 0 2px; }
 .sec-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
 [id^="sec-"] { scroll-margin-top: 72px; }
+
+/* здоровье системы */
+.health-strip { display: flex; gap: 1px; height: 18px; margin: 4px 0 14px; border-radius: 4px; overflow: hidden; }
+.health-strip i { flex: 1; min-width: 1px; background: var(--good); opacity: .55; }
+.health-strip i.hs-warn { background: var(--warn); opacity: .8; }
+.health-strip i.hs-fail { background: var(--bad); opacity: .9; }
+.plain-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.log-pre { margin: 0; max-height: 360px; overflow: auto; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; color: var(--ink-2); }

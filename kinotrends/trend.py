@@ -126,6 +126,13 @@ KIDS_TITLES = ("барбоскин", "смешарик", "фиксик", "маш
                "царевны", "свинка пеппа", "щенячий патруль", "малышарики", "ми-ми-мишки")
 
 
+def is_kids(it: dict) -> bool:
+    """Детское: на канал с рекламой не ставим (пометка «для детей» режет рекламу)."""
+    g = " ".join(it.get("genres") or []).lower()
+    label = str(it.get("label") or "").lower()
+    return any(k in g for k in KIDS_GENRES) or any(k in label for k in KIDS_TITLES)
+
+
 def is_funny(it: dict) -> bool:
     g = " ".join(it.get("genres") or []).lower()
     label = str(it.get("label") or "").lower()

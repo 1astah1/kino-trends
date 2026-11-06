@@ -1035,6 +1035,97 @@ async function renderPipeline(main) {
   box.append(panel(`${fmtFull(d.items.length)} ${plural(d.items.length, 'задание', 'задания', 'заданий')}`, h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, 'Тип'), h('th', null, 'Что'), h('th', null, 'Статус'), h('th', null, 'В auto-shorts'), h('th', { class: 'num' }, 'Обновлено'), h('th'))), h('tbody', null, rows))), 'ревью и редактор клипов: в интерфейсе auto-shorts'));
 }
 
+// ---------- итоги наших публикаций ----------
+async function renderResults(main) {
+  const runBtn = h('button', { class: 'btn btn-primary', type: 'button', html: ICON.refresh + ' обновить сейчас', title: 'спросить YouTube о наших роликах и переучить подбор, 10–30 секунд' });
+  main.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Итоги'), h('p', { class: 'lead' }, 'Что залетает на наших каналах, что нет и что заблокировали. Раз в 30 минут система спрашивает YouTube о каждом ролике и учится: залетевшие произведения поднимаются в календаре, провальные опускаются, заблокированное и весь его правообладатель уходят из подбора, а ещё не опубликованные ролики этого произведения снимаются.')),
+    h('div', { class: 'actions' }, runBtn)));
+  const box = h('div'); main.append(box); box.append(skeleton(8));
+  const blockTag = p => p.block ? h('span', { class: 'tag tag-bad', title: p.block_reason || '' }, p.block === 'blocked_ru' ? 'заблокирован в РФ' : p.block === 'removed' ? 'удалён' : 'отклонён') : h('span', { class: 'tag tag-good' }, 'в эфире');
+  const draw = d => {
+    box.innerHTML = '';
+    box.append(h('div', { class: 'status-line' }, h('span', null, 'проверено: ', h('b', null, d.checked_at ? ago(d.checked_at) : 'ещё нет')),
+      h('span', null, 'роликов: ', h('b', null, String(d.publications.length))),
+      h('span', null, 'заблокировано: ', h('b', null, String(d.publications.filter(p => p.block).length)))));
+    if ((d.formats || []).length) box.append(panel('Формат роликов: что работает', h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' },
+      h('thead', null, h('tr', null, h('th', null, 'Формат'), h('th', { class: 'num' }, 'Вышло'),
+        h('th', { class: 'num', title: 'старше 6 ч и не более 5 просмотров — YouTube ролик не показывал' }, 'Не показаны'),
+        h('th', { class: 'num' }, 'В час'), h('th', { class: 'num', title: 'мало лайков при показах — смотрят, но листают' }, 'Лайков на 100'), h('th', { class: 'num' }, 'Блок'))),
+      h('tbody', null, d.formats.map(f => h('tr', null, h('td', { class: 'row-title' }, f.label, h('span', { class: 'sub' }, ' с ' + new Date(f.since).toLocaleDateString('ru-RU'))),
+        h('td', { class: 'num' }, String(f.published)),
+        h('td', { class: 'num' }, f.mature ? `${f.not_shown} из ${f.mature}` : '—'),
+        h('td', { class: 'num' }, f.vph_avg == null ? '—' : String(f.vph_avg)),
+        h('td', { class: 'num' }, f.likes_per_100 == null ? '—' : String(f.likes_per_100)),
+        h('td', { class: 'num' }, f.blocked ? String(f.blocked) : '—')))))),
+      'без YouTube Analytics: по просмотрам и лайкам роликов старше 6 часов'));
+    if (d.title_bans.length || d.holder_bans.length) {
+      box.append(panel('Запреты подбора', h('div', null,
+        d.title_bans.length ? h('ul', { class: 'plain-list' }, d.title_bans.map(b => h('li', null, h('b', null, b.label || b.title_id), ' — ', b.reason || '', h('span', { class: 'sub' }, ' · ' + ago(b.at))))) : null,
+        d.holder_bans.length ? h('p', { class: 'sub', style: 'margin-top:8px' }, 'Правообладатели в запрете: ' + d.holder_bans.map(x => x.holder).join('; ')) : null),
+        'и всё с политикой «блокирует и страйкует»'));
+    }
+    if (d.titles.length) box.append(panel('Произведения по нашим роликам', h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' },
+      h('thead', null, h('tr', null, h('th', null, 'Что'), h('th', { class: 'num' }, 'Роликов'), h('th', { class: 'num' }, 'Просмотров'), h('th', { class: 'num' }, 'В час'), h('th', null, ''))),
+      h('tbody', null, d.titles.map(t => h('tr', null, h('td', { class: 'row-title' }, t.label || t.title_id || '—'), h('td', { class: 'num' }, String(t.n)), h('td', { class: 'num' }, fmtN(t.views || 0)), h('td', { class: 'num' }, String(t.vph ?? 0)),
+        h('td', null, t.blocked ? h('span', { class: 'tag tag-bad' }, `блок ×${t.blocked}`) : null))))))));
+    const byCh = {};
+    for (const p of d.publications) (byCh[p.channel_title || p.channel_id || 'канал'] = byCh[p.channel_title || p.channel_id || 'канал'] || []).push(p);
+    for (const [ch, list] of Object.entries(byCh)) {
+      box.append(panel(ch, h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' },
+        h('thead', null, h('tr', null, h('th', null, 'Ролик'), h('th', null, 'Статус'), h('th', { class: 'num' }, 'Просмотры'), h('th', { class: 'num' }, 'В час'), h('th', { class: 'num', title: 'Средний % досмотра (YouTube Analytics, с задержкой до суток)' }, 'Досмотр'), h('th', { class: 'num' }, 'Лайки'), h('th', { class: 'num' }, 'Вышел'))),
+        h('tbody', null, list.map(p => h('tr', null,
+          h('td', { class: 'row-title' }, h('a', { href: `https://www.youtube.com/shorts/${p.video_id}`, target: '_blank', rel: 'noopener', class: 'title-link' }, h('span', { class: 't' }, p.title_label || p.video_id))),
+          h('td', null, blockTag(p)), h('td', { class: 'num' }, p.views == null ? '—' : fmtN(p.views)), h('td', { class: 'num' }, String(p.vph ?? 0)),
+          h('td', { class: 'num' }, p.avg_pct == null ? '—' : `${Math.round(p.avg_pct)}%`),
+          h('td', { class: 'num' }, p.likes == null ? '—' : fmtN(p.likes)), h('td', { class: 'num' }, h('span', { class: 'sub' }, p.published_at ? ago(p.published_at) : '—'))))))), `${list.length} ${plural(list.length, 'ролик', 'ролика', 'роликов')}`));
+    }
+    if (!d.publications.length) box.append(panel('Публикаций ещё нет', empty('Нечего показать', 'Итоги появятся после первой проверки.')));
+  };
+  runBtn.addEventListener('click', async () => { runBtn.disabled = true; try { draw(await post('api/results/run')); toast('Итоги обновлены'); } catch (e) { toast(e.message); } finally { runBtn.disabled = false; } });
+  draw(await api('api/results'));
+}
+
+// ---------- здоровье системы (доктор) ----------
+const HEALTH_CLS = { ok: 'tag-good', info: '', warn: 'tag-warn', fail: 'tag-bad' };
+const HEALTH_RU = { ok: 'в норме', info: 'инфо', warn: 'внимание', fail: 'сломано' };
+const healthTag = st => h('span', { class: 'tag ' + (HEALTH_CLS[st] || '') }, HEALTH_RU[st] || st);
+
+async function renderSystem(main) {
+  const runBtn = h('button', { class: 'btn btn-primary', type: 'button', html: ICON.refresh + ' проверить сейчас', title: 'прогнать все проверки и самолечение, 10–40 секунд' });
+  main.append(h('div', { class: 'page-head' }, h('div', null, h('h1', null, 'Система'), h('p', { class: 'lead' }, 'Доктор проверяет стенд auto-shorts, хранилище, конвейер, публикацию и нейросети каждые 5 минут. Красное — сломано, жёлтое — требует внимания. Известные поломки он чинит сам: поднимает упавшие сервисы, запускает уборку диска, режет разросшиеся логи.')),
+    h('div', { class: 'actions' }, runBtn)));
+  const box = h('div'); main.append(box); box.append(skeleton(8));
+  const draw = d => {
+    box.innerHTML = '';
+    const rep = d.report;
+    if (!rep) { box.append(panel('Отчёта ещё нет', empty('Доктор ещё не запускался', 'Первая проверка пройдёт в течение 5 минут или по кнопке «проверить сейчас».'))); return; }
+    const hist = d.history || [];
+    box.append(h('div', { class: 'status-line' },
+      h('span', null, 'состояние: ', healthTag(rep.status)),
+      h('span', null, 'проверено: ', h('b', null, ago(rep.at))),
+      h('span', null, 'открытых инцидентов: ', h('b', null, String((d.open || []).length))),
+      d.running ? h('span', null, h('b', null, 'идёт проверка…')) : null));
+    if (hist.length) box.append(h('div', { class: 'health-strip', title: 'последние сутки, слева старше', 'aria-label': 'история проверок за сутки' }, hist.map(x => h('i', { class: 'hs-' + x.status, title: `${x.at.replace('T', ' ').slice(0, 16)} — ${HEALTH_RU[x.status] || x.status}` }))));
+    if ((d.open || []).length) box.append(panel('Открытые инциденты', h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('thead', null, h('tr', null, h('th', null, 'Статус'), h('th', null, 'Что'), h('th', null, 'Подробно'), h('th', { class: 'num' }, 'С'), h('th', { class: 'num' }, 'Раз'))),
+      h('tbody', null, d.open.map(i => h('tr', null, h('td', null, healthTag(i.status)), h('td', { class: 'row-title' }, h('div', null, h('span', { class: 't' }, i.title), h('span', { class: 'sub' }, i.value || ''))), h('td', null, h('span', { class: 'sub', style: 'white-space:normal;max-width:520px' }, i.detail || '—')), h('td', { class: 'num' }, h('span', { class: 'sub' }, ago(i.first_seen))), h('td', { class: 'num' }, String(i.seen)))))))));
+    if ((rep.actions || []).length) box.append(panel('Самолечение в последней проверке', h('ul', { class: 'plain-list' }, rep.actions.map(a => h('li', null, a)))));
+    if ((rep.errors || []).length) box.append(panel('Пробы не удались', h('ul', { class: 'plain-list' }, rep.errors.map(a => h('li', null, a)))));
+    const groups = {};
+    for (const c of rep.checks) (groups[c.group] = groups[c.group] || []).push(c);
+    for (const [g, list] of Object.entries(groups)) {
+      box.append(panel(g, h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('tbody', null, list.map(c => h('tr', null,
+        h('td', { style: 'width:110px' }, healthTag(c.status)),
+        h('td', { class: 'row-title' }, h('div', null, h('span', { class: 't' }, c.title), h('span', { class: 'sub' }, c.value || ''))),
+        h('td', null, c.detail ? h('span', { class: 'sub', style: 'white-space:normal;max-width:560px' }, c.detail) : null, c.hint && c.status !== 'ok' ? h('span', { class: 'sub', style: 'white-space:normal;color:var(--ink-2)' }, '→ ' + c.hint) : null))))))));
+    }
+    const logs = (rep.logs || []).filter(r => /ERROR|CRITICAL|WARNING/.test(r.line)).slice(-25).reverse();
+    if (logs.length) box.append(panel('Свежие ошибки и предупреждения в логах стенда', h('pre', { class: 'log-pre' }, logs.map(r => `${r.log}: ${r.line}`).join('\n')), 'шум перезапусков отфильтрован'));
+    if ((d.resolved || []).length) box.append(panel('Недавно починилось', h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' }, h('tbody', null, d.resolved.slice(0, 15).map(i => h('tr', null, h('td', { style: 'width:110px' }, healthTag(i.status)), h('td', null, i.title), h('td', { class: 'num' }, h('span', { class: 'sub' }, 'было ' + ago(i.first_seen) + ', починилось ' + ago(i.resolved_at))))))))));
+  };
+  runBtn.addEventListener('click', async () => { runBtn.disabled = true; runBtn.lastChild.textContent = ' проверяю…'; try { draw(await post('api/system/run')); toast('Проверка готова'); } catch (e) { toast(e.message); } finally { runBtn.disabled = false; runBtn.lastChild.textContent = ' проверить сейчас'; } });
+  draw(await api('api/system'));
+}
+
 // ---------- популярные видео СНГ под перезалив ----------
 const POP_RU = { clean: 'чистое', check: 'проверить', no: 'не брать', unknown: 'не проверено' };
 const POP_CLS = { clean: 'tag-good', check: 'tag-warn', no: 'tag-bad', unknown: '' };
@@ -1479,6 +1570,8 @@ async function render() {
     else if (state.route === 'shorts') await renderShorts(fresh);
     else if (state.route === 'collect') await renderCollect(fresh);
     else if (state.route === 'overview') await renderOverview(fresh);
+    else if (state.route === 'system') await renderSystem(fresh);
+    else if (state.route === 'results') await renderResults(fresh);
     else await renderToday(fresh);
   } catch (e) {
     fresh.append(panel('Не удалось загрузить', empty('Ошибка: ' + e.message, 'Сервис ещё поднимается или сбор занял базу. Попробуй обновить страницу.')));
@@ -1487,7 +1580,7 @@ async function render() {
   main.innerHTML = '';
   main.append(...fresh.childNodes);
   main.classList.remove('loading');
-  document.title = ({ today: 'Сегодня', pipeline: 'Конвейер', help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
+  document.title = ({ today: 'Сегодня', pipeline: 'Конвейер', help: 'Как пользоваться', overview: 'Обзор', cut: 'Что резать', videos: 'Видео', video: 'Ролик', films: 'Фильмы и сериалы', film: 'Произведение', interests: 'Интересы', channels: 'Каналы', channel: 'Канал', shorts: 'Ролики', collect: 'Сбор', system: 'Система', results: 'Итоги' }[state.route] || 'Кино-тренды') + ' · Кино-тренды Shorts';
 }
 addEventListener('hashchange', render);
 renderFilters();

@@ -37,3 +37,30 @@ def test_cutter_hint_and_brief_block():
         files.init(c)
         b = recommend.brief(c, stats.Filters("30", lang="ru"), "Q1")
         assert "cutter" in b and b["cutter"]["clip_min_s"] <= b["cutter"]["clip_max_s"] and "hint" in b["cutter"]
+
+
+def test_watch_relaunches_download_that_never_started(monkeypatch):
+    """Загрузка ждала очереди внутри сервиса и пропала с перезапуском: на хранилище нет ни процесса, ни лога —
+    сторож запускает её заново, а не пишет «загрузка оборвалась» (01.11 «Резня зомби», «Need for Speed»)."""
+    import subprocess
+    import time as _time
+
+    c = db.connect()  # сторож открывает базу по умолчанию (в тестах — во временной папке KT_VAR)
+    db.init_db(c)
+    files.init(c)
+    c.execute("INSERT OR REPLACE INTO downloads(title_id, video_id, url, status, created_at) VALUES ('Q1','w1','https://rutube.ru/video/w1/','running','2026-11-01T00:00:00Z')")
+    c.commit()
+    monkeypatch.setattr(files, "_ssh", lambda st, cmd, timeout=60: subprocess.CompletedProcess(cmd, 0, "NOLOG\n", ""))
+    clock = iter([0, 100, 200, 300, 400])
+    monkeypatch.setattr(files.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(files.time, "sleep", lambda s: None)
+    started = []
+    monkeypatch.setattr(files, "_download", lambda vid, url, st: started.append((vid, url)))
+    files._watch_remote("w1", "/srv/files/w1.mp4", {"remote": True})
+    deadline = _time.time() + 2
+    while not started and _time.time() < deadline:
+        _time.sleep(0.01)
+    assert started == [("w1", "https://rutube.ru/video/w1/")]
+    assert c.execute("SELECT status FROM downloads WHERE video_id = 'w1'").fetchone()[0] == "running"
+    assert files._running.get("w1") is True  # флаг держится, второго сторожа не будет
+    files._running.pop("w1", None)

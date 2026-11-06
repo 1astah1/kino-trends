@@ -220,6 +220,29 @@ def _interest_block(conn: sqlite3.Connection, title_id: str) -> dict:
     return {"summary": sm, "lines": describe(sm), "series": series(conn, title_id)}
 
 
+FILM_KINDS = ("film", "animated")
+SAME_EPISODE_S = 3  # перезалив той же серии: длина совпадает до пары секунд
+
+
+def fresh_sources(conn: sqlite3.Connection, title_id: str, srcs: list[dict], kind: str | None = None) -> list[dict]:
+    """Исходники, из которых ролики ещё не нарезаны. Нарезанный второй раз не режем: те же сцены — повторы на канале
+    (01.11: календарь ставил «Такси» и «Викингов» заново, один и тот же файл нарезан по 4 раза). Фильм режется один
+    раз — другая заливка того же фильма даёт те же сцены; у сериала берётся другая серия (перезалив той же серии
+    узнаём по длине)."""
+    cut = conn.execute("SELECT DISTINCT p.source_video_id, s.duration_s FROM pipeline_items p "
+                       "LEFT JOIN title_sources s ON s.title_id = p.ref_id AND s.video_id = p.source_video_id "
+                       "WHERE p.kind = 'film' AND p.ref_id = ? AND p.source_video_id IS NOT NULL AND p.as_packages NOT IN ('[]', '')",
+                       (title_id,)).fetchall()
+    if not cut:
+        return list(srcs)
+    if kind in FILM_KINDS:
+        return []
+    ids = {r[0] for r in cut}
+    durs = [int(r[1]) for r in cut if r[1]]
+    return [x for x in srcs if x["video_id"] not in ids
+            and not any(abs(int(x.get("duration_s") or -99) - d) <= SAME_EPISODE_S for d in durs)]
+
+
 def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
     """Бриф для конвейера нарезки: что это, почему, какие сцены, какой хук, длительность, время, хэштеги, референсы."""
     from .neuro import get_explain, get_insights
@@ -231,10 +254,17 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
         return None
     srcs = get_sources(conn, title_id)
     expl = get_explain(conn, title_id)
-    yt_src = next((x for x in srcs if x["verified"] and "youtube.com" in x["url"]), None)
-    any_src = next((x for x in srcs if x["verified"]), None)  # непроверенный исходник в работу не идёт
-    main_src = yt_src or any_src
-    alt_src = next((x for x in srcs if x["verified"] and x is not main_src), None)
+    fresh = fresh_sources(conn, title_id, srcs, d["title"].get("kind"))
+    yt_src = next((x for x in fresh if x["verified"] and "youtube.com" in x["url"]), None)
+    rt_src = next((x for x in fresh if x["verified"] and "rutube.ru" in x["url"]), None)
+    any_src = next((x for x in fresh if x["verified"]), None)  # непроверенный исходник в работу не идёт
+    # YouTube с наших серверов не качается (бот-проверка, 23–29.10 на обоих хранилищах): Rutube первым,
+    # пока source_prefer не переключат на youtube (появятся cookies или прокси хранилища)
+    if (get_setting(conn, "source_prefer") or "rutube") == "youtube":
+        main_src = yt_src or rt_src or any_src
+    else:
+        main_src = rt_src or yt_src or any_src
+    alt_src = next((x for x in fresh if x["verified"] and x is not main_src), None)
     from .files import status as dl_status
     dl = dl_status(conn, main_src["video_id"]) if main_src else None
     bucket_bounds = {"до 15 с": (8, 15), "16–30 с": (16, 30), "31–45 с": (31, 45), "46–60 с": (46, 60), "61–90 с": (61, 90), "91–180 с": (91, 180)}
@@ -249,6 +279,9 @@ def brief(conn: sqlite3.Connection, f: Filters, title_id: str) -> dict | None:
     if rt.get("clip_max_s"):
         clip_max = min(clip_max, rt["clip_max_s"])  # с заявкой Content ID шортс дольше 60 с блокируется
         clip_min = min(clip_min, clip_max)
+    # проверка QC в auto-shorts пропускает 20–58 с: короче/длиннее ролик не дойдёт до приёмки чистым
+    clip_min = max(20, clip_min)
+    clip_max = max(clip_min + 5, min(58, clip_max))
     return {
         "rights": {"level": rt["level"], "level_ru": rt.get("level_ru"), "risk": rt.get("risk"), "reasons": rt.get("reasons", []), "rule": rt.get("rule"),
                    "clip_max_s": rt.get("clip_max_s"), "holder": rt.get("holder"), "holder_policy": rt.get("holder_policy"), "passes": rights_ok},

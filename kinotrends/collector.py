@@ -580,6 +580,7 @@ class Collector:
                 if not it["title_id"] or it["status"] == "skipped":
                     continue
                 cands = [c for c in (it.get("source"), it.get("source_alt")) if c and (remote or "rutube.ru" in c["url"])]
+                cands.sort(key=lambda c: 0 if "rutube.ru" in c["url"] else 1)  # YouTube с хранилища не качается — Rutube первым
                 src = cands[0] if cands else None
                 if not src:
                     continue

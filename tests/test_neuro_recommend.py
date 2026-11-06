@@ -27,6 +27,8 @@ class FakeLLM(LLM):
 def conn():
     c = db.connect(TMP / "neuro.sqlite")
     db.init_db(c)
+    # «Брат 2» здесь просто пример фильма; правило «российское не берём» (outcomes.ru_enforced) проверяется в test_outcomes
+    c.execute("INSERT INTO settings(key, value) VALUES ('exclude_ru_enforced', '0') ON CONFLICT(key) DO UPDATE SET value = '0'")
     ts = db.now_iso()
     c.execute("INSERT OR IGNORE INTO titles(id, label_ru, label_en, year, kind, sitelinks, genres, countries, updated_at) VALUES ('Q1','Брат 2','Brother 2',2000,'film',40,'[\"боевик\"]','[\"Россия\"]',?)", (ts,))
     c.execute("INSERT OR IGNORE INTO titles(id, label_ru, label_en, year, kind, sitelinks, genres, countries, updated_at) VALUES ('Q2','Зимородок','Yali Capkini',2022,'series',12,'[\"драма\"]','[\"Турция\"]',?)", (ts,))

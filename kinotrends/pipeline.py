@@ -14,7 +14,9 @@ cookie-сессия и CSRF):
 """
 from __future__ import annotations
 
+import re
 import sqlite3
+import subprocess
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -22,13 +24,13 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from . import files, popular
-from .db import dumps, loads, now_iso
+from .db import dumps, get_meta, loads, now_iso, set_meta
 
 STATES = ("new", "file_pending", "needs_rights", "sent", "cutting", "review", "qc_failed", "approved", "publishing", "published", "failed", "cancelled")
 ACTIVE = ("new", "needs_rights", "file_pending", "retry_wait", "sent", "cutting", "review", "approved", "publishing")
 START_STATES = ("new", "needs_rights", "file_pending", "retry_wait")  # ещё не в auto-shorts: на них действует pipeline_max_per_tick
 WORK_STATES = ("sent", "cutting")  # в производстве: занимают хранилище и воркеры auto-shorts
-REVIEW_BACKLOG_ITEMS = 4  # фильмов, ждущих приёмки: больше не готовим, пока владелец не разберёт
+REVIEW_BACKLOG_ITEMS = 0  # 0 — без ограничения: производство не ждёт приёмку (решение владельца 29.10)
 
 
 AUTO_RETRY_MAX = 2  # сколько раз конвейер сам перезапускает клип после временного сбоя
@@ -105,6 +107,21 @@ class AutoShorts:
     def get(self, path: str, **params):
         return self._req("GET", path, params=params or None)
 
+    def get_bytes(self, path: str) -> bytes:
+        """Файл из API (лист раскадровки): байты; 401 — перелогин и повтор."""
+        if self.csrf is None:
+            self.login()
+        try:
+            r = self.client.get(path)
+            if r.status_code in (401, 403):
+                self.login()
+                r = self.client.get(path)
+        except httpx.HTTPError as e:
+            raise ASError(f"auto-shorts недоступен: {e.__class__.__name__}") from e
+        if r.status_code >= 400:
+            raise ASError(f"GET {path}: HTTP {r.status_code}")
+        return r.content
+
     def post(self, path: str, body: dict | None = None):
         return self._req("POST", path, body=body or {})
 
@@ -138,8 +155,11 @@ class AutoShorts:
         """Перезапуск упавшего ролика с его стадии."""
         return self.post(f"/api/v1/jobs/{jid}/retry", {})
 
-    def review(self, jid, decision: str, expected: str, comment: str | None = None) -> dict:
-        return self.post(f"/api/v1/jobs/{jid}/review", {"decision": decision, "expected_status": expected, "comment": comment})
+    def review(self, jid, decision: str, expected: str, comment: str | None = None, reject_reason: str | None = None) -> dict:
+        body = {"decision": decision, "expected_status": expected, "comment": comment}
+        if reject_reason:
+            body["reject_reason"] = reject_reason
+        return self.post(f"/api/v1/jobs/{jid}/review", body)
 
     def package_of_job(self, jid) -> dict:
         return self.get(f"/api/v1/jobs/{jid}/package")
@@ -221,7 +241,7 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
             raise ValueError("нет такого произведения")
         cu = b["cutter"]
         if not cu.get("source_url"):
-            raise ValueError("у произведения ещё нет исходника")
+            raise ValueError("нет нового исходника: не найден или уже нарезан")
         if not cu.get("rights_ok"):
             raise ValueError("произведение не проходит проверку прав: " + (cu.get("rights_note") or ""))
         src = b.get("source") or {}
@@ -261,6 +281,62 @@ def enqueue(conn: sqlite3.Connection, kind: str, ref_id: str, settings: dict, no
     return _row(conn, item_id)
 
 
+TOPUP_EVERY_MIN = 20
+
+
+def top_up(conn: sqlite3.Connection, settings: dict, rows: list | None = None, log=print) -> int:
+    """Запас конвейера. Календарь трендов почти весь из фильмов без исходника (голливуд на YouTube целиком не лежит:
+    под «Матрицей» — обзоры и чужое кино), и 01.11 конвейер давал 2 ролика в день на канал. План владельца —
+    4 в день на КАЖДОМ канале: когда ждущих запуска мало, добираем произведения с проверенным ещё не нарезанным
+    исходником (у сериала — новая серия), выше — что сильнее в трендах. Запреты те же, что у календаря."""
+    if (settings.get("pipeline_topup") or "1") == "0":
+        return 0
+    last = get_meta(conn, "pipeline_topup_at")
+    if last and last > (datetime.now(timezone.utc) - timedelta(minutes=TOPUP_EVERY_MIN)).strftime("%Y-%m-%dT%H:%M:%SZ"):
+        return 0
+    set_meta(conn, "pipeline_topup_at", now_iso())
+    if rows is None:
+        rows = conn.execute(f"SELECT * FROM pipeline_items WHERE status IN ({','.join('?' * len(ACTIVE))})", ACTIVE).fetchall()
+    waiting = sum(1 for r in rows if r["status"] in ("new", "file_pending", "retry_wait"))
+    publishing = sum(1 for r in rows if r["status"] == "publishing" and r["kind"] == "film")
+    want = int(settings.get("pipeline_topup_waiting") or 4) - waiting
+    # фильмов на автозаливе с запасом (≈5 роликов каждый, 4 канала × 4 в день) — больше не набираем, диск и стенд не резиновые
+    if want <= 0 or publishing >= int(settings.get("pipeline_topup_publishing_max") or 14):
+        return 0
+    from . import outcomes, recommend, sources
+    from .stats import Filters, films
+    busy = {r["ref_id"] for r in rows}
+    ids = [r[0] for r in conn.execute("SELECT DISTINCT title_id FROM title_sources WHERE verified = 1") if r[0] not in busy]
+    if not ids:
+        return 0
+    bad = outcomes.banned_title_ids(conn, ids)
+    if (settings.get("exclude_soviet") or "1") != "0":
+        bad |= sources.soviet_titles(conn, ids)
+    rank = {g["title_id"]: i for i, g in enumerate(films(conn, Filters("30", lang="ru"), limit=1000, sort="score")["items"])}
+    kinds = {r[0]: r[1] for r in conn.execute(f"SELECT id, kind FROM titles WHERE id IN ({','.join('?' * len(ids))})", ids)}
+    pool = []
+    for tid in ids:
+        if tid in bad:
+            continue
+        fresh = [x for x in recommend.fresh_sources(conn, tid, sources.get_sources(conn, tid), kinds.get(tid)) if x["verified"]]
+        if fresh:
+            pool.append((rank.get(tid, 10**6), tid))
+    added = tried = 0
+    for _, tid in sorted(pool):
+        if added >= want or tried >= 30:
+            break
+        tried += 1
+        try:
+            r = enqueue(conn, "film", tid, settings, note="запас: проверенный исходник")
+        except ValueError:
+            continue
+        if r["status"] in ("new", "file_pending") and r["ref_id"] not in busy:
+            busy.add(tid)
+            added += 1
+            log(f"конвейер: запас — «{r.get('label')}» в очередь (проверенный исходник, ещё не нарезан)")
+    return added
+
+
 def enqueue_today(conn: sqlite3.Connection, settings: dict) -> dict:
     """Всё, что на сегодня: слоты календаря кино и подборка видео."""
     from . import schedule
@@ -268,9 +344,22 @@ def enqueue_today(conn: sqlite3.Connection, settings: dict) -> dict:
     # поток в приёмку: берём слоты календаря и на дни вперёд (лимиты производства и приёмки держит тик)
     ahead = max(0, min(6, int(settings.get("pipeline_enqueue_days_ahead") or 0)))
     v = schedule.view(conn, days=1 + ahead, back=0)
+    soviet: set[str] = set()
+    all_ids = [it["title_id"] for d in v["days"] for it in d["items"]]
+    if (settings.get("exclude_soviet") or "1") != "0":
+        from .sources import soviet_titles
+        soviet = soviet_titles(conn, all_ids)
+    from . import outcomes
+    banned = outcomes.banned_title_ids(conn, all_ids)
     for d in v["days"]:
         for it in d["items"]:
             if not it["title_id"] or it["status"] != "planned":
+                continue
+            if it["title_id"] in soviet:
+                out["skipped"].append({"kind": "film", "ref_id": it["title_id"], "label": it["label"], "why": "советское кино не берём"})
+                continue
+            if it["title_id"] in banned:
+                out["skipped"].append({"kind": "film", "ref_id": it["title_id"], "label": it["label"], "why": "правообладатель блокирует или уже блокировал у нас"})
                 continue
             try:
                 r = enqueue(conn, "film", it["title_id"], settings, note=f"календарь {d['day']}")
@@ -338,6 +427,10 @@ def rights_for(item: dict, settings: dict) -> dict | None:
         if rt not in RIGHTS_TYPES:
             return None
     note = (settings.get("pipeline_rights_note") or "").strip() or f"тип прав задан в Кино-трендах ({rt})"
+    ref = str(item.get("ref_id") or "")
+    if item.get("kind") == "film" and re.fullmatch(r"Q\d+", ref):
+        # auto-shorts берёт по нему справку из Википедии для подсказки и факта после ответа (film_ref.py)
+        note += f"; wikidata={ref}"
     return {"rights_type": rt, "owner_name": owner, "proof_note": note, "attribution_text": attribution_text(item, rt, settings),
             "license": None, "license_url": None, "owner_channel_url": None}
 
@@ -352,11 +445,25 @@ def set_rights(conn: sqlite3.Connection, item_id: int, rights_type: str) -> dict
     return _row(conn, item_id)
 
 
+# сцена 22–40 с (цель 32): с вопросом, ответом викторины и рекламной вставкой ролик ~45 с — длинные шортсы
+# с паузами досматривают хуже (29.10). Короче 22 нельзя: при потолке 25–30 сцены обрывались без развязки.
+# Настройки pipeline_clip_min_sec / _target_sec / _max_sec перекрывают.
+CLIP_MIN_SEC, CLIP_TARGET_SEC, CLIP_MAX_SEC = 22, 32, 40
+
+
 def _options(item: dict, settings: dict) -> dict:
-    cmax = min(58, int(item.get("clip_max_s") or 58))
-    cmin = max(15, min(int(item.get("clip_min_s") or 15), cmax - 5))
+    """Параметры отбора моментов. Длина — под законченную сцену (завязка → развязка), а не под «модную»
+    длину шортсов этого произведения: 29.10 потолок 25–30 с резал сцены до обрывков без развязки."""
     n = max(1, int(settings.get("pipeline_clips_per_source") or 3))
-    return {"selector": "auto", "target_clip_sec": max(cmin, min(cmax, 30)), "min_clip_sec": cmin, "max_clip_sec": cmax,
+    if item.get("kind") == "film":
+        cmin = int(settings.get("pipeline_clip_min_sec") or CLIP_MIN_SEC)
+        target = int(settings.get("pipeline_clip_target_sec") or CLIP_TARGET_SEC)
+        cmax = int(settings.get("pipeline_clip_max_sec") or CLIP_MAX_SEC)
+    else:
+        cmax = min(58, int(item.get("clip_max_s") or 58))
+        cmin = max(15, min(int(item.get("clip_min_s") or 15), cmax - 5))
+        target = max(cmin, min(cmax, 30))
+    return {"selector": "auto", "target_clip_sec": target, "min_clip_sec": cmin, "max_clip_sec": cmax,
             "max_candidates": max(12, n * 2), "target_count": n, "detail_pass": True, "tighten_pauses": False}
 
 
@@ -422,8 +529,17 @@ def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, setti
 
     m = dict(item.get("metrics") or {})
     cc = m.get("content_check") or {}
+    if item.get("kind") == "film" and not m.get("runtime_ok"):
+        # одноимённая экранизация другой длины («Отверженные»: 109 мин вместо 158) — не тот фильм и не тот год
+        kind = (conn.execute("SELECT kind FROM titles WHERE id = ?", (item["ref_id"],)).fetchone() or {"kind": None})["kind"]
+        bad = sources.runtime_mismatch(conn, item["ref_id"], kind, item.get("duration_s"))
+        if bad:
+            return _reject_source(conn, asc, item, m, bad, log)
+        m["runtime_ok"] = True
+        item["metrics"] = m
+        _set(conn, item["id"], metrics=dumps(m))
     if cc.get("ok") is True:
-        return True
+        return _frames_gate(conn, asc, item, settings, m, log)
     tries = int(cc.get("tries") or 0)
     try:
         t = asc.get(f"/api/v1/sources/{item['as_source_id']}/transcript")
@@ -435,7 +551,7 @@ def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, setti
                            (item["ref_id"], item.get("source_video_id"))).fetchone() if item.get("source_video_id") else None
     hint = f"«{src_row['label']}», канал «{src_row['channel']}»" if src_row else (f"канал «{item.get('channel')}»" if item.get("channel") else None)
     res = content_check.check_transcript(llm_from_settings(settings), item.get("label") or "", m.get("year"), m.get("title_kind"), sents,
-                                         duration_sec=t.get("duration_sec"), video_hint=hint)
+                                         duration_sec=t.get("duration_sec"), video_hint=hint, words=t.get("words"))
     res.update(tries=tries + 1, at=now_iso())
     m["content_check"] = res
     if res["ok"] is None:
@@ -445,18 +561,135 @@ def _content_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, setti
         _set(conn, item["id"], metrics=dumps(m))
         return item["status"]
     if res["ok"] is False:
-        if item.get("source_video_id"):
-            sources.mark_bad(conn, item["ref_id"], item["source_video_id"], res["reason"])
-        try:
-            asc._req("DELETE", f"/api/v1/sources/{item['as_source_id']}", params={"purge_files": "true"})
-        except ASError as e:
-            log(f"конвейер: удалить негодный исходник {item['as_source_id']}: {e}", "warn")
-        _set(conn, item["id"], status="failed", metrics=dumps(m), last_error=f"исходник не годится: {res['reason']} — в следующий раз возьмём другой")
-        log(f"конвейер: «{item.get('label')}»: исходник отбракован — {res['reason']}")
-        return "failed"
+        return _reject_source(conn, asc, item, m, res["reason"], log)
+    item["metrics"] = m
     _set(conn, item["id"], metrics=dumps(m))
     log(f"конвейер: «{item.get('label')}»: исходник проверен по содержанию ({res.get('what') or 'язык'})")
+    return _frames_gate(conn, asc, item, settings, m, log)
+
+
+def _purge_source(asc: "AutoShorts", item: dict, log=print) -> None:
+    """Клипы фильма решены (или вышли) — исходник на стенде больше не нужен: диск стенда 30 ГБ, при свободных меньше
+    pipeline_min_free_gb новые фильмы не берутся (01.11 стояло 6,7 ГБ из-за 28 отработанных исходников).
+    Готовые ролики (jobs/…/final.mp4), публикации и сбор просмотров от исходника не зависят; пока из исходника
+    режутся клипы, auto-shorts удалять не даст (409)."""
+    if not item.get("as_source_id"):
+        return
+    try:
+        asc._req("DELETE", f"/api/v1/sources/{item['as_source_id']}", params={"purge_files": "true"})
+    except ASError as e:
+        if "HTTP 404" not in str(e):  # уже удалён при одобрении клипов
+            log(f"конвейер: «{item.get('label')}»: исходник {item['as_source_id']} на стенде не удалён: {e}", "warn")
+        return
+    log(f"конвейер: «{item.get('label')}»: клипы готовы — исходник {item['as_source_id']} удалён со стенда")
+
+
+# ошибки, после которых исходник не оживёт: ролик закрыт/удалён (Rutube 403/404 и через мак из России), сборник длиннее 3 ч.
+# 01.11: «Великолепный век» с закрытого ролика Rutube падал 8 раз подряд — календарь брал тот же исходник
+DEAD_SOURCE = re.compile(r"\[rutube\][^\n]*HTTP Error 40[34]|Video unavailable|Private video|has been removed|no longer available|длиннее 3 ч", re.I)
+
+
+def _forget_dead_source(conn: sqlite3.Connection, item: dict, error: str, log=print) -> None:
+    if item.get("kind") != "film" or not item.get("source_video_id") or not DEAD_SOURCE.search(error or ""):
+        return
+    from . import sources
+    sources.mark_bad(conn, item["ref_id"], item["source_video_id"], "исходник не отдаётся: " + error[:120])
+    log(f"конвейер: «{item.get('label')}»: исходник {item['source_video_id']} закрыт — больше не берём")
+
+
+def _reject_source(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, m: dict, reason: str, log=print) -> str:
+    """Исходник не годится: запрет навсегда (не вернётся при новом поиске), удалить из auto-shorts, задание — failed."""
+    from . import sources
+    if item.get("source_video_id"):
+        sources.mark_bad(conn, item["ref_id"], item["source_video_id"], reason)
+    try:
+        asc._req("DELETE", f"/api/v1/sources/{item['as_source_id']}", params={"purge_files": "true"})
+    except ASError as e:
+        log(f"конвейер: удалить негодный исходник {item['as_source_id']}: {e}", "warn")
+    _set(conn, item["id"], status="failed", metrics=dumps(m), last_error=f"исходник не годится: {reason} — в следующий раз возьмём другой")
+    log(f"конвейер: «{item.get('label')}»: исходник отбракован — {reason}")
+    return "failed"
+
+
+def _visual_check(asc: "AutoShorts", item: dict, settings: dict) -> dict:
+    """Разрешение и кадры исходника: мыло, игра, реакция, зеркало, окно на фоне. ok: True/False/None (не проверено)."""
+    from . import content_check
+    from .llm import llm_from_settings
+
+    sid = item["as_source_id"]
+    src = asc.source(sid)
+    res = content_check.check_resolution(src.get("width"), src.get("height"))
+    if res["ok"] is False:
+        return res
+    try:
+        sheets = (asc.get(f"/api/v1/sources/{sid}/storyboard") or {}).get("sheets") or []
+    except ASError as e:
+        return {"ok": None, "reason": f"раскадровки нет: {e}"}
+    if not sheets:
+        return {"ok": None, "reason": "раскадровки нет"}
+    m = dict(item.get("metrics") or {})
+    llm = llm_from_settings(settings)
+    for i in sorted({len(sheets) // 5, (len(sheets) * 3) // 5}):
+        try:
+            img = asc.get_bytes(sheets[i])
+        except ASError as e:
+            return {"ok": None, "reason": f"лист раскадровки: {e}"}
+        r = content_check.check_frames(llm, item.get("label") or "", m.get("year"), m.get("title_kind"), img)
+        if r.get("ok") is not True:
+            return r
+    return {"ok": True, "reason": "кадры в порядке", "size": res.get("size")}
+
+
+def _frames_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, settings: dict, m: dict, log=print):
+    """Вторая ступень проверки исходника — по кадрам. True — резать; иначе статус задания."""
+    vc = m.get("visual_check") or {}
+    if vc.get("ok") is True:
+        return True
+    tries = int(vc.get("tries") or 0) + 1
+    res = _visual_check(asc, item, settings)
+    res.update(tries=tries, at=now_iso())
+    if res.get("ok") is None and tries >= CONTENT_CHECK_MAX_TRIES:
+        res.update(ok=True, reason=f"кадры не проверены ({res.get('reason')}): пропускаем, чтобы не стоять")
+    m["visual_check"] = res
+    item["metrics"] = m
+    if res.get("ok") is None:
+        _set(conn, item["id"], metrics=dumps(m))
+        return item["status"]
+    if res.get("ok") is False:
+        return _reject_source(conn, asc, item, m, res["reason"], log)
+    _set(conn, item["id"], metrics=dumps(m))
+    log(f"конвейер: «{item.get('label')}»: кадры исходника в порядке ({res.get('size') or ''})")
     return True
+
+
+def _late_frames_gate(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, settings: dict, log=print) -> str | None:
+    """Фильмы, нарезанные до проверки по кадрам (29.10): проверить один раз; брак — снять ещё не одобренные ролики."""
+    m = dict(item.get("metrics") or {})
+    if (m.get("visual_check") or {}).get("ok") is True or not item.get("as_source_id"):
+        return None
+    tries = int((m.get("visual_check") or {}).get("tries") or 0) + 1
+    from . import content_check
+    try:
+        sq = content_check.speech_quality((asc.get(f"/api/v1/sources/{item['as_source_id']}/transcript") or {}).get("words"))
+    except ASError:
+        sq = {"ok": None}
+    res = {"ok": False, "reason": sq["reason"]} if sq.get("ok") is False else _visual_check(asc, item, settings)
+    res.update(tries=tries, at=now_iso(), late=True)
+    if res.get("ok") is None and tries >= CONTENT_CHECK_MAX_TRIES:
+        res.update(ok=True, reason="кадры не проверены: пропускаем")
+    m["visual_check"] = res
+    item["metrics"] = m  # дальше в этом шаге метрики пишутся из item — не затирать проверку старым снимком
+    if res.get("ok") is not False:
+        _set(conn, item["id"], metrics=dumps(m))
+        return None
+    for jid in item.get("as_jobs") or []:
+        try:
+            j = asc.get(f"/api/v1/jobs/{int(jid)}")
+            if j.get("status") not in ("approved", "published", "cancelled", "rejected"):
+                asc.post(f"/api/v1/jobs/{int(jid)}/cancel", {})
+        except ASError as e:
+            log(f"конвейер: снять ролик {jid}: {e}", "warn")
+    return _reject_source(conn, asc, item, m, res["reason"], log)
 
 
 def _channel_targets(asc: "AutoShorts", item: dict, settings: dict, jopts: dict) -> list[tuple[str, int | None]]:
@@ -468,10 +701,113 @@ def _channel_targets(asc: "AutoShorts", item: dict, settings: dict, jopts: dict)
     by_channel = _loads(settings.get("pipeline_banner_by_channel"), {}) or {}
     main = item.get("channel_slug") or jopts.get("channel_id") or ""
     out = [(main, by_channel.get(main) or jopts.get("banner_variant_id"))]
-    second = (settings.get("pipeline_channel_film_2") or "").strip()
-    if item.get("kind") == "film" and second and second != main:
-        out.append((second, by_channel.get(second)))
+    if item.get("kind") != "film":
+        return out
+    # все каналы ротации (pipeline_channels_film через запятую; по старой настройке — основной + второй).
+    # Баннер не задан в pipeline_banner_by_channel — auto-shorts поставит баннер канала по умолчанию.
+    listed = [c.strip() for c in (settings.get("pipeline_channels_film") or "").split(",") if c.strip()]
+    if not listed:
+        listed = [x for x in (main, (settings.get("pipeline_channel_film_2") or "").strip()) if x]
+    ready_cache: dict = {}
+    for ch in listed:
+        if ch != main and ch not in (c for c, _ in out):
+            # канал ротации ещё не подключён к YouTube — ролики на него не режем: начнут идти сами после входа
+            if asc is not None and not _channel_ready(asc, ch, ready_cache):
+                continue
+            out.append((ch, by_channel.get(ch)))
     return out
+
+
+# Темы каналов (владелец 29.10: «у каждого канала своя тема» — YouTube подбирает каналу зрителей по похожести
+# роликов). Подстроки жанров Wikidata; kinds — бонус за тип произведения. pipeline_channel_themes (JSON) перекрывает.
+CHANNEL_THEMES: dict[str, dict] = {
+    "emerald": {"genres": ["боевик", "фантаст", "супергер", "ужас", "триллер", "фэнтез", "приключ", "эпическ", "военн", "слэшер"],
+                "kinds": ["film"]},
+    "bpn-shorts": {"genres": ["комед", "ситком", "мульт", "анимац", "пародий"], "kinds": ["animated_series", "animated"]},
+    "kadr-dnya": {"genres": ["драм", "мелодрам", "мыльн", "романтич", "историческ"], "kinds": ["series"]},
+    "myhostbox-2": {"genres": ["криминал", "детектив", "полицейск", "нуар", "мистери", "ограблен"], "kinds": []},
+}
+CHANNEL_BACKLOG_MAX = 6  # фильмов в работе на канале; больше — следующий подходящий или самый свободный
+CHANNEL_SPREAD = 1  # тема канала решает только среди каналов, у которых фильмов в работе не больше минимума + 1
+
+
+def _channel_load(conn: sqlite3.Connection, slug: str) -> int:
+    # qc_failed — фильм кончился (клипы не прошли проверку качества), канал он больше не занимает
+    return sum(1 for r in conn.execute("SELECT metrics FROM pipeline_items WHERE kind = 'film' AND status NOT IN ('published', 'cancelled', 'rejected', 'failed', 'qc_failed')")
+               if (loads(r["metrics"], {}) or {}).get("channel") == slug)
+
+
+HUNGRY_MIN = 2         # роликов дефицита на сегодня-завтра, с которого канал «голодный»
+HUNGRY_FILM_CLIPS = 5  # столько роликов в среднем даёт фильм в нарезке
+
+
+def _hungry(conn: sqlite3.Connection) -> dict[str, int]:
+    from . import guard
+    return guard.hungry(conn)
+
+
+def _channel_pending(conn: sqlite3.Connection, slug: str) -> int:
+    """Фильмов канала, которые ещё режутся (ролики от них будут, но в плане их пока нет)."""
+    return sum(1 for r in conn.execute("SELECT metrics FROM pipeline_items WHERE kind = 'film' AND status IN "
+                                       "('new', 'file_pending', 'retry_wait', 'sent', 'cutting', 'review')")
+               if (loads(r["metrics"], {}) or {}).get("channel") == slug)
+
+
+def _theme_score(theme: dict, kind: str | None, genres: list[str]) -> float:
+    g = " ".join(genres).lower()
+    return sum(1 for x in theme.get("genres") or [] if x in g) + (0.5 if kind in (theme.get("kinds") or []) else 0)
+
+
+def _film_channel(conn: sqlite3.Connection, item: dict, targets: list[tuple[str, int | None]], settings: dict | None = None) -> tuple[str, int | None] | None:
+    """Канал для всех клипов фильма. Произведение уже идёт или выходило на канале (другая серия, другой исходник) —
+    туда же: одно кино на двух наших каналах YouTube считает сетью перезаливов (01.11: «Викинги» на двух каналах).
+    Иначе — тема канала (жанры), но только среди самых свободных (разница ≤ pipeline_channel_spread фильмов в работе):
+    план — 4 ролика в день на КАЖДОМ канале, канал без фильмов по своей теме не голодает. Каналы, которые YouTube
+    прижал (outcomes.channel_health = suppressed), пропускаются; прижаты все — None (фильм ждёт)."""
+    by_slug = dict(targets)
+    if (settings or {}).get("pipeline_channel_gate", "1") != "0":
+        from . import outcomes
+        health = outcomes.channel_health(conn, settings)
+        by_slug = {k: v for k, v in by_slug.items() if (health.get(k) or {}).get("status") != "suppressed"}
+        targets = [t for t in targets if t[0] in by_slug]
+        if not targets:
+            return None
+    pinned = (item.get("metrics") or {}).get("channel") if isinstance(item.get("metrics"), dict) else None
+    if pinned in by_slug:
+        return pinned, by_slug[pinned]  # канал закреплён за заданием (вручную: «этот фильм — на Аниме-момент»)
+    for r in conn.execute("SELECT metrics FROM pipeline_items WHERE kind = 'film' AND ref_id = ? AND id != ? "
+                          "AND status NOT IN ('cancelled', 'rejected', 'failed') ORDER BY id DESC", (item.get("ref_id"), item.get("id") or -1)):
+        ch = (loads(r["metrics"], {}) or {}).get("channel")
+        if ch in by_slug:
+            return ch, by_slug[ch]
+    from . import outcomes
+    outcomes.init(conn)
+    prev = conn.execute("SELECT channel_id FROM pub_outcomes WHERE title_id = ? AND channel_id IS NOT NULL ORDER BY published_at DESC LIMIT 1",
+                        (item.get("ref_id"),)).fetchone()
+    if prev and prev[0] in by_slug:
+        return prev[0], by_slug[prev[0]]
+    themes = loads((settings or {}).get("pipeline_channel_themes"), None) or CHANNEL_THEMES
+    t = conn.execute("SELECT kind, genres FROM titles WHERE id = ?", (item.get("ref_id"),)).fetchone()
+    kind, genres = (t["kind"], [str(x) for x in loads(t["genres"], []) or []]) if t else (None, [])
+    # голодный канал (сторож правил: на сегодня-завтра не хватает роликов до 4 в день) получает фильм первым;
+    # фильм уже в нарезке для канала покрывает ≈5 роликов дефицита
+    starving = {s: d - HUNGRY_FILM_CLIPS * _channel_pending(conn, s) for s, d in _hungry(conn).items() if s in by_slug}
+    starving = {s: d for s, d in starving.items() if d >= HUNGRY_MIN}
+    if starving:
+        best = max(starving, key=lambda s: (starving[s], _theme_score(themes.get(s) or {}, kind, genres)))
+        return best, by_slug[best]
+    cap = int((settings or {}).get("pipeline_channel_backlog_max") or CHANNEL_BACKLOG_MAX)
+    spread = int((settings or {}).get("pipeline_channel_spread") or CHANNEL_SPREAD)
+    load = {slug: _channel_load(conn, slug) for slug in by_slug}
+    low = min(load.values())
+    pool = [s for s in by_slug if load[s] <= low + spread and load[s] < cap] or [s for s in by_slug if load[s] == low]
+    score = {s: _theme_score(themes.get(s) or {}, kind, genres) for s in pool}
+    best = max(score.values())
+    if best >= 1:
+        top = sorted((s for s in pool if score[s] == best), key=lambda s: load[s])
+        return top[0], by_slug[top[0]]
+    free = [x for x in targets if x[0] in pool and load[x[0]] == min(load[s] for s in pool)]
+    return free[_rr_next(conn, 1) % len(free)]
 
 
 def _rr_next(conn: sqlite3.Connection, n: int) -> int:
@@ -482,6 +818,74 @@ def _rr_next(conn: sqlite3.Connection, n: int) -> int:
                  (str(cur + n),))
     conn.commit()
     return cur
+
+
+_FMT_CACHE: dict[str, str] = {}
+
+
+def _channel_fmt(asc: "AutoShorts", ch: str) -> str:
+    if ch not in _FMT_CACHE:
+        try:
+            _FMT_CACHE[ch] = str(((asc.get(f"/api/v1/channels/{ch}") or {}).get("profile") or {}).get("format") or "comment")
+        except ASError:
+            return "comment"
+    return _FMT_CACHE[ch]
+
+
+def _ai_review(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, iid, jid, job: dict, settings: dict, log=print) -> dict | None:
+    """Приёмка нейросетью (ai_review.py) — один раз на клип, результат в metrics.ai_review. None — проверка
+    выключена или не удалась (тогда ролик одобряется по QC, как раньше: простой хуже одного слабого ролика)."""
+    if settings.get("pipeline_ai_review", "1") == "0":
+        return None
+    m = dict(item.get("metrics") or {})
+    done = dict(m.get("ai_review") or {})
+    if str(jid) in done:
+        return done[str(jid)]
+    from .ai_review import review_video
+    from .llm import LLMError
+    try:
+        video = asc.get_bytes(f"/api/v1/jobs/{jid}/media/final")
+        year = (conn.execute("SELECT year FROM titles WHERE id = ?", (item.get("ref_id"),)).fetchone() or [None])[0]
+        film = f"«{item['label']}»" + (f" ({year})" if year else "") if item.get("kind") == "film" and item.get("label") else None
+        verdict = review_video(video, settings, _channel_fmt(asc, str(job.get("channel_id") or "")), film=film)
+    except (ASError, LLMError, OSError, subprocess.SubprocessError, ValueError) as e:
+        log(f"конвейер: приёмка нейросетью клипа {jid} не удалась: {e}", "warn")
+        return None
+    done[str(jid)] = verdict
+    m["ai_review"] = done
+    item["metrics"] = m
+    _set(conn, iid, metrics=dumps(m))
+    return verdict
+
+
+PROBE_HOURS = 1.0  # первый ролик произведения — проба: остальные ждут, пока он провисит столько без блокировки
+# (01.11 с 3 ч до 1 ч, pipeline_probe_hours: при плане 4 ролика в день 3 ч не давали новому фильму выйти больше
+# двух раз за вечер; блокировка правообладателя приходит при обработке ролика — «Наруто» забанило сразу)
+
+
+def _probe_hold(conn: sqlite3.Connection, item: dict, settings: dict) -> bool:
+    """Держать ли одобренный ролик (решение владельца 29.10: «наруто забанило сразу — учитывай»).
+    Первый ролик произведения выходит сразу (проба); остальные — когда итоги (outcomes) покажут, что проба
+    провисела PROBE_HOURS без блокировки. Проба заблокирована — держим всё (итоги снимут ролики сами)."""
+    if item.get("kind") != "film" or (settings.get("pipeline_probe") or "1") == "0":
+        return False
+    if not (item.get("metrics") or {}).get("probe_pid"):
+        return False  # пробы ещё не было — этот ролик сам станет пробой
+    from . import outcomes
+    outcomes.init(conn)
+    rows = conn.execute("SELECT block, status, age_h FROM pub_outcomes WHERE title_id = ?", (item["ref_id"],)).fetchall()
+    if any(r["block"] in ("blocked_ru", "rejected") or (r["block"] == "removed" and r["status"] == "live") for r in rows):
+        return True
+    hours = float(settings.get("pipeline_probe_hours") or PROBE_HOURS)
+    return not any((r["age_h"] or 0) >= hours and r["block"] is None for r in rows)
+
+
+def _mark_probe(conn: sqlite3.Connection, item: dict, pid) -> None:
+    m = dict(item.get("metrics") or {})
+    if not m.get("probe_pid"):
+        m["probe_pid"] = pid
+        item["metrics"] = m
+        _set(conn, item["id"], metrics=dumps(m))
 
 
 def _publish_approved_now(conn: sqlite3.Connection, asc: "AutoShorts", item: dict, settings: dict, statuses: dict, log=print) -> None:
@@ -504,7 +908,12 @@ def _publish_approved_now(conn: sqlite3.Connection, asc: "AutoShorts", item: dic
         ch = (pk.get("channel") or {}).get("id") or ""
         if ch and not _channel_ready(asc, ch, cache):
             continue
+        if _probe_hold(conn, item, settings):
+            continue  # проба произведения ещё не провисела без блокировки
+        if _drop_twin(asc, item, ch, pid, pk, jid, cache, log):
+            continue
         _autopublish(asc, item, settings, pid, log)
+        _mark_probe(conn, item, pid)
         if pid not in pkgs:
             pkgs.append(pid)
         changed = True
@@ -512,6 +921,51 @@ def _publish_approved_now(conn: sqlite3.Connection, asc: "AutoShorts", item: dic
     if changed:
         _set(conn, item["id"], as_packages=dumps(pkgs))
         item["as_packages"] = pkgs
+
+
+def _drop_twin(asc: "AutoShorts", item: dict, ch: str, pid, pk: dict, jid, cache: dict, log=print) -> bool:
+    """Клип повторяет заголовок, уже стоящий в плане канала, — снять задание (оба пути постановки в план).
+    True — повтор (в план не ставить)."""
+    twin = _twin_title(asc, ch, pid, (pk.get("texts") or {}).get("title") or "", cache)
+    if not twin:
+        return False
+    jid = jid or pk.get("job_id")
+    try:
+        asc.post(f"/api/v1/jobs/{int(jid)}/cancel", {})
+    except (ASError, TypeError, ValueError) as e:
+        log(f"конвейер: повтор клипа {jid} не снят: {e}", "warn")
+        return True
+    log(f"конвейер: «{item.get('label')}»: клип {jid} снят — на канале {ch} уже есть «{twin}»")
+    return True
+
+
+TWIN_RATIO = 0.9  # 0,96 — тот же факт другими словами; 0,83 — шаблон викторины с другой сценой (не повтор)
+
+
+def _norm_title(t: str) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", (t or "").lower().replace("ё", "е")).split())
+
+
+def _twin_title(asc: "AutoShorts", channel_id: str, pid, title: str, cache: dict) -> str | None:
+    """Заголовок, почти совпадающий с уже стоящим в плане или вышедшим на канале (01.11: «Такси» трижды с одним фактом).
+    Повтор на одном канале — «repetitive content» по правилам YouTube и пустой слот для зрителя."""
+    import difflib
+    if not channel_id or not title:
+        return None
+    key = ("titles", channel_id)
+    if key not in cache:
+        try:
+            items = asc.get("/api/v1/packages", channel_id=channel_id, limit=200).get("items") or []
+        except ASError:
+            items = []
+        cache[key] = [(p.get("id"), (p.get("texts") or {}).get("title") or "") for p in items
+                      if p.get("publication") or ((p.get("autopublish") or {}).get("state") in ("scheduled", "publishing", "done"))]
+    me = _norm_title(title)
+    for other_id, other in cache[key]:
+        if other_id != pid and difflib.SequenceMatcher(None, me, _norm_title(other)).ratio() >= TWIN_RATIO:
+            return other
+    cache[key].append((pid, title))
+    return None
 
 
 def _channel_ready(asc: "AutoShorts", channel_id: str, cache: dict) -> bool:
@@ -536,6 +990,15 @@ def _scene_picks(conn: sqlite3.Connection, item: dict, settings: dict, cands: li
 
 
 # ---------- шаг конвейера ----------
+def _rutube_alternative(conn: sqlite3.Connection, item: dict) -> dict | None:
+    """Проверенный исходник фильма с Rutube, отличный от текущего (для фильмов; у роликов из подборки его нет)."""
+    if item.get("kind") != "film":
+        return None
+    r = conn.execute("SELECT video_id, url, channel FROM title_sources WHERE title_id = ? AND verified = 1 AND url LIKE '%rutube.ru%'"
+                     " AND video_id <> ? ORDER BY score DESC LIMIT 1", (item["ref_id"], item.get("source_video_id") or "")).fetchone()
+    return dict(r) if r else None
+
+
 def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, log=print) -> str:
     """Один шаг для одного задания. Возвращает новый статус."""
     iid = item["id"]
@@ -548,6 +1011,15 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 return "new"
             if fs and fs.get("status") == "error":
                 m = dict(item.get("metrics") or {})
+                alt = _rutube_alternative(conn, item) if "youtube" in (item.get("source_url") or "") else None
+                if alt:
+                    # YouTube не отдал файл (бот-проверка, гео): берём проверенный исходник с Rutube
+                    files.init(conn)
+                    res = files.request(conn, item["ref_id"] if item["kind"] == "film" else None, alt["video_id"], alt["url"])
+                    _set(conn, iid, source_url=alt["url"], source_video_id=alt["video_id"], channel=alt.get("channel"),
+                         last_error=f"YouTube не отдал файл ({fs.get('error')}), взят Rutube" if res.get("ok") else f"файл: {res.get('error')}")
+                    log(f"конвейер: «{item.get('label')}» — YouTube не качается, переключено на Rutube")
+                    return st if res.get("ok") else "failed"
                 if not m.get("file_retry"):
                     m["file_retry"] = now_iso()
                     files.init(conn)
@@ -555,6 +1027,7 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     _set(conn, iid, metrics=dumps(m), last_error=f"файл не скачался ({fs.get('error')}), заказан повторно" if res.get("ok") else f"файл: {res.get('error')}")
                     return st
                 _set(conn, iid, status="failed", last_error=f"файл не скачался: {fs.get('error')}")
+                _forget_dead_source(conn, item, str(fs.get("error") or ""), log)
                 return "failed"
             if not fs or fs.get("status") == "expired":  # файла ещё не было или его уже убрала очистка — заказать
                 files.init(conn)
@@ -588,11 +1061,16 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             _set(conn, iid, status="sent", as_source_id=str(src.get("id")), sent_at=now_iso(), rights_type=rights["rights_type"], last_error=None)
             log(f"конвейер: «{item.get('label')}» отправлено в auto-shorts, источник {src.get('id')}")
             return "sent"
+        if st in ("cutting", "review") and item["kind"] == "film":
+            late = _late_frames_gate(conn, asc, item, settings, log)
+            if late is not None:
+                return late
         if st == "sent":
             src = asc.source(item["as_source_id"])
             s = src.get("status")
             if s == "failed":
                 _set(conn, iid, status="failed", last_error=f"auto-shorts: источник failed: {src.get('error') or ''}"[:300])
+                _forget_dead_source(conn, item, str(src.get("error") or ""), log)
                 return "failed"
             if s != "ready":
                 return st
@@ -605,13 +1083,27 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 dur = float(src.get("duration_sec") or item.get("duration_s") or 58)
                 items = [{"start_sec": 0.0, "end_sec": min(58.0, dur), **jopts}]
             else:
-                cands = [c for c in asc.candidates(item["as_source_id"]) if not c.get("blocked")]
+                # занятые моменты (у них уже есть ролик, даже снятый) повторно не заказываем: auto-shorts ответит 409
+                cands = [c for c in asc.candidates(item["as_source_id"]) if not c.get("blocked")
+                         and c.get("status") in (None, "proposed", "approved") and not c.get("job_id")]
                 cands.sort(key=lambda c: -(c.get("final_score") or 0))
                 n = max(1, int(settings.get("pipeline_clips_per_source") or 3))
                 targets = _channel_targets(asc, item, settings, jopts)
                 picked = _scene_picks(conn, item, settings, cands, n) if item["kind"] == "film" else []
                 chosen = (picked + [c for c in cands if c not in picked])[:n]
-                # каналы чередуются по общему счётчику клипов: поровну на каждый, у каждого своё оформление
+                # один фильм — один канал (YouTube с 01.10.2026 режет охват сетям каналов с одинаковым контентом):
+                # фильмы чередуются между каналами; уже выходившее произведение остаётся на своём канале.
+                # pipeline_film_one_channel=0 — по-старому, клипы фильма поровну по всем каналам
+                if len(targets) > 1 and (settings.get("pipeline_film_one_channel") or "1") != "0":
+                    one = _film_channel(conn, item, targets, settings)
+                    if one is None:
+                        _set(conn, iid, last_error="все каналы ротации YouTube прижал (нули подряд на разных фильмах, "
+                                                    "правило оригинальности 01.10.2026) — фильм ждёт канал")
+                        return st
+                    targets = [one]
+                    m_ch = dict(item.get("metrics") or {}, channel=targets[0][0])
+                    item["metrics"] = m_ch
+                    _set(conn, iid, metrics=dumps(m_ch))
                 start = _rr_next(conn, len(chosen)) if len(targets) > 1 else 0
                 items = []
                 for k, cnd in enumerate(chosen):
@@ -669,11 +1161,23 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     except ASError as e:
                         log(f"конвейер: перезапуск клипа {jid}: {e}", "warn")
                 if js == "pending_review" and settings.get("pipeline_auto_review", "0") == "1":
+                    verdict = _ai_review(conn, asc, item, iid, jid, j, settings, log)
                     try:
-                        asc.review(jid, "approve", "pending_review", "автоодобрение Кино-трендов: QC и оригинальность пройдены")
-                        js = "approved"
+                        if verdict is None or verdict.get("ok"):
+                            note = "автоодобрение Кино-трендов: QC и оригинальность пройдены"
+                            if verdict:
+                                note += f"; нейросеть {verdict.get('score')}/10: {verdict.get('reason')}"
+                            asc.review(jid, "approve", "pending_review", note[:500])
+                            js = "approved"
+                        else:
+                            from .ai_review import reject_reason
+                            asc.review(jid, "reject", "pending_review",
+                                       f"нейросеть {verdict.get('score')}/10: {verdict.get('reason')} ({', '.join(verdict.get('problems') or [])})"[:500],
+                                       reject_reason(verdict.get("problems") or []))
+                            js = "rejected"
+                            log(f"конвейер: «{item.get('label')}»: клип {jid} отклонён нейросетью {verdict.get('score')}/10 — {verdict.get('reason')}")
                     except ASError as e:
-                        log(f"конвейер: автоодобрение {jid}: {e}", "warn")
+                        log(f"конвейер: автоприёмка {jid}: {e}", "warn")
                 statuses[jid] = js
             vals = list(statuses.values())
             # одобренный клип уходит в план своего канала сразу, не дожидаясь решения по соседним клипам
@@ -683,14 +1187,14 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
             if any(v in ("queued", "processing", "draft", "rework") for v in vals):
                 return st
             if any(v == "qc_failed" for v in vals) and not any(v in ("approved", "published") for v in vals):
-                _set(conn, iid, status="qc_failed", last_error="клипы не прошли QC в auto-shorts", metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
+                _set(conn, iid, status="qc_failed", last_error="клипы не прошли QC в auto-shorts", metrics=dumps({**(item.get("metrics") or {}), "jobs": statuses, "auto_retry": m_retry}))
                 return "qc_failed"
             if any(v == "pending_review" for v in vals):
-                _set(conn, iid, status="review", metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
+                _set(conn, iid, status="review", metrics=dumps({**(item.get("metrics") or {}), "jobs": statuses, "auto_retry": m_retry}))
                 return "review"
             good = [jid for jid, v in statuses.items() if v in ("approved", "published")]
             if not good:
-                _set(conn, iid, status="failed", last_error="все клипы отклонены или не собрались: " + ", ".join(f"{k}:{v}" for k, v in statuses.items()), metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
+                _set(conn, iid, status="failed", last_error="все клипы отклонены или не собрались: " + ", ".join(f"{k}:{v}" for k, v in statuses.items()), metrics=dumps({**(item.get("metrics") or {}), "jobs": statuses, "auto_retry": m_retry}))
                 return "failed"
             pkgs = []
             for jid in good:
@@ -702,9 +1206,12 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                     log(f"конвейер: пакет для {jid}: {e}", "warn")
             # в автозалив ставит только шаг approved/publishing: он видит, что уже запланировано, и добирает
             # поздние пакеты — так задание можно вернуть в нарезку (перезапуск клипа) без двойной постановки
-            _set(conn, iid, status="approved", as_packages=dumps(pkgs), metrics=dumps({"jobs": statuses, "auto_retry": m_retry}))
-            item = {**item, "status": "approved", "as_packages": pkgs, "metrics": {"jobs": statuses, "auto_retry": m_retry}}
+            _set(conn, iid, status="approved", as_packages=dumps(pkgs), metrics=dumps({**(item.get("metrics") or {}), "jobs": statuses, "auto_retry": m_retry}))
+            item = {**item, "status": "approved", "as_packages": pkgs, "metrics": {**(item.get("metrics") or {}), "jobs": statuses, "auto_retry": m_retry}}
             st = "approved"
+            # все клипы решены — исходник больше не нужен: готовые ролики лежат в папках заданий, а нарезанный
+            # файл второй раз не режем (fresh_sources). 01.11 три копии «Такси» по 1,6 ГБ держали стенд у порога 7 ГБ
+            _purge_source(asc, item, log)
         if st in ("approved", "publishing"):
             pkgs = list(item["as_packages"] or [])
             jobs_map = (item.get("metrics") or {}).get("jobs") or {}
@@ -778,17 +1285,28 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 _set(conn, iid, as_packages=dumps(pkgs))
             if not pkgs:
                 return st
+            held = 0  # ролики, ждущие итогов пробы: пока они есть, произведение не «опубликовано»
             if settings.get("pipeline_autopublish", "0") == "1" and idle:
                 ready_cache: dict = {}
                 waiting = []
                 started = 0
                 for pid in idle:
-                    ch = ((asc.package(pid).get("channel") or {}).get("id")) or ""
+                    pk = asc.package(pid)
+                    ch = ((pk.get("channel") or {}).get("id")) or ""
                     if ch and not _channel_ready(asc, ch, ready_cache):
                         waiting.append(ch)  # канал не подключён к YouTube: ролик одобрен и ждёт подключения
                         continue
+                    if _probe_hold(conn, item, settings):
+                        held += 1
+                        continue
+                    if _drop_twin(asc, item, ch, pid, pk, None, ready_cache, log):
+                        continue
                     _autopublish(asc, item, settings, pid, log)
+                    log(f"конвейер: «{item.get('label')}»: пакет {pid} — в план канала {ch or '?'}")
+                    _mark_probe(conn, item, pid)
                     started += 1
+                if held and not started:
+                    _set(conn, iid, last_error=f"проба: {held} ролик(ов) ждут, пока первый провисит {float(settings.get('pipeline_probe_hours') or PROBE_HOURS):g} ч без блокировки")
                 note = ("ждёт подключения YouTube: " + ", ".join(sorted(set(waiting)))) if waiting else None
                 if started:
                     _set(conn, iid, status="publishing", as_publications=dumps(pubs), last_error=note)
@@ -796,9 +1314,10 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
                 if note:
                     _set(conn, iid, last_error=note)
                     return st
-            if pubs and not active and not waiting_pkg:
+            if pubs and not active and not waiting_pkg and not held:
                 _set(conn, iid, status="published", as_publications=dumps(pubs), published_at=item.get("published_at") or now_iso(),
                      last_error="; ".join(errors)[:300] or None)
+                _purge_source(asc, item, log)
                 return "published"
             if errors:
                 _set(conn, iid, last_error="автозалив: " + "; ".join(errors)[:280])
@@ -825,15 +1344,55 @@ def step(conn: sqlite3.Connection, asc: AutoShorts, item: dict, settings: dict, 
 _TICK_LOCK = threading.Lock()
 
 
+def _stand_free_gb(health: dict | None) -> float | None:
+    """Свободное место на стенде из /health/ready auto-shorts («free 5.9 GB, …»); нет данных — None."""
+    import re
+    disk = ((health or {}).get("checks") or {}).get("disk") or {}
+    m = re.search(r"free ([\d.]+) GB", str(disk.get("detail") or ""))
+    if m:
+        return float(m.group(1))
+    return None
+
+
+STORAGE_CLEANUP_EVERY_MIN = 15
+
+
+def _storage_cleanup(conn: sqlite3.Connection, log=print) -> None:
+    """Раз в 15 минут убирает с хранилища фильмы, которые auto-shorts уже забрал: диск стенда 30 ГБ общий,
+    и заранее скачанные фильмы его забивали (29.10 — 12 ГБ, все задачи стояли с «мало места»)."""
+    last = get_meta(conn, "storage_cleanup_at", "")
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=STORAGE_CLEANUP_EVERY_MIN)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if last and last > cutoff:
+        return
+    set_meta(conn, "storage_cleanup_at", now_iso())
+    try:
+        res = files.cleanup_ingested(conn)
+        if res.get("removed"):
+            log(f"хранилище: убрано файлов {res['removed']}, освобождено {res['freed_mb']} МБ")
+    except Exception as e:  # noqa: BLE001
+        log(f"хранилище: уборка не прошла: {e}", "warn")
+
+
 def tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts | None = None) -> dict:
     """Проходит по активным заданиям и двигает каждое на шаг. Два тика сразу (фоновый цикл и кнопка «Сдвинуть»)
     отправляли один исходник дважды и заказывали шортсу два одинаковых клипа — второй тик ждёт не дольше пары
     секунд и пропускается."""
     if not _TICK_LOCK.acquire(timeout=2):
         return {"processed": 0, "sent": 0, "changed": 0, "errors": 0, "skipped": "предыдущий тик ещё идёт", "health": None}
+    # блокировка и между процессами (сервис и ручной запуск из консоли): 29.10 два тика в одну секунду
+    # отправили «Афоню» в auto-shorts дважды
+    import fcntl
+    from .config import VAR
+    lock_file = open(VAR / "pipeline-tick.lock", "w")
     try:
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return {"processed": 0, "sent": 0, "changed": 0, "errors": 0, "skipped": "тик идёт в другом процессе", "health": None}
+        set_meta(conn, "pipeline_tick_at", now_iso())  # доктор видит, что цикл живой (даже если auto-shorts не ответил)
         return _tick(conn, settings, log, asc)
     finally:
+        lock_file.close()
         _TICK_LOCK.release()
 
 
@@ -846,8 +1405,11 @@ def _tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts |
     h = asc.health()
     out["health"] = h.get("status")
     if h.get("status") != "ok":
-        out["skipped"] = f"auto-shorts не готов: {h.get('status')}"
-        return out
+        # «не готов» только из-за диска — текущие фильмы ведём дальше (одобренное уходит в автозалив), новые не берём
+        bad = [k for k, v in ((h.get("checks") or {}).items()) if isinstance(v, dict) and not v.get("ok")]
+        if bad != ["disk"]:
+            out["skipped"] = f"auto-shorts не готов: {h.get('status')} {', '.join(bad)}".strip()
+            return out
     # Лимит тика — только на запуск новых исходников (скачать и распознать — тяжело для хранилища). Задания, которые
     # уже в работе, двигаются каждый тик: раньше LIMIT по created_at давал старым зависшим заданиям занять все места,
     # и свежие стояли в «отправлено» сутками.
@@ -855,13 +1417,25 @@ def _tick(conn: sqlite3.Connection, settings: dict, log=print, asc: AutoShorts |
     # pipeline_max_per_tick за тик и только пока в работе меньше pipeline_max_in_work заданий.
     limit = int(settings.get("pipeline_max_per_tick") or 1)
     max_in_work = int(settings.get("pipeline_max_in_work") or 3)
+    # новый фильм — только при запасе диска на стенде (фильм занимает там 0,5–1,7 ГБ; 29.10 при 10 в работе
+    # диск упал до 4 ГБ и API ушёл в «не готов»): скорость сама подстраивается под место
+    free_gb = _stand_free_gb(h)
+    min_free = float(settings.get("pipeline_min_free_gb") or 7)
+    if free_gb is not None and free_gb < min_free:
+        limit = 0
+        out["skipped"] = f"новые фильмы ждут места на стенде: свободно {free_gb:.1f} ГБ < {min_free:g} ГБ"
     rows = conn.execute(f"SELECT * FROM pipeline_items WHERE status IN ({','.join('?' * (len(ACTIVE) + 1))}) ORDER BY created_at",
                         (*ACTIVE, "published")).fetchall()
     files.init(conn)
+    _storage_cleanup(conn, log)
     in_work = sum(1 for r in rows if _in_work(conn, r))
-    # поток в приёмку: ждущие одобрения не держат производство, но очередь приёмки не растёт бесконечно
+    if limit and top_up(conn, settings, rows, log):
+        rows = conn.execute(f"SELECT * FROM pipeline_items WHERE status IN ({','.join('?' * (len(ACTIVE) + 1))}) ORDER BY created_at",
+                            (*ACTIVE, "published")).fetchall()
+    # Поток в приёмку без остановки (решение владельца 29.10: «бесконечный цикл, очередь на неделю вперёд»):
+    # pipeline_review_backlog = 0 — без ограничения; число > 0 — пауза, когда столько фильмов ждут приёмки.
     backlog = sum(1 for r in rows if r["status"] == "review")
-    backlog_max = int(settings.get("pipeline_review_backlog") or REVIEW_BACKLOG_ITEMS)
+    backlog_max = int(settings.get("pipeline_review_backlog", REVIEW_BACKLOG_ITEMS) or 0) or 10**9
     starts = 0
     for r in rows:
         item = _hydrate(dict(r))

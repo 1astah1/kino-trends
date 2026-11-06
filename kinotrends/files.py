@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shlex
 import shutil
 import sqlite3
@@ -26,7 +27,9 @@ FILES_DIR.mkdir(parents=True, exist_ok=True)
 MAX_TOTAL_GB = 8.0
 MIN_FREE_GB = 5.0
 TTL_HOURS = 48
-FORMAT = "bv*[height<=720][tbr<=2000]+ba/b[height<=720][tbr<=2000]/b[height<=480]/bv*[height<=720]+ba/b"
+# русская дорожка первой: у роликов YouTube с несколькими дорожками «ba» берёт оригинал (у него выше приоритет)
+FORMAT = ("bv*[height<=720][tbr<=2000]+ba[language^=ru]/bv*[height<=720]+ba[language^=ru]/"
+          "bv*[height<=720][tbr<=2000]+ba/b[height<=720][tbr<=2000]/b[height<=480]/bv*[height<=720]+ba/b")
 _lock = threading.Lock()
 _running: dict[str, bool] = {}
 
@@ -68,10 +71,12 @@ def storage(conn: sqlite3.Connection) -> dict:
     }
 
 
-def ytdlp_extra(st: dict) -> str:
-    """Общие флаги yt-dlp для хранилища: прокси и cookies, если заданы."""
+def ytdlp_extra(st: dict, url: str | None = None) -> str:
+    """Общие флаги yt-dlp для хранилища: прокси и cookies, если заданы. Прокси — только для скачивания с YouTube
+    (url передан): это туннель через мак владельца (scripts/mac-proxy.sh), Rutube и прочее идут напрямую. Кадры
+    popular.py прокси не получают: ffmpeg читает ссылку потока сам, а она привязана к адресу, с которого её выдали."""
     parts = []
-    if st.get("proxy"):
+    if st.get("proxy") and url and re.search(r"youtube\.com|youtu\.be", url):
         parts.append(f"--proxy {shlex.quote(st['proxy'])}")
     if st.get("cookies"):
         parts.append(f"--cookies {shlex.quote(st['cookies'])}")
@@ -154,6 +159,57 @@ def cleanup(conn: sqlite3.Connection) -> int:
     return removed
 
 
+# Файл фильма нужен, пока auto-shorts его не забрал: дальше у нарезки своя копия (original_video).
+# Диск хранилища общий со стендом (30 ГБ), поэтому держим только то, что ещё ждёт загрузки.
+KEEP_ITEM_STATES = ("new", "needs_rights", "file_pending", "retry_wait", "sent")
+FRESH_HOURS = 3  # свежие загрузки (заготовки календаря) не трогаем
+VIDEO_EXT = (".mp4", ".webm", ".mkv", ".m4a")
+
+
+def cleanup_ingested(conn: sqlite3.Connection, fresh_hours: float = FRESH_HOURS) -> dict:
+    """Удаляет с хранилища файлы фильмов, которые больше не ждут загрузки в auto-shorts, и брошенные файлы.
+    Возвращает {"removed": n, "freed_mb": x}."""
+    st = storage(conn)
+    if not st["remote"]:
+        return {"removed": 0, "freed_mb": 0}
+    keep: set[str] = {"sample-t34.mp4"}
+    for r in conn.execute(f"SELECT direct_url FROM pipeline_items WHERE status IN ({','.join('?' * len(KEEP_ITEM_STATES))})",
+                          KEEP_ITEM_STATES).fetchall():
+        if r["direct_url"]:
+            keep.add(Path(str(r["direct_url"]).split("?")[0]).name)
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=fresh_hours)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    removed, freed = 0, 0
+    for r in conn.execute("SELECT id, path, size, finished_at FROM downloads WHERE status = 'done' AND path IS NOT NULL").fetchall():
+        name = Path(r["path"]).name
+        if name in keep or (r["finished_at"] or "") >= cutoff:
+            keep.add(name)
+            continue
+        _remove_file(st, r["path"])
+        _write(conn, "UPDATE downloads SET status = 'expired', path = NULL WHERE id = ?", (r["id"],))
+        removed += 1
+        freed += r["size"] or 0
+    # брошенные файлы (нет в учёте загрузок): видео старше fresh_hours, служебные .log/.ok/.fail старше трёх суток
+    exts = " -o ".join(f"-name '*{e}'" for e in VIDEO_EXT)
+    keep_args = " ".join(f"! -name {shlex.quote(n)}" for n in sorted(keep))
+    mins = int(fresh_hours * 60)
+    cmd = (f"cd {shlex.quote(st['dir'])} && find . -maxdepth 1 -type f \\( {exts} \\) -mmin +{mins} {keep_args} -printf '%s\\n' -delete"
+           f" | awk '{{s+=$1; n++}} END {{print n+0, s+0}}'; find . -maxdepth 1 -type f \\( -name '*.log' -o -name '*.ok' -o -name '*.fail' \\) -mtime +3 -delete")
+    # прежние хранилища (storage_old_hosts, через запятую): там остались файлы для уже стоящих в очереди фильмов —
+    # убираем всё, что больше не ждёт загрузки, тем же ключом и в той же папке
+    from .db import get_setting
+    hosts = [st] + [dict(st, host=h.strip()) for h in (get_setting(conn, "storage_old_hosts") or "").split(",")
+                    if h.strip() and h.strip() != st["host"]]
+    for host_st in hosts:
+        try:
+            out = _ssh(host_st, cmd, timeout=120).stdout.split()
+            if len(out) >= 2:
+                removed += int(out[0])
+                freed += int(out[1])
+        except Exception:  # noqa: BLE001
+            pass
+    return {"removed": removed, "freed_mb": round(freed / 1048576)}
+
+
 def _remove_file(st: dict, path: str | None) -> None:
     if not path:
         return
@@ -222,6 +278,9 @@ def request(conn: sqlite3.Connection, title_id: str | None, video_id: str, url: 
     _write(conn, """INSERT INTO downloads(title_id, video_id, url, status, created_at) VALUES (?,?,?,'running',?)
                     ON CONFLICT(video_id) DO UPDATE SET status = 'running', error = NULL, created_at = excluded.created_at, finished_at = NULL, path = NULL, size = NULL""",
            (title_id, video_id, url, ts))
+    # своя сразу, до очереди на _lock: иначе status() считал «running» без потока перезапуском сервиса, ставил сторожа,
+    # а тот читал .fail прошлой попытки и ронял загрузку за секунду (01.11: «Крик», «Викинги» ждали «Постучись в мою дверь»)
+    _running[video_id] = True
     threading.Thread(target=_download, args=(video_id, url, st), name=f"dl-{video_id}", daemon=True).start()
     return {"ok": True, "status": status(conn, video_id)}
 
@@ -254,6 +313,7 @@ def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bo
 
     q = shlex.quote
     own = conn is None
+    relaunch = False
     if own:
         conn = db.connect()
     try:
@@ -262,7 +322,8 @@ def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bo
         probe = (f"if [ -f {q(remote_path + '.ok')} ]; then echo OK; cat {q(remote_path + '.ok')}; "
                  f"elif [ -f {q(remote_path + '.fail')} ]; then echo FAIL; "
                  f"(grep -E '^ERROR' {q(remote_path + '.log')} | cut -c1-600 | tail -n 3; tail -c 300 {q(remote_path + '.log')}) 2>/dev/null; "
-                 f"elif pgrep -f {q('[y]t-dlp.*' + remote_path)} >/dev/null; then echo RUN; else echo GONE; fi")
+                 f"elif pgrep -f {q('[y]t-dlp.*' + remote_path)} >/dev/null; then echo RUN; "
+                 f"elif [ -f {q(remote_path + '.log')} ]; then echo GONE; else echo NOLOG; fi")
         started = time.monotonic()
         while True:
             try:
@@ -279,9 +340,16 @@ def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bo
             if head == "FAIL":
                 _write(conn, "UPDATE downloads SET status = 'error', error = ?, finished_at = ? WHERE video_id = ?", (_short_error(rest), now_iso(), video_id))
                 return
-            if head == "GONE":
+            if head in ("GONE", "NOLOG"):
                 # процесса нет, маркеров нет: сразу после запуска это бывает, даём минуту
                 if time.monotonic() - started > 90:
+                    url = (conn.execute("SELECT url FROM downloads WHERE video_id = ?", (video_id,)).fetchone() or {"url": None})["url"]
+                    if head == "NOLOG" and own and url:
+                        # лога нет — yt-dlp и не запускался: загрузка ждала очереди внутри сервиса и пропала с его
+                        # перезапуском (01.11 «Резня зомби» и «Need for Speed» упали «оборвалась»). Запускаем заново
+                        relaunch = True
+                        threading.Thread(target=_download, args=(video_id, url, st), name=f"dl-{video_id}", daemon=True).start()
+                        return
                     _write(conn, "UPDATE downloads SET status = 'error', error = 'загрузка оборвалась', finished_at = ? WHERE video_id = ?", (now_iso(), video_id))
                     return
             if time.monotonic() - started > timeout:
@@ -292,7 +360,8 @@ def _watch_remote(video_id: str, remote_path: str, st: dict, conn=None, hold: bo
     finally:
         if own:
             conn.close()
-            _running.pop(video_id, None)
+            if not relaunch:  # перезапущенная загрузка держит флаг сама, иначе status() поставит второго сторожа
+                _running.pop(video_id, None)
 
 
 def _download(video_id: str, url: str, st: dict) -> None:
@@ -306,14 +375,17 @@ def _download(video_id: str, url: str, st: dict) -> None:
             if st["remote"]:
                 remote_path = f"{st['dir']}/{name}"
                 q = shlex.quote
-                proxy = ytdlp_extra(st)
+                proxy = ytdlp_extra(st, url)
                 # yt-dlp запускается отдельной сессией (setsid): перезапуск kino-trends или обрыв ssh его не убивает.
                 # Итог пишется в маркеры <файл>.ok (размер) или <файл>.fail, лог в <файл>.log — их читает _watch_remote.
                 inner = (f"rm -f {q(remote_path + '.ok')} {q(remote_path + '.fail')}; "
                          f"if yt-dlp --no-warnings --js-runtimes node {proxy}-f {q(FORMAT)} --merge-output-format mp4 --no-playlist "
                          f"-o {q(remote_path)} {q(url)} > {q(remote_path + '.log')} 2>&1; then chown www-data:www-data {q(remote_path)}; "
                          f"stat -c %s {q(remote_path)} > {q(remote_path + '.ok')}; else echo fail > {q(remote_path + '.fail')}; fi")
-                launch = f"setsid nohup bash -c {q(inner)} >/dev/null 2>&1 < /dev/null & echo started"
+                # старые маркеры стираются до запуска, а не внутри фоновой оболочки: иначе сторож успевал прочитать .fail
+                # прошлой попытки и ронял новую загрузку за секунду (01.11, «Крик» и «Викинги» через мак)
+                launch = (f"rm -f {q(remote_path + '.ok')} {q(remote_path + '.fail')}; "
+                          f"setsid nohup bash -c {q(inner)} >/dev/null 2>&1 < /dev/null & echo started")
                 try:
                     res = _ssh(st, launch, timeout=60)
                 except subprocess.TimeoutExpired:

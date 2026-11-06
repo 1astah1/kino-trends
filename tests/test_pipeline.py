@@ -30,6 +30,10 @@ class FakeAS:
     def health(self):
         return {"status": "ok"}
 
+    def _req(self, method, path, body=None, params=None, retry=True):
+        self.deleted = getattr(self, "deleted", []) + [path] if method == "DELETE" else getattr(self, "deleted", [])
+        return {}
+
     def source_from_url(self, url, title, niche_id, rights, options):
         self.calls.append(("source", url, rights["rights_type"], options["max_clip_sec"]))
         return {"id": 1}
@@ -121,6 +125,7 @@ def test_rights_mapping():
 def test_enqueue_and_state_machine(conn):
     s = db.all_settings(conn)
     s["pipeline_auto_review"] = "1"
+    s["pipeline_ai_review"] = "0"  # приёмка нейросетью — отдельный тест ниже, здесь фейковый клиент без видео
     it = pipeline.enqueue(conn, "video", "ccshort00001", s, note="тест")
     assert it["status"] == "new" and it["direct_url"].startswith("http://1.2.3.4/files/") and it["is_short"] == 1
     assert pipeline.enqueue(conn, "video", "ccshort00001", s)["id"] == it["id"]  # повтор не плодит заданий
@@ -144,6 +149,7 @@ def test_enqueue_and_state_machine(conn):
     pipeline.tick(conn, s, log=lambda *a, **k: None, asc=fake)
     cur = pipeline._row(conn, it["id"])
     assert cur["status"] == "published" and cur["as_publications"] == [9]
+    assert any(p.startswith("/api/v1/sources/") for p in getattr(fake, "deleted", []))  # исходник со стенда убран
     pipeline.tick(conn, s, log=lambda *a, **k: None, asc=fake)           # метрики
     cur = pipeline._row(conn, it["id"])
     assert cur["metrics"]["publications"][0]["views"] == 1200
@@ -549,8 +555,15 @@ class FilmAS(FakeAS):
         self.source_polls = 5
 
     def get(self, path, **params):
+        if path.endswith("/oauth/youtube"):
+            return {"connected": True, "can_upload": True}
+        if path.endswith("/storyboard"):
+            return {"sheets": ["/api/v1/sources/1/storyboard/0", "/api/v1/sources/1/storyboard/1"]}
         assert path.endswith("/transcript")
         return {"sentences": [{"text": t} for t in self.sentences]}
+
+    def get_bytes(self, path):
+        return b"jpg"
 
     def _req(self, method, path, body=None, params=None, retry=True):
         self.deleted.append((method, path, params))
@@ -642,24 +655,35 @@ def test_rebuilt_package_replaces_the_superseded_one(conn):
     assert cur["as_packages"] == [31] and ("autopublish", 31, "public") in fake.calls
 
 
-def test_film_clips_alternate_between_two_channels_with_own_banners(conn, monkeypatch):
+def test_film_goes_to_one_channel_and_films_alternate(conn, monkeypatch):
+    from kinotrends import outcomes
     from tests.test_content_check import FakeLLM
     monkeypatch.setattr("kinotrends.llm.llm_from_settings", lambda s: FakeLLM({"is_work": True, "russian": True, "what": "film", "confidence": 0.9}))
     monkeypatch.setattr("kinotrends.neuro.get_insights", lambda c, tid: {})
     conn.execute("DELETE FROM settings WHERE key = 'pipeline_rr_counter'")
+    outcomes.init(conn)
+    conn.execute("DELETE FROM pub_outcomes")
     conn.commit()
     s = dict(db.all_settings(conn), pipeline_clips_per_source="3", pipeline_channel_film_2="bpn-shorts",
              pipeline_banner_by_channel='{"kadr-dnya": 3, "bpn-shorts": 4}')
-    got = []
-    for ref in ("Qalt1", "Qalt2"):
+
+    def cut(ref):
         iid = _film_item(conn, ref)
         fake = FilmAS(["Немцы! Тревога! Держитесь, братья."] * 40)
         fake.candidates = lambda sid: [{"id": i, "start_sec": i * 60.0, "end_sec": i * 60.0 + 40, "final_score": 1 - i / 10} for i in range(1, 6)]
         pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
-        clips = next(c for c in fake.calls if c[0] == "clips")[1]
-        got += [(x["channel_id"], x["banner_variant_id"]) for x in clips]
-    # 6 клипов двух фильмов — поровну и вперемешку, счётчик переходит от фильма к фильму
-    assert got == [("kadr-dnya", 3), ("bpn-shorts", 4), ("kadr-dnya", 3), ("bpn-shorts", 4), ("kadr-dnya", 3), ("bpn-shorts", 4)]
+        return [(x["channel_id"], x["banner_variant_id"]) for x in next(c for c in fake.calls if c[0] == "clips")[1]]
+
+    # все клипы фильма — на один канал (YouTube режет охват сетям каналов с одинаковым контентом), фильмы чередуются
+    assert cut("Qalt1") == [("kadr-dnya", 3)] * 3
+    assert cut("Qalt2") == [("bpn-shorts", 4)] * 3
+    # произведение уже выходило на bpn-shorts — новые клипы туда же, мимо очереди
+    conn.execute("INSERT INTO pub_outcomes(video_id, title_id, channel_id, published_at) VALUES ('v-alt3', 'Qalt3', 'bpn-shorts', '2026-10-29T10:00:00Z')")
+    conn.commit()
+    assert cut("Qalt3") == [("bpn-shorts", 4)] * 3
+    # по-старому: поровну по каналам
+    s["pipeline_film_one_channel"] = "0"
+    assert sorted({ch for ch, _ in cut("Qalt4")}) == ["bpn-shorts", "kadr-dnya"]
 
 
 def test_publish_waits_for_channel_connection(conn):
@@ -711,3 +735,177 @@ def test_review_backlog_caps_new_starts(conn):
     s["pipeline_review_backlog"] = "3"
     pipeline.tick(conn, s, log=lambda *a, **k: None, asc=fake)
     assert pipeline._row(conn, fresh)["status"] == "sent"  # место в приёмке есть — пошло в работу
+
+
+def test_channel_targets_rotate_over_listed_channels():
+    item = {"kind": "film", "channel_slug": "kadr-dnya"}
+    settings = {"pipeline_channels_film": "kadr-dnya, bpn-shorts ,myhostbox-2", "pipeline_banner_by_channel": '{"kadr-dnya": 3, "bpn-shorts": 4}'}
+    assert pipeline._channel_targets(None, item, settings, {}) == [("kadr-dnya", 3), ("bpn-shorts", 4), ("myhostbox-2", None)]
+    old = {"pipeline_channel_film_2": "bpn-shorts", "pipeline_banner_by_channel": '{"kadr-dnya": 3, "bpn-shorts": 4}'}
+    assert pipeline._channel_targets(None, item, old, {}) == [("kadr-dnya", 3), ("bpn-shorts", 4)]
+    assert pipeline._channel_targets(None, {"kind": "video", "channel_slug": "x"}, settings, {}) == [("x", None)]
+
+
+def test_stand_free_gb_parsed_from_health():
+    h = {"status": "not_ready", "checks": {"db": {"ok": True}, "disk": {"ok": False, "detail": "free 3.99 GB, hard_min 4.0 GB"}}}
+    assert pipeline._stand_free_gb(h) == 3.99
+    assert pipeline._stand_free_gb({"status": "ok"}) is None
+
+
+
+def test_channel_targets_skip_unconnected_rotation_channels():
+    class AS:
+        def get(self, path, **params):
+            ch = path.split("/")[4]
+            return {"connected": ch != "emerald", "can_upload": ch != "emerald"}
+
+    item = {"kind": "film", "channel_slug": "kadr-dnya"}
+    settings = {"pipeline_channels_film": "kadr-dnya,bpn-shorts,emerald", "pipeline_banner_by_channel": '{"kadr-dnya": 3, "bpn-shorts": 4, "emerald": 6}'}
+    assert pipeline._channel_targets(AS(), item, settings, {}) == [("kadr-dnya", 3), ("bpn-shorts", 4)]
+
+
+def test_film_channel_follows_themes_and_spills_over_when_busy(conn):
+    targets = [("emerald", 6), ("bpn-shorts", 4), ("kadr-dnya", 3), ("myhostbox-2", None)]
+    for tid, kind, genres in (("Qth_action", "film", '["боевик", "научно-фантастический фильм"]'),
+                              ("Qth_sitcom", "series", '["ситком"]'),
+                              ("Qth_turk", "series", '["историческая драма", "мыльная опера"]'),
+                              ("Qth_crime", "series", '["полицейская драма", "телесериал-триллер", "криминальный телесериал"]'),
+                              ("Qth_none", "film", "[]")):
+        conn.execute("INSERT OR REPLACE INTO titles(id, label_ru, kind, genres, updated_at) VALUES (?, ?, ?, ?, 'now')", (tid, tid, kind, genres))
+    conn.execute("DELETE FROM pipeline_items")
+    conn.commit()
+    pick = lambda tid, s=None: pipeline._film_channel(conn, {"ref_id": tid}, targets, s or {})[0]  # noqa: E731
+    assert pick("Qth_action") == "emerald"
+    assert pick("Qth_sitcom") == "bpn-shorts"
+    assert pick("Qth_turk") == "kadr-dnya"
+    assert pick("Qth_crime") == "myhostbox-2"
+    # тема перегружена (6 фильмов в работе) — фильм уходит туда, где свободнее
+    for n in range(6):
+        _put_item(conn, f"Qbusy{n}", "cutting", metrics=pipeline.dumps({"channel": "emerald"}))
+    conn.execute("UPDATE pipeline_items SET kind = 'film' WHERE ref_id LIKE 'Qbusy%'")
+    conn.commit()
+    assert pick("Qth_action") != "emerald"
+    assert pick("Qth_action", {"pipeline_channel_backlog_max": "10", "pipeline_channel_spread": "10"}) == "emerald"
+    # тема не даёт каналу голодать: у emerald 1 фильм, у остальных 0 — боевик всё равно на emerald (разница ≤1)
+    conn.execute("DELETE FROM pipeline_items WHERE ref_id LIKE 'Qbusy%' AND ref_id != 'Qbusy0'")
+    conn.commit()
+    assert pick("Qth_action") == "emerald"
+    # без жанров — самый свободный канал, не перегруженный
+    assert pick("Qth_none") != "emerald"
+    # произведение уже идёт на канале (другая серия, другой исходник) — туда же, даже против темы
+    _put_item(conn, "Qth_turk", "publishing", metrics=pipeline.dumps({"channel": "bpn-shorts"}))
+    conn.execute("UPDATE pipeline_items SET kind = 'film' WHERE ref_id = 'Qth_turk'")
+    conn.commit()
+    assert pick("Qth_turk") == "bpn-shorts"
+
+
+def test_ai_review_rejects_and_caches(conn, monkeypatch):
+    """Приёмка нейросетью: отказ отклоняет клип с причиной, оценка пишется в метрики и не запрашивается повторно."""
+    from kinotrends import ai_review
+
+    calls = []
+
+    def fake_review(video, settings, fmt="edit", film=None):
+        calls.append(fmt)
+        return {"ok": False, "score": 3, "problems": ["скучно"], "verdict": "reject", "reason": "ничего не происходит"}
+
+    monkeypatch.setattr(ai_review, "review_video", fake_review)
+
+    class AS:
+        def get_bytes(self, path):
+            return b"mp4"
+
+        def get(self, path, **kw):
+            return {"profile": {"format": "edit"}}
+
+    item = {"id": 99901, "metrics": {}}
+    conn.execute("INSERT INTO pipeline_items(id, kind, ref_id, status, label, metrics, created_at, updated_at) "
+                 "VALUES (99901, 'film', 'Q99901', 'cutting', 'x', '{}', '2026-11-01T00:00:00Z', '2026-11-01T00:00:00Z')")
+    v = pipeline._ai_review(conn, AS(), item, 99901, 7, {"channel_id": "emerald"}, {"pipeline_ai_review": "1"}, log=lambda *a, **k: None)
+    assert v["ok"] is False and calls == ["edit"]
+    again = pipeline._ai_review(conn, AS(), item, 99901, 7, {"channel_id": "emerald"}, {}, log=lambda *a, **k: None)
+    assert again == v and calls == ["edit"]  # из кеша
+    assert ai_review.reject_reason(["скучно"]) == "hook_slabyy" and ai_review.reject_reason(["что-то"]) == "drugoe"
+
+
+def test_name_matches_whole_words():
+    """01.11: «Кунг-фу» совпадал с «Кунг-Фуд» (Леди Баг), «Менталист» — с «Менталисткой»."""
+    from kinotrends.sources import name_matches
+    from kinotrends.text import norm
+    assert not name_matches([norm("Кунг-фу")], "🐞 КУНГ-ФУД - Полная серия ▶️ | На русском | Сезон 1")
+    assert not name_matches([norm("Менталист")], "Менталистка, 1 сезон, 1 серия")
+    assert name_matches([norm("Менталист")], "Менталист 1 сезон 3 серия")
+    assert name_matches([norm("Такси")], "Такси 1 Фильм 1998г.")
+
+
+def test_twin_title_blocks_same_fact(monkeypatch):
+    class AS:
+        def get(self, path, **kw):
+            return {"items": [{"id": 1, "texts": {"title": "Почему «Такси» чуть не остался без студии?"}, "autopublish": {"state": "scheduled"}}]}
+    cache: dict = {}
+    assert pipeline._twin_title(AS(), "emerald", 2, 'Почему "Такси" чуть не осталось без студии?', cache)
+    assert pipeline._twin_title(AS(), "emerald", 3, "Он решил проучить наглых таксистов", cache) is None
+
+
+def test_cut_source_is_not_cut_again(conn):
+    """01.11: один файл «Такси» нарезан 4 раза — календарь ставил фильм заново. Нарезанный исходник второй раз не берём."""
+    from kinotrends import recommend
+
+    srcs = [{"video_id": "ep1", "url": "https://rutube.ru/video/ep1/", "verified": 1}, {"video_id": "ep2", "url": "https://rutube.ru/video/ep2/", "verified": 1}]
+    assert [x["video_id"] for x in recommend.fresh_sources(conn, "Qcut", srcs)] == ["ep1", "ep2"]
+    iid = _put_item(conn, "Qcut", "publishing", as_packages=pipeline.dumps([501, 502]))
+    conn.execute("UPDATE pipeline_items SET kind = 'film', source_video_id = 'ep1' WHERE id = ?", (iid,))
+    iid2 = _put_item(conn, "Qcut", "failed")  # упал до нарезки — исходник ещё свободен
+    conn.execute("UPDATE pipeline_items SET kind = 'film', source_video_id = 'ep2' WHERE id = ?", (iid2,))
+    conn.commit()
+    assert [x["video_id"] for x in recommend.fresh_sources(conn, "Qcut", srcs)] == ["ep2"]
+
+
+def test_dead_source_is_forgotten(conn):
+    """Закрытый ролик Rutube (403 и через мак) и сборник длиннее 3 ч больше не берутся; бот-проверка YouTube — временная."""
+    iid = _put_item(conn, "Qdead", "failed")
+    conn.execute("UPDATE pipeline_items SET kind = 'film', source_video_id = 'rt_dead' WHERE id = ?", (iid,))
+    conn.execute("INSERT OR IGNORE INTO titles(id, label_ru, kind, updated_at) VALUES ('Qdead', 'Фильм', 'film', 'now')")
+    conn.execute("""INSERT INTO title_sources(title_id, video_id, url, label, channel, duration_s, views, kind, language, trust, verified, score, found_at)
+                    VALUES ('Qdead','rt_dead','https://rutube.ru/video/dead/','Фильм','Канал',5400,10,'film','русский',0.9,1,9.0,'2026-11-01T00:00:00Z')""")
+    conn.commit()
+    item = pipeline._row(conn, iid)
+    pipeline._forget_dead_source(conn, item, "ERROR: YouTube требует вход (бот-проверка)")
+    assert conn.execute("SELECT verified FROM title_sources WHERE video_id = 'rt_dead'").fetchone()[0] == 1
+    pipeline._forget_dead_source(conn, item, "ERROR: [rutube] defe09c5: Unable to download video JSON: HTTP Error 403: Forbidden")
+    assert conn.execute("SELECT verified FROM title_sources WHERE video_id = 'rt_dead'").fetchone()[0] == 0
+
+
+def test_film_is_cut_once_series_by_episode(conn):
+    """Фильм режется один раз (другая заливка — те же сцены); у сериала — другая серия, перезалив той же — по длине."""
+    from kinotrends import recommend
+
+    conn.execute("INSERT OR IGNORE INTO titles(id, label_ru, kind, updated_at) VALUES ('Qser', 'Сериал', 'series', 'now')")
+    for vid, dur in (("s1", 2700), ("s1copy", 2701), ("s2", 2950)):
+        conn.execute("""INSERT INTO title_sources(title_id, video_id, url, label, channel, duration_s, views, kind, language, trust, verified, score, found_at)
+                        VALUES ('Qser', ?, 'https://rutube.ru/video/x/', 'Серия', 'Канал', ?, 10, 'episode', 'русский', 0.9, 1, 9.0, 'now')""", (vid, dur))
+    iid = _put_item(conn, "Qser", "publishing", as_packages=pipeline.dumps([601]))
+    conn.execute("UPDATE pipeline_items SET kind = 'film', source_video_id = 's1' WHERE id = ?", (iid,))
+    conn.commit()
+    srcs = [{"video_id": v, "duration_s": d, "verified": 1} for v, d in (("s1", 2700), ("s1copy", 2701), ("s2", 2950))]
+    assert [x["video_id"] for x in recommend.fresh_sources(conn, "Qser", srcs, "series")] == ["s2"]
+    assert recommend.fresh_sources(conn, "Qser", srcs, "film") == []
+
+
+def test_probe_out_rest_waiting_keeps_item_publishing(conn):
+    """01.11: проба «Крампуса» вышла, 3 ролика ждали час — задание закрылось «опубликовано» и бросило их."""
+    s = dict(db.all_settings(conn), pipeline_autopublish="1")
+    iid = _put_item(conn, "probe-film", "publishing", as_jobs=pipeline.dumps([91, 92]), as_packages=pipeline.dumps([9, 10]),
+                    metrics=pipeline.dumps({"jobs": {"91": "approved", "92": "approved"}, "probe_pid": 9}))
+    conn.execute("UPDATE pipeline_items SET kind = 'film' WHERE id = ?", (iid,))
+    conn.commit()
+    fake = FakeAS()
+    fake.job_status = "approved"
+    fake.pkg_job = {9: 91, 10: 92}
+    fake.package = lambda pid: {"id": pid, "job_id": fake.pkg_job.get(pid), "autopublish": {"state": "done"} if pid == 9 else None,
+                                "publication": {"id": 50} if pid == 9 else None, "channel": {"id": "kadr-dnya"}}
+    fake.get = lambda path, **p: {"connected": True, "can_upload": True}
+    pipeline.step(conn, fake, pipeline._row(conn, iid), s, log=lambda *a, **k: None)
+    cur = pipeline._row(conn, iid)
+    assert cur["status"] == "publishing"  # проба ещё не провисела час — ждём, но не бросаем
+    assert not any(c[0] == "autopublish" for c in fake.calls)
