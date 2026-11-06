@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Privacy Policy · Shorts Publisher</title>
+<style>
+:root { --bg: #F7F7F5; --surface: #FFFFFF; --fg: #1A1A18; --muted: #5E5E58; --line: #E2E2DC; --accent: #1F5FBF; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --surface: #1B1B19; --fg: #EDEDE8; --muted: #A3A39B; --line: #2E2E2A; --accent: #8DB4FF; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #121211; --surface: #1B1B19; --fg: #EDEDE8; --muted: #A3A39B; --line: #2E2E2A; --accent: #8DB4FF; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; display: flex; flex-direction: column; gap: 22px; }
+h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-size: 19px; margin: 8px 0 0; }
+p, ul { margin: 0; max-width: 68ch; }
+ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+a { color: var(--accent); text-underline-offset: 3px; }
+.muted { color: var(--muted); font-size: 14.5px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+nav { display: flex; gap: 16px; flex-wrap: wrap; font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Privacy Policy</h1>
+<p class="muted">Shorts Publisher · last updated October 28, 2026</p>
+<p>Shorts Publisher is a private tool that the channel owner uses to publish their own short videos to their own YouTube channels. This page explains what data the tool accesses through Google and how it is handled.</p>
+<h2>Data we access</h2>
+<ul>
+  <li><b>youtube.upload</b>: upload videos that the owner prepared to the connected channel.</li>
+  <li><b>youtube.readonly</b>: read the connected channel's ID and title, to confirm which channel was connected, and the statistics of videos the tool uploaded.</li>
+  <li><b>youtube.force-ssl</b>: update or delete videos that the tool uploaded earlier, when the owner asks for it.</li>
+</ul>
+<h2>How we store it</h2>
+<ul>
+  <li>The OAuth refresh token is stored encrypted on our own server and is used only for the actions listed above on the connected channel.</li>
+  <li>We do not access email, contacts, files, or any other Google data.</li>
+</ul>
+<h2>Sharing</h2>
+<p>We do not sell, share, or transfer YouTube or Google user data to anyone. Data is not used for advertising and is not shown to other people.</p>
+<h2>Revoking access and deletion</h2>
+<p>You can revoke access at any time on the <a href="https://myaccount.google.com/permissions">Google Account permissions page</a> or through the <a href="https://security.google.com/settings/security/permissions">Google security settings</a>. When access is revoked or the channel is disconnected in the tool, the stored token is deleted. To request deletion of any other stored data, write to the support email shown on the Google sign-in screen.</p>
+<h2>YouTube API Services</h2>
+<p>Shorts Publisher uses YouTube API Services. See the <a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a> and the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</p>
+<h2>Contact</h2>
+<p>Questions about this policy go to the support email shown on the Google sign-in screen for Shorts Publisher.</p>
+<p class="muted"><a href="./">Shorts Publisher</a></p>
+</main>
+</body>
+</html>

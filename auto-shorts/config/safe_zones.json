@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "default_profile": "common_organic",
+  "profiles": [
+    {
+      "id": "common_organic",
+      "label": "Общий органический (пересечение замеров)",
+      "status": "community",
+      "safe": {"x1": 65, "y1": 192, "x2": 895, "y2": 1380},
+      "margins": {"top": 192, "bottom": 540, "left": 65, "right": 185},
+      "offer_area": {"x1": 65, "y1": 1120, "x2": 890, "y2": 1370},
+      "offer_max_height_px": 250,
+      "micro_brand_area": {"x1": 65, "y1": 195, "x2": 895, "y2": 260},
+      "platforms": ["youtube", "vk", "instagram", "tiktok"],
+      "sources": [
+        {"url": "https://github.com/yuvraj99776600/shorts-kit", "note": "shorts-kit: Shorts, TikTok, Reels", "status": "community"},
+        {"url": "https://github.com/reelsmith/safezone", "note": "reelsmith/safezone: Shorts, TikTok, Reels", "status": "community"}
+      ],
+      "notes": "research 2026-09-26 §7.1: пересечение замеров сообщества; официальных органических зон нет ни у одной площадки, проверять скриншотами с реальных телефонов"
+    },
+    {
+      "id": "youtube_shorts",
+      "label": "YouTube Shorts",
+      "status": "community",
+      "safe": {"x1": 65, "y1": 180, "x2": 896, "y2": 1382},
+      "margins": {"top": 180, "bottom": 538, "left": 65, "right": 184},
+      "offer_area": {"x1": 65, "y1": 1120, "x2": 890, "y2": 1370},
+      "offer_max_height_px": 250,
+      "micro_brand_area": {"x1": 65, "y1": 195, "x2": 896, "y2": 260},
+      "platforms": ["youtube"],
+      "sources": [
+        {"url": "https://github.com/yuvraj99776600/shorts-kit", "note": "shorts-kit: сверху 180, снизу 380, слева 60, справа 140", "status": "community", "measured": {"x1": 60, "y1": 180, "x2": 940, "y2": 1540}},
+        {"url": "https://github.com/reelsmith/safezone", "note": "reelsmith: сверху 173, снизу 538, слева 65, справа 184", "status": "community", "measured": {"x1": 65, "y1": 173, "x2": 896, "y2": 1382}}
+      ],
+      "notes": "консервативное пересечение двух замеров сообщества"
+    },
+    {
+      "id": "instagram_reels",
+      "label": "Instagram Reels (органика)",
+      "status": "community",
+      "safe": {"x1": 65, "y1": 192, "x2": 907, "y2": 1382},
+      "margins": {"top": 192, "bottom": 538, "left": 65, "right": 173},
+      "offer_area": {"x1": 65, "y1": 1120, "x2": 890, "y2": 1370},
+      "offer_max_height_px": 250,
+      "micro_brand_area": {"x1": 65, "y1": 195, "x2": 907, "y2": 260},
+      "platforms": ["instagram"],
+      "sources": [
+        {"url": "https://github.com/yuvraj99776600/shorts-kit", "note": "shorts-kit: сверху 180, снизу 420, слева 60, справа 160", "status": "community", "measured": {"x1": 60, "y1": 180, "x2": 920, "y2": 1500}},
+        {"url": "https://github.com/reelsmith/safezone", "note": "reelsmith: сверху 192, снизу 538, слева 65, справа 173", "status": "community", "measured": {"x1": 65, "y1": 192, "x2": 907, "y2": 1382}}
+      ],
+      "notes": "консервативное пересечение двух замеров сообщества"
+    },
+    {
+      "id": "tiktok",
+      "label": "TikTok",
+      "status": "community",
+      "safe": {"x1": 60, "y1": 154, "x2": 923, "y2": 1440},
+      "margins": {"top": 154, "bottom": 480, "left": 60, "right": 157},
+      "offer_area": {"x1": 65, "y1": 1120, "x2": 890, "y2": 1300},
+      "offer_max_height_px": 180,
+      "micro_brand_area": {"x1": 65, "y1": 195, "x2": 923, "y2": 260},
+      "platforms": ["tiktok"],
+      "sources": [
+        {"url": "https://github.com/yuvraj99776600/shorts-kit", "note": "shorts-kit: сверху 130, снизу 480, слева 60, справа 140", "status": "community", "measured": {"x1": 60, "y1": 130, "x2": 940, "y2": 1440}},
+        {"url": "https://github.com/reelsmith/safezone", "note": "reelsmith: сверху 154, снизу 480, слева 59, справа 157", "status": "community", "measured": {"x1": 59, "y1": 154, "x2": 923, "y2": 1440}}
+      ],
+      "notes": "с длинной подписью плашка не ниже y ≤ 1300 (research §7.2); TikTok API запрещает промо-оверлеи — площадка вне v1"
+    },
+    {
+      "id": "vk_clips",
+      "label": "VK Клипы",
+      "status": "unconfirmed",
+      "safe": {"x1": 0, "y1": 192, "x2": 1080, "y2": 1536},
+      "margins": {"top": 192, "bottom": 384, "left": null, "right": null},
+      "offer_area": {"x1": 65, "y1": 1120, "x2": 890, "y2": 1370},
+      "offer_max_height_px": 250,
+      "micro_brand_area": {"x1": 65, "y1": 195, "x2": 895, "y2": 260},
+      "platforms": ["vk"],
+      "sources": [
+        {"url": null, "note": "ТЗ §6 и research §7.1: верхние 10% и нижние 20% кадра заняты интерфейсом; правая колонка не замерена", "status": "unconfirmed"}
+      ],
+      "notes": "не подтверждено; по горизонтали проверяйте ещё и по common_organic"
+    },
+    {
+      "id": "meta_reels_ads",
+      "label": "Meta Reels, реклама",
+      "status": "official",
+      "safe": {"x1": 65, "y1": 269, "x2": 1015, "y2": 1248},
+      "margins": {"top": 269, "bottom": 672, "left": 65, "right": 65},
+      "offer_area": {"x1": 65, "y1": 1000, "x2": 1015, "y2": 1248},
+      "offer_max_height_px": 250,
+      "micro_brand_area": {"x1": 65, "y1": 272, "x2": 1015, "y2": 337},
+      "platforms": ["instagram"],
+      "sources": [
+        {"url": "https://www.facebook.com/business/ads-guide/update/video/instagram-reels", "note": "официально: 14% сверху, 35% снизу, 6% по бокам", "status": "official", "measured": {"x1": 65, "y1": 269, "x2": 1015, "y2": 1248}}
+      ],
+      "notes": "для платного продвижения: низ плашки не ниже y ≈ 1248"
+    },
+    {
+      "id": "google_vertical_ads",
+      "label": "Google Ads, вертикальное видео",
+      "status": "official",
+      "safe": {"x1": 48, "y1": 288, "x2": 888, "y2": 1248},
+      "margins": {"top": 288, "bottom": 672, "left": 48, "right": 192},
+      "offer_area": {"x1": 48, "y1": 1000, "x2": 888, "y2": 1248},
+      "offer_max_height_px": 250,
+      "micro_brand_area": {"x1": 48, "y1": 291, "x2": 888, "y2": 356},
+      "platforms": ["youtube"],
+      "sources": [
+        {"url": "https://support.google.com/google-ads/answer/13547298", "note": "официально (SVG-схема спецификаций видео)", "status": "official", "measured": {"x1": 48, "y1": 288, "x2": 888, "y2": 1248}}
+      ],
+      "notes": "для платного продвижения на YouTube: низ плашки не ниже y ≈ 1248"
+    }
+  ]
+}

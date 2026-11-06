@@ -1,0 +1,10 @@
+# сгенерировано владельцем контрактов (npm run gen:api) — не форматировать
+lib/api/schema.d.ts
+public/mockServiceWorker.js
+node_modules
+.next
+out
+out-mock
+test-results
+playwright-report
+package-lock.json

@@ -1,0 +1,713 @@
+{
+  "components": {
+    "schemas": {
+      "Budget": {
+        "properties": {
+          "alert_threshold_pct": {
+            "title": "Alert Threshold Pct",
+            "type": "integer"
+          },
+          "daily_limit_usd": {
+            "title": "Daily Limit Usd",
+            "type": "number"
+          },
+          "day": {
+            "description": "Бизнес-день в business_timezone",
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "pause_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pause Reason"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "reserved_usd": {
+            "title": "Reserved Usd",
+            "type": "number"
+          },
+          "spent_today_usd": {
+            "title": "Spent Today Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "daily_limit_usd",
+          "spent_today_usd",
+          "reserved_usd",
+          "paused",
+          "pause_reason",
+          "alert_threshold_pct"
+        ],
+        "title": "Budget",
+        "type": "object"
+      },
+      "BudgetPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "alert_threshold_pct": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alert Threshold Pct"
+          },
+          "daily_limit_usd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Daily Limit Usd"
+          }
+        },
+        "title": "BudgetPatch",
+        "type": "object"
+      },
+      "BudgetPause": {
+        "additionalProperties": false,
+        "properties": {
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "BudgetPause",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "GenerationEvent": {
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "cpu_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu Ms"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Http Status"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "status": {
+            "description": "ok | error",
+            "title": "Status",
+            "type": "string"
+          },
+          "step_name": {
+            "title": "Step Name",
+            "type": "string"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "trend_brief_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trend Brief Id"
+          },
+          "unit_price_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price Usd"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "task_id",
+          "source_id",
+          "trend_brief_id",
+          "step_name",
+          "provider",
+          "model",
+          "units",
+          "unit_price_usd",
+          "cost_usd",
+          "latency_ms",
+          "http_status",
+          "status",
+          "error",
+          "cpu_ms",
+          "created_at"
+        ],
+        "title": "GenerationEvent",
+        "type": "object"
+      },
+      "GenerationEventJournal": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GenerationEvent"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_before_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Передать как `before_id`, чтобы получить следующую страницу",
+            "title": "Next Before Id"
+          }
+        },
+        "required": [
+          "next_before_id",
+          "items"
+        ],
+        "title": "GenerationEventJournal",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/budget": {
+      "get": {
+        "operationId": "budget_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Budget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Бюджет текущего бизнес-дня",
+        "tags": [
+          "budget"
+        ]
+      },
+      "patch": {
+        "operationId": "budget_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Budget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Лимиты (admin)",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budget/pause": {
+      "post": {
+        "operationId": "budget_pause",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetPause"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Budget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Ручная пауза платных шагов",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/budget/resume": {
+      "post": {
+        "operationId": "budget_resume",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Budget"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Снять паузу",
+        "tags": [
+          "budget"
+        ]
+      }
+    },
+    "/api/v1/generation-events": {
+      "get": {
+        "operationId": "budget_generation_events",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "job_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "provider",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "step_name",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Step Name"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date To"
+            }
+          },
+          {
+            "description": "Курсор журнала: id строго меньше",
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Курсор журнала: id строго меньше",
+              "title": "Before Id"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationEventJournal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Журнал вызовов провайдеров",
+        "tags": [
+          "budget"
+        ]
+      }
+    }
+  },
+  "tag": "budget"
+}

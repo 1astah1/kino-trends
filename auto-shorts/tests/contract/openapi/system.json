@@ -1,0 +1,1780 @@
+{
+  "components": {
+    "schemas": {
+      "ActorKind": {
+        "enum": [
+          "user",
+          "api_token",
+          "bot",
+          "system",
+          "webhook"
+        ],
+        "title": "ActorKind",
+        "type": "string"
+      },
+      "Alert": {
+        "properties": {
+          "acked_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Acked By"
+          },
+          "code": {
+            "description": "См. AlertCode: disk_low, worker_down, budget_80, …",
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "last_seen_at": {
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "opened_at": {
+            "format": "date-time",
+            "title": "Opened At",
+            "type": "string"
+          },
+          "resolved_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved At"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AlertStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "severity",
+          "status",
+          "title",
+          "details",
+          "opened_at",
+          "last_seen_at",
+          "resolved_at",
+          "acked_by"
+        ],
+        "title": "Alert",
+        "type": "object"
+      },
+      "AlertEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "alert_id": {
+            "title": "Alert Id",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AlertSeverity"
+          }
+        },
+        "required": [
+          "alert_id",
+          "code",
+          "severity"
+        ],
+        "title": "AlertEvent",
+        "type": "object"
+      },
+      "AlertList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Alert"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AlertList",
+        "type": "object"
+      },
+      "AlertSeverity": {
+        "enum": [
+          "info",
+          "warning",
+          "critical"
+        ],
+        "title": "AlertSeverity",
+        "type": "string"
+      },
+      "AlertStatus": {
+        "enum": [
+          "open",
+          "acked",
+          "resolved"
+        ],
+        "title": "AlertStatus",
+        "type": "string"
+      },
+      "AuditEntry": {
+        "properties": {
+          "action": {
+            "description": "job.review, secret.set, product.update, …",
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_kind": {
+            "$ref": "#/components/schemas/ActorKind"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "diff": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Значения секретов вырезаны",
+            "title": "Diff"
+          },
+          "entity_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity Id"
+          },
+          "entity_type": {
+            "title": "Entity Type",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "actor_kind",
+          "actor_user_id",
+          "action",
+          "entity_type",
+          "entity_id",
+          "summary",
+          "diff",
+          "request_id"
+        ],
+        "title": "AuditEntry",
+        "type": "object"
+      },
+      "AuditJournal": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_before_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Передать как `before_id`, чтобы получить следующую страницу",
+            "title": "Next Before Id"
+          }
+        },
+        "required": [
+          "next_before_id",
+          "items"
+        ],
+        "title": "AuditJournal",
+        "type": "object"
+      },
+      "Budget": {
+        "properties": {
+          "alert_threshold_pct": {
+            "title": "Alert Threshold Pct",
+            "type": "integer"
+          },
+          "daily_limit_usd": {
+            "title": "Daily Limit Usd",
+            "type": "number"
+          },
+          "day": {
+            "description": "Бизнес-день в business_timezone",
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "pause_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pause Reason"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "reserved_usd": {
+            "title": "Reserved Usd",
+            "type": "number"
+          },
+          "spent_today_usd": {
+            "title": "Spent Today Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "day",
+          "daily_limit_usd",
+          "spent_today_usd",
+          "reserved_usd",
+          "paused",
+          "pause_reason",
+          "alert_threshold_pct"
+        ],
+        "title": "Budget",
+        "type": "object"
+      },
+      "BudgetEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "limit_usd": {
+            "title": "Limit Usd",
+            "type": "number"
+          },
+          "paused": {
+            "title": "Paused",
+            "type": "boolean"
+          },
+          "reserved_usd": {
+            "title": "Reserved Usd",
+            "type": "number"
+          },
+          "spent_usd": {
+            "title": "Spent Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "spent_usd",
+          "reserved_usd",
+          "limit_usd",
+          "paused"
+        ],
+        "title": "BudgetEvent",
+        "type": "object"
+      },
+      "DiskStatus": {
+        "properties": {
+          "free_gb": {
+            "title": "Free Gb",
+            "type": "number"
+          },
+          "thresholds": {
+            "$ref": "#/components/schemas/DiskThresholds"
+          }
+        },
+        "required": [
+          "free_gb",
+          "thresholds"
+        ],
+        "title": "DiskStatus",
+        "type": "object"
+      },
+      "DiskThresholds": {
+        "properties": {
+          "emergency_gb": {
+            "title": "Emergency Gb",
+            "type": "number"
+          },
+          "hard_gb": {
+            "title": "Hard Gb",
+            "type": "number"
+          },
+          "soft_gb": {
+            "title": "Soft Gb",
+            "type": "number"
+          }
+        },
+        "required": [
+          "soft_gb",
+          "hard_gb",
+          "emergency_gb"
+        ],
+        "title": "DiskThresholds",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "HeavySlot": {
+        "properties": {
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "id воркера, держащего тяжёлый слот",
+            "title": "Owner"
+          },
+          "pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          }
+        },
+        "required": [
+          "owner",
+          "task_id",
+          "stage",
+          "pct"
+        ],
+        "title": "HeavySlot",
+        "type": "object"
+      },
+      "JobProgressEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "pct": {
+            "title": "Pct",
+            "type": "number"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id",
+          "task_id",
+          "pct"
+        ],
+        "title": "JobProgressEvent",
+        "type": "object"
+      },
+      "JobStage": {
+        "enum": [
+          "script",
+          "voice",
+          "visuals",
+          "clip_fetch",
+          "clip_analyze",
+          "author_script",
+          "author_voice",
+          "render",
+          "qc",
+          "package"
+        ],
+        "title": "JobStage",
+        "type": "string"
+      },
+      "JobStatus": {
+        "enum": [
+          "draft",
+          "queued",
+          "processing",
+          "qc_failed",
+          "pending_review",
+          "rework",
+          "approved",
+          "published",
+          "rejected",
+          "failed",
+          "cancelled"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "JobStatusEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "JobStatusEvent",
+        "type": "object"
+      },
+      "PackagesEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "downloaded": {
+            "title": "Downloaded",
+            "type": "integer"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ready",
+          "downloaded"
+        ],
+        "title": "PackagesEvent",
+        "type": "object"
+      },
+      "PingEvent": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "PingEvent",
+        "type": "object"
+      },
+      "PsiStatus": {
+        "properties": {
+          "cpu10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cpu10"
+          },
+          "mem10": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mem10"
+          }
+        },
+        "required": [
+          "cpu10",
+          "mem10"
+        ],
+        "title": "PsiStatus",
+        "type": "object"
+      },
+      "PublicationMetricsEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id"
+        ],
+        "title": "PublicationMetricsEvent",
+        "type": "object"
+      },
+      "QueueCounters": {
+        "properties": {
+          "deferred": {
+            "title": "Deferred",
+            "type": "integer"
+          },
+          "queued": {
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "running",
+          "deferred"
+        ],
+        "title": "QueueCounters",
+        "type": "object"
+      },
+      "QueueStatus": {
+        "properties": {
+          "heavy": {
+            "$ref": "#/components/schemas/QueueCounters"
+          },
+          "light": {
+            "$ref": "#/components/schemas/QueueCounters"
+          }
+        },
+        "required": [
+          "heavy",
+          "light"
+        ],
+        "title": "QueueStatus",
+        "type": "object"
+      },
+      "ReadyCheck": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "ReadyCheck",
+        "type": "object"
+      },
+      "ReadyChecks": {
+        "properties": {
+          "db": {
+            "$ref": "#/components/schemas/ReadyCheck"
+          },
+          "disk": {
+            "$ref": "#/components/schemas/ReadyCheck"
+          },
+          "media_writable": {
+            "$ref": "#/components/schemas/ReadyCheck"
+          },
+          "migrations": {
+            "$ref": "#/components/schemas/ReadyCheck"
+          }
+        },
+        "required": [
+          "db",
+          "migrations",
+          "media_writable",
+          "disk"
+        ],
+        "title": "ReadyChecks",
+        "type": "object"
+      },
+      "ReadyResponse": {
+        "description": "200 — всё ок; 503 с тем же телом и `status=not_ready` (например, `migrations_pending`).",
+        "properties": {
+          "checks": {
+            "$ref": "#/components/schemas/ReadyChecks"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "not_ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ],
+        "title": "ReadyResponse",
+        "type": "object"
+      },
+      "ResourceClass": {
+        "enum": [
+          "heavy",
+          "light"
+        ],
+        "title": "ResourceClass",
+        "type": "string"
+      },
+      "ReviewQueueEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "ReviewQueueEvent",
+        "type": "object"
+      },
+      "SourceStatus": {
+        "enum": [
+          "queued",
+          "downloading",
+          "preparing",
+          "transcribing",
+          "selecting",
+          "ready",
+          "failed",
+          "archived"
+        ],
+        "title": "SourceStatus",
+        "type": "string"
+      },
+      "SourceStatusEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pct"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SourceStatus"
+          }
+        },
+        "required": [
+          "source_id",
+          "status"
+        ],
+        "title": "SourceStatusEvent",
+        "type": "object"
+      },
+      "SseAlert": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/AlertEvent"
+          },
+          "event": {
+            "const": "alert",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseAlert",
+        "type": "object"
+      },
+      "SseBudget": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/BudgetEvent"
+          },
+          "event": {
+            "const": "budget",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseBudget",
+        "type": "object"
+      },
+      "SseEvent": {
+        "description": "Один кадр `text/event-stream`: `event:` = поле `event`, `data:` = JSON поля `data`.",
+        "discriminator": {
+          "mapping": {
+            "alert": "#/components/schemas/SseAlert",
+            "budget": "#/components/schemas/SseBudget",
+            "job_progress": "#/components/schemas/SseJobProgress",
+            "job_status": "#/components/schemas/SseJobStatus",
+            "packages": "#/components/schemas/SsePackages",
+            "ping": "#/components/schemas/SsePing",
+            "publication_metrics": "#/components/schemas/SsePublicationMetrics",
+            "review_queue": "#/components/schemas/SseReviewQueue",
+            "source_status": "#/components/schemas/SseSourceStatus",
+            "task_progress": "#/components/schemas/SseTaskProgress",
+            "worker": "#/components/schemas/SseWorker"
+          },
+          "propertyName": "event"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SseJobStatus"
+          },
+          {
+            "$ref": "#/components/schemas/SseJobProgress"
+          },
+          {
+            "$ref": "#/components/schemas/SseTaskProgress"
+          },
+          {
+            "$ref": "#/components/schemas/SseReviewQueue"
+          },
+          {
+            "$ref": "#/components/schemas/SsePackages"
+          },
+          {
+            "$ref": "#/components/schemas/SseAlert"
+          },
+          {
+            "$ref": "#/components/schemas/SseWorker"
+          },
+          {
+            "$ref": "#/components/schemas/SseBudget"
+          },
+          {
+            "$ref": "#/components/schemas/SseSourceStatus"
+          },
+          {
+            "$ref": "#/components/schemas/SsePublicationMetrics"
+          },
+          {
+            "$ref": "#/components/schemas/SsePing"
+          }
+        ],
+        "title": "SseEvent"
+      },
+      "SseJobProgress": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JobProgressEvent"
+          },
+          "event": {
+            "const": "job_progress",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseJobProgress",
+        "type": "object"
+      },
+      "SseJobStatus": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/JobStatusEvent"
+          },
+          "event": {
+            "const": "job_status",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseJobStatus",
+        "type": "object"
+      },
+      "SsePackages": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PackagesEvent"
+          },
+          "event": {
+            "const": "packages",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SsePackages",
+        "type": "object"
+      },
+      "SsePing": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PingEvent"
+          },
+          "event": {
+            "const": "ping",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SsePing",
+        "type": "object"
+      },
+      "SsePublicationMetrics": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PublicationMetricsEvent"
+          },
+          "event": {
+            "const": "publication_metrics",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SsePublicationMetrics",
+        "type": "object"
+      },
+      "SseReviewQueue": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ReviewQueueEvent"
+          },
+          "event": {
+            "const": "review_queue",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseReviewQueue",
+        "type": "object"
+      },
+      "SseSourceStatus": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/SourceStatusEvent"
+          },
+          "event": {
+            "const": "source_status",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseSourceStatus",
+        "type": "object"
+      },
+      "SseTaskProgress": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/TaskProgressEvent"
+          },
+          "event": {
+            "const": "task_progress",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseTaskProgress",
+        "type": "object"
+      },
+      "SseWorker": {
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/WorkerEvent"
+          },
+          "event": {
+            "const": "worker",
+            "title": "Event",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event",
+          "data"
+        ],
+        "title": "SseWorker",
+        "type": "object"
+      },
+      "SystemStatus": {
+        "properties": {
+          "budget": {
+            "$ref": "#/components/schemas/Budget"
+          },
+          "disk": {
+            "$ref": "#/components/schemas/DiskStatus"
+          },
+          "heavy_slot": {
+            "$ref": "#/components/schemas/HeavySlot"
+          },
+          "load1": {
+            "title": "Load1",
+            "type": "number"
+          },
+          "mem_available_mb": {
+            "title": "Mem Available Mb",
+            "type": "integer"
+          },
+          "psi": {
+            "$ref": "#/components/schemas/PsiStatus"
+          },
+          "queue": {
+            "$ref": "#/components/schemas/QueueStatus"
+          },
+          "versions": {
+            "$ref": "#/components/schemas/Versions"
+          },
+          "workers": {
+            "items": {
+              "$ref": "#/components/schemas/Worker"
+            },
+            "title": "Workers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workers",
+          "heavy_slot",
+          "disk",
+          "load1",
+          "psi",
+          "mem_available_mb",
+          "queue",
+          "budget",
+          "versions"
+        ],
+        "title": "SystemStatus",
+        "type": "object"
+      },
+      "TaskProgressEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "pct": {
+            "title": "Pct",
+            "type": "number"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id",
+          "kind",
+          "pct"
+        ],
+        "title": "TaskProgressEvent",
+        "type": "object"
+      },
+      "Versions": {
+        "properties": {
+          "app": {
+            "title": "App",
+            "type": "string"
+          },
+          "db_schema": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Db Schema"
+          }
+        },
+        "required": [
+          "app",
+          "db_schema"
+        ],
+        "title": "Versions",
+        "type": "object"
+      },
+      "Worker": {
+        "properties": {
+          "current_task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Task Id"
+          },
+          "heartbeat_at": {
+            "format": "date-time",
+            "title": "Heartbeat At",
+            "type": "string"
+          },
+          "hostname": {
+            "title": "Hostname",
+            "type": "string"
+          },
+          "id": {
+            "description": "<host>-<pid>-<class>",
+            "title": "Id",
+            "type": "string"
+          },
+          "pid": {
+            "title": "Pid",
+            "type": "integer"
+          },
+          "resource_class": {
+            "$ref": "#/components/schemas/ResourceClass"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "description": "idle | busy | deferred:<reason> | stopping",
+            "title": "State",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "id",
+          "resource_class",
+          "hostname",
+          "pid",
+          "version",
+          "started_at",
+          "heartbeat_at",
+          "current_task_id",
+          "state"
+        ],
+        "title": "Worker",
+        "type": "object"
+      },
+      "WorkerEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "resource_class": {
+            "$ref": "#/components/schemas/ResourceClass"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "worker_id": {
+            "title": "Worker Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "worker_id",
+          "resource_class",
+          "state"
+        ],
+        "title": "WorkerEvent",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/alerts": {
+      "get": {
+        "operationId": "system_alerts_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/AlertStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Алерты",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/alerts/{alert_id}/ack": {
+      "post": {
+        "operationId": "system_alerts_ack",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "alert_id",
+            "required": true,
+            "schema": {
+              "title": "Alert Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Подтвердить алерт",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/audit-log": {
+      "get": {
+        "operationId": "system_audit_log",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "actor_user_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Actor User Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "entity_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Entity Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "action",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date To"
+            }
+          },
+          {
+            "description": "Курсор журнала: id строго меньше",
+            "in": "query",
+            "name": "before_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Курсор журнала: id строго меньше",
+              "title": "Before Id"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditJournal"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Журнал аудита",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/events/stream": {
+      "get": {
+        "operationId": "system_events_stream",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Кадры SSE; форма одного кадра — схема SseEvent (x-sse-event-schema)"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Поток событий (text/event-stream), ping раз в 15 с",
+        "tags": [
+          "system"
+        ],
+        "x-sse-event-schema": {
+          "$ref": "#/components/schemas/SseEvent"
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "system_health",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Живость (без БД, без авторизации)",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "operationId": "system_ready",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyResponse"
+                }
+              }
+            },
+            "description": "Не готов (например, migrations_pending)"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Готовность: БД, миграции, запись в MEDIA_ROOT, диск",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/system/status": {
+      "get": {
+        "operationId": "system_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Воркеры, ресурсы, очередь, бюджет",
+        "tags": [
+          "system"
+        ]
+      }
+    }
+  },
+  "tag": "system"
+}

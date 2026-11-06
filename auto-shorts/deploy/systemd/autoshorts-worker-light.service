@@ -1,0 +1,72 @@
+# Auto Shorts v1 — лёгкий воркер: сетевые шаги (LLM, fal, edge-tts, облачный ASR, загрузки yt-dlp),
+# коллекторы, пакеты, ролл-апы, алерты, планировщик (лидер через advisory lock 771002), reaper.
+# docs/ARCHITECTURE.md §2.2, §6.1, §8.1. Портов не слушает.
+#
+# Профиль ресурсов (§8.1): shared_dev — --concurrency 2 и MemoryMax=512M (этот файл);
+# dedicated_small — --concurrency 3: drop-in deploy/systemd/profiles/dedicated_small/.
+# AS_LIGHT_CONCURRENCY можно переопределить и в .env.
+[Unit]
+Description=Auto Shorts light worker (network tasks, collectors, scheduler)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+PartOf=autoshorts.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+Environment=AS_LIGHT_CONCURRENCY=2
+# значения из .env важнее Environment= выше
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/autoshorts XDG_CACHE_HOME=/var/cache/autoshorts
+ExecStart=/opt/auto-shorts/.venv/bin/autoshorts-worker --class light --concurrency ${AS_LIGHT_CONCURRENCY}
+Restart=on-failure
+RestartSec=10
+# воркер по SIGTERM перестаёт брать задачи и отпускает текущие; остаток доберёт reaper.
+# KillMode=mixed: SIGTERM только главному процессу (подпроцессы гасит сам воркер, иначе они падают
+# раньше отмены и задача тратит попытку); по таймауту SIGKILL получает вся cgroup
+KillMode=mixed
+TimeoutStopSec=45
+
+# Ресурсы
+Nice=5
+MemoryHigh=448M
+MemoryMax=512M
+TasksMax=256
+# при нехватке памяти на машине OOM-киллер выбирает воркер раньше чужих сервисов
+OOMScoreAdjust=200
+
+# Песочница
+UMask=0027
+CacheDirectory=autoshorts
+CacheDirectoryMode=0750
+ReadWritePaths=/var/lib/autoshorts
+# legacy config.py создаёт render_tmp и master_archive при импорте; убрать в M7-C
+ReadWritePaths=-/opt/auto-shorts/render_tmp -/opt/auto-shorts/assets/master_archive
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=autoshorts.target

@@ -1,0 +1,62 @@
+# Auto Shorts v1 — API (FastAPI, /api/v1): сессии, SSE, выдача медиа через X-Accel-Redirect.
+# docs/ARCHITECTURE.md §2.2, §8.5. Один процесс (--workers 1): рассылка SSE и лимиты входа живут в памяти.
+# Слушает только 127.0.0.1:18300; снаружи — nginx admin-хоста (deploy/nginx/admin.conf).
+# Установка и порядок запуска — deploy/README.md.
+[Unit]
+Description=Auto Shorts API (/api/v1, 127.0.0.1:18300)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+PartOf=autoshorts.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+# /opt/auto-shorts/.env: root:autoshorts 0640 (его же читает core/config.py), образец — deploy/env/prod.env.example
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/autoshorts XDG_CACHE_HOME=/var/cache/autoshorts
+ExecStart=/opt/auto-shorts/.venv/bin/uvicorn autoshorts.api.app:app --host 127.0.0.1 --port 18300 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header --timeout-graceful-shutdown 10
+Restart=on-failure
+RestartSec=5
+# SSE держит соединения открытыми: uvicorn обрывает их через 10 с, systemd ждёт не дольше 30 с
+TimeoutStopSec=30
+
+# Ресурсы
+MemoryHigh=512M
+MemoryMax=768M
+TasksMax=256
+
+# Песочница: код и venv только на чтение, писать можно в медиатеку и кеш
+UMask=0027
+CacheDirectory=autoshorts
+CacheDirectoryMode=0750
+ReadWritePaths=/var/lib/autoshorts
+# legacy config.py создаёт render_tmp и master_archive при импорте; убрать в M7-C
+ReadWritePaths=-/opt/auto-shorts/render_tmp -/opt/auto-shorts/assets/master_archive
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=autoshorts.target

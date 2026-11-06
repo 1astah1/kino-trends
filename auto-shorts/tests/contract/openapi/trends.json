@@ -1,0 +1,7634 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "TrendsBackgroundJob": {
+        "additionalProperties": true,
+        "description": "Фоновая работа Kino-trends вне прогона: dict_import, recognize, neuro, popular, sources_top.",
+        "properties": {
+          "last": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Итог последнего запуска: ok, at/ts, error, …",
+            "title": "Last"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прогресс по-русски, если работа его сообщает",
+            "title": "Progress"
+          },
+          "running": {
+            "default": false,
+            "title": "Running",
+            "type": "boolean"
+          }
+        },
+        "title": "TrendsBackgroundJob",
+        "type": "object"
+      },
+      "TrendsCurrentRun": {
+        "additionalProperties": true,
+        "description": "Текущий сбор (`RunState.snapshot()`): фаза, прогресс «сделано/всего», хвост лога ≤ 80 строк.",
+        "properties": {
+          "log": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsRunLogLine"
+            },
+            "title": "Log",
+            "type": "array"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Название фазы по-русски: «хэштеги», «детали (Data API)», …",
+            "title": "Phase"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прогресс фазы, обычно «сделано/всего что»",
+            "title": "Progress"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "running": {
+            "default": false,
+            "title": "Running",
+            "type": "boolean"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "stats": {
+            "additionalProperties": true,
+            "title": "Stats",
+            "type": "object"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trigger"
+          }
+        },
+        "title": "TrendsCurrentRun",
+        "type": "object"
+      },
+      "TrendsEnqueueRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "enum": [
+              "film",
+              "video"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "ref_id": {
+            "description": "title_id кино или video_id ролика",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Ref Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "ref_id"
+        ],
+        "title": "TrendsEnqueueRequest",
+        "type": "object"
+      },
+      "TrendsFilmCutter": {
+        "additionalProperties": true,
+        "description": "Блок для нарезчика: исходник, прямой mp4, длина клипа, подсказка «что искать».",
+        "properties": {
+          "alt_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alt Url"
+          },
+          "clip_max_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Max S"
+          },
+          "clip_min_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Min S"
+          },
+          "direct_file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прямой mp4 из хранилища (внешний адрес)",
+            "title": "Direct File Url"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
+          "rights_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rights Level"
+          },
+          "rights_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rights Note"
+          },
+          "rights_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rights Ok"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "youtube | rutube",
+            "title": "Source Kind"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          }
+        },
+        "title": "TrendsFilmCutter",
+        "type": "object"
+      },
+      "TrendsFilmDetail": {
+        "additionalProperties": true,
+        "description": "Карточка произведения: бриф Kino-trends (`/api/brief/{id}`) и статистика (`/api/films/{id}`) вместе.",
+        "properties": {
+          "advice": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Advice",
+            "type": "array"
+          },
+          "channels": {
+            "description": "channel_id, name, n, views",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "cutter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmCutter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "daily": {
+            "description": "day, n, views — публикации по дням",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Daily",
+            "type": "array"
+          },
+          "deliverable": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deliverable"
+          },
+          "durations": {
+            "description": "bucket, n",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Durations",
+            "type": "array"
+          },
+          "explain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нейросеть: почему стоит резать",
+            "title": "Explain"
+          },
+          "explain_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explain At"
+          },
+          "hashtags": {
+            "description": "tag, n",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hashtags",
+            "type": "array"
+          },
+          "hashtags_all": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Hashtags All",
+            "type": "array"
+          },
+          "hooks": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hooks",
+            "type": "array"
+          },
+          "imdb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imdb Url"
+          },
+          "insights_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Insights At"
+          },
+          "interest": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Википедия и Google Trends: summary, lines, series",
+            "title": "Interest"
+          },
+          "kinopoisk_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinopoisk Url"
+          },
+          "opportunity": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opportunity"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmPlan"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Постер через наш API",
+            "title": "Poster Url"
+          },
+          "references": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmReference"
+            },
+            "title": "References",
+            "type": "array"
+          },
+          "rights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmRights"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenes": {
+            "description": "name, what_to_cut, quotes, where, n, views, top",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Scenes",
+            "type": "array"
+          },
+          "schedule": {
+            "description": "Слоты календаря: id, day, slot, status",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Schedule",
+            "type": "array"
+          },
+          "seasons": {
+            "description": "season, n, views (для сериалов)",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Seasons",
+            "type": "array"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Лучший исходник"
+          },
+          "source_alt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmSource"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmStats"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "$ref": "#/components/schemas/TrendsFilmTitle"
+          },
+          "top_channels": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Top Channels",
+            "type": "array"
+          },
+          "videos": {
+            "description": "Чужие нарезки за период",
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmVideo"
+            },
+            "title": "Videos",
+            "type": "array"
+          },
+          "why": {
+            "description": "Почему заходит",
+            "items": {
+              "type": "string"
+            },
+            "title": "Why",
+            "type": "array"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "TrendsFilmDetail",
+        "type": "object"
+      },
+      "TrendsFilmFindSourcesStarted": {
+        "description": "Фоновый поиск исходников для топа запущен; ход виден в `GET /trends/runs` → `jobs.sources_top`.",
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "started": {
+            "default": true,
+            "title": "Started",
+            "type": "boolean"
+          }
+        },
+        "title": "TrendsFilmFindSourcesStarted",
+        "type": "object"
+      },
+      "TrendsFilmList": {
+        "additionalProperties": true,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "TrendsFilmList",
+        "type": "object"
+      },
+      "TrendsFilmPlan": {
+        "additionalProperties": true,
+        "properties": {
+          "best_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Time"
+          },
+          "best_time_is_global": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Time Is Global"
+          },
+          "duration": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "«46–60 с»",
+            "title": "Duration"
+          },
+          "hashtags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hashtags",
+            "type": "array"
+          },
+          "hook": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hook"
+          },
+          "refs": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Refs",
+            "type": "array"
+          }
+        },
+        "title": "TrendsFilmPlan",
+        "type": "object"
+      },
+      "TrendsFilmReference": {
+        "additionalProperties": true,
+        "description": "Чужая нарезка, которая зашла (доказательство темы).",
+        "properties": {
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "thumb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Из url, чтобы показать миниатюру через наш прокси",
+            "title": "Video Id"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "title": "TrendsFilmReference",
+        "type": "object"
+      },
+      "TrendsFilmRights": {
+        "additionalProperties": true,
+        "description": "Полная оценка прав произведения (`/api/films/{id}/rights`).",
+        "properties": {
+          "auto_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Уровень без решения оператора",
+            "title": "Auto Level"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "clip_max_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Max S"
+          },
+          "holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Правообладатель",
+            "title": "Holder"
+          },
+          "holder_policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "claim | block | …",
+            "title": "Holder Policy"
+          },
+          "holder_policy_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Holder Policy Ru"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ok | caution | block | unknown",
+            "title": "Level"
+          },
+          "level_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Ru"
+          },
+          "notes": {
+            "description": "Что сделала перепроверка",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "passes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Проходит в календарь и к нарезчику",
+            "title": "Passes"
+          },
+          "public_domain": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Public Domain"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Риск 0–100",
+            "title": "Risk"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "signals": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "rated, removed_strict, claimants, source, llm, events, manual_level, manual_note",
+            "title": "Signals"
+          },
+          "title_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Id"
+          }
+        },
+        "title": "TrendsFilmRights",
+        "type": "object"
+      },
+      "TrendsFilmRightsManualRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ok",
+                  "caution",
+                  "block"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Решение оператора по правам; null — вернуть автоматическую оценку",
+            "title": "Level"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "title": "TrendsFilmRightsManualRequest",
+        "type": "object"
+      },
+      "TrendsFilmRow": {
+        "additionalProperties": true,
+        "description": "Строка списка кино: статистика чужих нарезок, права, лучший исходник, готовность.",
+        "properties": {
+          "countries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Countries",
+            "type": "array"
+          },
+          "dur_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dur Avg"
+          },
+          "franchise": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Franchise"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "growth7": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прирост просмотров за 7 дней по замерам",
+            "title": "Growth7"
+          },
+          "growth7_measured": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth7 Measured"
+          },
+          "in_pipeline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Статус задания конвейера по произведению, если есть",
+            "title": "In Pipeline"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "film | series | animated | animated_series | anime | tv_show",
+            "title": "Kind"
+          },
+          "kind_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind Ru"
+          },
+          "kp_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kp Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En"
+          },
+          "last_pub": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Pub"
+          },
+          "like_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Like Rate"
+          },
+          "n_channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Channels"
+          },
+          "n_fresh7": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Из них за 7 дней",
+            "title": "N Fresh7"
+          },
+          "n_shorts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Чужих нарезок за период",
+            "title": "N Shorts"
+          },
+          "opportunity": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Свободная ниша (мало каналов, высокая медиана)",
+            "title": "Opportunity"
+          },
+          "outlier_max": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outlier Max"
+          },
+          "outlier_rated": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outlier Rated"
+          },
+          "outlier_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Доля роликов в 3+ раза выше нормы канала",
+            "title": "Outlier Share"
+          },
+          "outliers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outliers"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Постер через наш API",
+            "title": "Poster Url"
+          },
+          "ready": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Можно резать сейчас (считает Kino-trends)",
+            "title": "Ready"
+          },
+          "ready_reasons": {
+            "description": "Почему нельзя: права, исходник, конвейер",
+            "items": {
+              "type": "string"
+            },
+            "title": "Ready Reasons",
+            "type": "array"
+          },
+          "rights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsRights"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Сводный балл темы 0–100",
+            "title": "Score"
+          },
+          "small_channel_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Small Channel Median"
+          },
+          "small_channel_n": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Small Channel N"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsFilmSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Лучший исходник (если Kino-trends его отдаёт)"
+          },
+          "title_id": {
+            "title": "Title Id",
+            "type": "string"
+          },
+          "top_video": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Лучшая чужая нарезка: video_id, title, views, thumb",
+            "title": "Top Video"
+          },
+          "trends_7d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trends 7D"
+          },
+          "trends_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trends Ratio"
+          },
+          "views_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Max"
+          },
+          "views_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Median"
+          },
+          "views_p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views P90"
+          },
+          "views_sum": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Sum"
+          },
+          "vpd_sum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vpd Sum"
+          },
+          "wiki_7d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wiki 7D"
+          },
+          "wiki_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wiki Ratio"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "title_id"
+        ],
+        "title": "TrendsFilmRow",
+        "type": "object"
+      },
+      "TrendsFilmSlot": {
+        "additionalProperties": true,
+        "description": "Слот календаря кино: что резать сегодня/завтра.",
+        "properties": {
+          "day": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "explain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пояснение нейросети: что резать",
+            "title": "Explain"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "фильм | сериал | мультфильм …",
+            "title": "Kind Ru"
+          },
+          "kinopoisk_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kinopoisk Url"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "locked": {
+            "default": false,
+            "title": "Locked",
+            "type": "boolean"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "duration, hook, best_time, hashtags, refs[]",
+            "title": "Plan"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему в тренде (просмотры, рост)",
+            "title": "Reason"
+          },
+          "rights": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsRights"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Исходник: url, channel, duration_s, language",
+            "title": "Source"
+          },
+          "source_alt": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Alt"
+          },
+          "status": {
+            "default": "planned",
+            "description": "planned | done | skipped",
+            "title": "Status",
+            "type": "string"
+          },
+          "title_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Wikidata id произведения (ref_id для enqueue kind=film)",
+            "title": "Title Id"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "TrendsFilmSlot",
+        "type": "object"
+      },
+      "TrendsFilmSource": {
+        "additionalProperties": true,
+        "description": "Исходник произведения: полный фильм или серия на YouTube / Rutube (`title_sources`).",
+        "properties": {
+          "alive": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 — жив, 0 — удалён, null — не проверяли",
+            "title": "Alive"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "episode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Episode"
+          },
+          "file_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Error"
+          },
+          "file_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "running | done | error — mp4 на хранилище",
+            "title": "File Status"
+          },
+          "found_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found At"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "film | episode | pack | other",
+            "title": "Kind"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "русский дубляж | оригинал | …",
+            "title": "Language"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "season": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season"
+          },
+          "title_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Id"
+          },
+          "trust": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Уверенность модели 0–1",
+            "title": "Trust"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Подтверждён моделью",
+            "title": "Verified"
+          },
+          "video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Id"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "title": "TrendsFilmSource",
+        "type": "object"
+      },
+      "TrendsFilmSources": {
+        "additionalProperties": true,
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmSource"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "TrendsFilmSources",
+        "type": "object"
+      },
+      "TrendsFilmStats": {
+        "additionalProperties": true,
+        "properties": {
+          "dur_avg": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dur Avg"
+          },
+          "growth7": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth7"
+          },
+          "n_channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Channels"
+          },
+          "n_shorts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "N Shorts"
+          },
+          "views_max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Max"
+          },
+          "views_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Median"
+          },
+          "views_p90": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views P90"
+          },
+          "views_sum": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views Sum"
+          },
+          "vpd_sum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vpd Sum"
+          }
+        },
+        "title": "TrendsFilmStats",
+        "type": "object"
+      },
+      "TrendsFilmTitle": {
+        "additionalProperties": true,
+        "properties": {
+          "aliases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Aliases",
+            "type": "array"
+          },
+          "countries": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Countries",
+            "type": "array"
+          },
+          "franchise": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Franchise"
+          },
+          "genres": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Genres",
+            "type": "array"
+          },
+          "imdb_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imdb Id"
+          },
+          "is_manual": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Manual"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          },
+          "kind_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind Ru"
+          },
+          "kp_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kp Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "label_en": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label En"
+          },
+          "original_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Title"
+          },
+          "sitelinks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sitelinks"
+          },
+          "title_id": {
+            "title": "Title Id",
+            "type": "string"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          }
+        },
+        "required": [
+          "title_id"
+        ],
+        "title": "TrendsFilmTitle",
+        "type": "object"
+      },
+      "TrendsFilmVideo": {
+        "additionalProperties": true,
+        "description": "Чужая нарезка из статистики произведения (`/api/films/{id}: videos[]`).",
+        "properties": {
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "channel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Name"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "episode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Episode"
+          },
+          "growth7": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth7"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "outlier_x": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Во сколько раз выше нормы канала",
+            "title": "Outlier X"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "recog_conf": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recog Conf"
+          },
+          "recog_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recog Method"
+          },
+          "season": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season"
+          },
+          "thumb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "vpd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vpd"
+          }
+        },
+        "required": [
+          "video_id"
+        ],
+        "title": "TrendsFilmVideo",
+        "type": "object"
+      },
+      "TrendsPickVideo": {
+        "additionalProperties": true,
+        "description": "Ролик подборки под перезалив (или кандидат на проверку).",
+        "properties": {
+          "audience_fit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Совпадение с нашей аудиторией 0–1",
+            "title": "Audience Fit"
+          },
+          "audience_why": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience Why"
+          },
+          "banner_advice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Advice"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "channel_subs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Subs"
+          },
+          "direct_file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direct File Url"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "file_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Status"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "frames_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Плитка кадров через наш API (/trends/videos/{id}/frames)",
+            "title": "Frames Url"
+          },
+          "free_zones": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Free Zones",
+            "type": "array"
+          },
+          "growth_per_day": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Growth Per Day"
+          },
+          "hook": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hook"
+          },
+          "is_short": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Short"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "clean | check | no | unknown",
+            "title": "Level"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "creativeCommon | youtube",
+            "title": "License"
+          },
+          "orientation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orientation"
+          },
+          "pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick"
+          },
+          "pick_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick Note"
+          },
+          "picked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Picked At"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "thumb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Обложка YouTube (внешний URL из данных)",
+            "title": "Thumb"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Когда отмечен залитым",
+            "title": "Used At"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "video_id"
+        ],
+        "title": "TrendsPickVideo",
+        "type": "object"
+      },
+      "TrendsPipeline": {
+        "additionalProperties": true,
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Состояние → число заданий",
+            "title": "Counts",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsPipelineItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "states_ru": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Состояние → русская подпись",
+            "title": "States Ru",
+            "type": "object"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TrendsPipelineBridge"
+          }
+        },
+        "required": [
+          "items",
+          "status"
+        ],
+        "title": "TrendsPipeline",
+        "type": "object"
+      },
+      "TrendsPipelineBridge": {
+        "additionalProperties": true,
+        "description": "Как Kino-trends видит auto-shorts (`pipeline.status`).",
+        "properties": {
+          "auto_review": {
+            "default": false,
+            "title": "Auto Review",
+            "type": "boolean"
+          },
+          "autopublish": {
+            "default": false,
+            "title": "Autopublish",
+            "type": "boolean"
+          },
+          "channels": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Channels",
+            "type": "array"
+          },
+          "configured": {
+            "default": false,
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "enabled": {
+            "default": false,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "/health/ready auto-shorts глазами Kino-trends",
+            "title": "Health"
+          },
+          "rights_default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rights Default"
+          }
+        },
+        "title": "TrendsPipelineBridge",
+        "type": "object"
+      },
+      "TrendsPipelineCounts": {
+        "properties": {
+          "active": {
+            "description": "В работе: new, file_pending, sent, cutting, approved, publishing",
+            "title": "Active",
+            "type": "integer"
+          },
+          "enabled": {
+            "default": false,
+            "description": "Цикл конвейера на стороне Kino-trends включён",
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "failed": {
+            "description": "Сломалось: failed, qc_failed",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "linked": {
+            "default": false,
+            "description": "Kino-trends видит auto-shorts (его health ответил ok)",
+            "title": "Linked",
+            "type": "boolean"
+          },
+          "published": {
+            "default": 0,
+            "description": "Опубликовано",
+            "title": "Published",
+            "type": "integer"
+          },
+          "review": {
+            "description": "Ждут человека: review, needs_rights",
+            "title": "Review",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "active",
+          "review",
+          "failed"
+        ],
+        "title": "TrendsPipelineCounts",
+        "type": "object"
+      },
+      "TrendsPipelineItem": {
+        "additionalProperties": true,
+        "description": "Задание конвейера Kino-trends → auto-shorts.",
+        "properties": {
+          "as_jobs": {
+            "items": {},
+            "title": "As Jobs",
+            "type": "array"
+          },
+          "as_packages": {
+            "items": {},
+            "title": "As Packages",
+            "type": "array"
+          },
+          "as_publications": {
+            "items": {},
+            "title": "As Publications",
+            "type": "array"
+          },
+          "as_source_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "id источника в auto-shorts",
+            "title": "As Source Id"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel"
+          },
+          "channel_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Slug"
+          },
+          "clip_max_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Max S"
+          },
+          "clip_min_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Min S"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          },
+          "direct_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Direct Url"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Подсказка нарезчику",
+            "title": "Hint"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_short": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Short"
+          },
+          "kind": {
+            "description": "film | video",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "metrics": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "ref_id": {
+            "description": "title_id кино или video_id ролика",
+            "title": "Ref Id",
+            "type": "string"
+          },
+          "rights_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rights Type"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sent At"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "source_video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Video Id"
+          },
+          "status": {
+            "description": "Одно из PIPELINE_STATES",
+            "title": "Status",
+            "type": "string"
+          },
+          "status_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Ru"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ref_id",
+          "status"
+        ],
+        "title": "TrendsPipelineItem",
+        "type": "object"
+      },
+      "TrendsPipelineTick": {
+        "additionalProperties": true,
+        "description": "Итог одного шага конвейера (`pipeline.tick`).",
+        "properties": {
+          "changed": {
+            "default": 0,
+            "title": "Changed",
+            "type": "integer"
+          },
+          "errors": {
+            "default": 0,
+            "description": "Заданий в состоянии failed после шага",
+            "title": "Errors",
+            "type": "integer"
+          },
+          "health": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health"
+          },
+          "processed": {
+            "default": 0,
+            "title": "Processed",
+            "type": "integer"
+          },
+          "sent": {
+            "default": 0,
+            "title": "Sent",
+            "type": "integer"
+          },
+          "skipped": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему шаг пропущен: auto-shorts не настроен / не готов",
+            "title": "Skipped"
+          }
+        },
+        "title": "TrendsPipelineTick",
+        "type": "object"
+      },
+      "TrendsRights": {
+        "additionalProperties": true,
+        "description": "Проверка авторских прав произведения (`rights.check`).",
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          },
+          "clip_max_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Max S"
+          },
+          "holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Правообладатель",
+            "title": "Holder"
+          },
+          "holder_policy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "claim | block | …",
+            "title": "Holder Policy"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ok | caution | block | unknown",
+            "title": "Level"
+          },
+          "level_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Ru"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "risk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Риск 0–100",
+            "title": "Risk"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          }
+        },
+        "title": "TrendsRights",
+        "type": "object"
+      },
+      "TrendsRun": {
+        "additionalProperties": true,
+        "description": "Прогон сбора трендов (таблица `runs` Kino-trends).",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "stats": {
+            "additionalProperties": true,
+            "description": "Счётчики прогона: new_videos, duration_s, …",
+            "title": "Stats",
+            "type": "object"
+          },
+          "status": {
+            "description": "running | ok | error (значение Kino-trends, в схеме — строка)",
+            "title": "Status",
+            "type": "string"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "manual | schedule",
+            "title": "Trigger"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "TrendsRun",
+        "type": "object"
+      },
+      "TrendsRunCancelling": {
+        "additionalProperties": true,
+        "properties": {
+          "cancelling": {
+            "description": "Был ли прогон, которому отправлен сигнал остановки",
+            "title": "Cancelling",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cancelling"
+        ],
+        "title": "TrendsRunCancelling",
+        "type": "object"
+      },
+      "TrendsRunLog": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsRunLogLine"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "TrendsRunLog",
+        "type": "object"
+      },
+      "TrendsRunLogLine": {
+        "additionalProperties": true,
+        "properties": {
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "info | warn | error",
+            "title": "Level"
+          },
+          "msg": {
+            "default": "",
+            "title": "Msg",
+            "type": "string"
+          },
+          "ts": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ts"
+          }
+        },
+        "title": "TrendsRunLogLine",
+        "type": "object"
+      },
+      "TrendsRunStarted": {
+        "additionalProperties": true,
+        "properties": {
+          "run_id": {
+            "title": "Run Id",
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TrendsCurrentRun"
+          }
+        },
+        "required": [
+          "run_id",
+          "state"
+        ],
+        "title": "TrendsRunStarted",
+        "type": "object"
+      },
+      "TrendsRuns": {
+        "additionalProperties": true,
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/TrendsCurrentRun"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsRun"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "jobs": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TrendsBackgroundJob"
+            },
+            "title": "Jobs",
+            "type": "object"
+          },
+          "next_run_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Расчётное время следующего автосбора: старт последнего прогона + интервал (ISO, UTC)",
+            "title": "Next Run At"
+          },
+          "schedule_hours": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Интервал автосбора (настройка schedule_hours), 0 — только вручную; None — не узнали",
+            "title": "Schedule Hours"
+          }
+        },
+        "required": [
+          "items",
+          "current"
+        ],
+        "title": "TrendsRuns",
+        "type": "object"
+      },
+      "TrendsSettingItem": {
+        "properties": {
+          "choices": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Допустимые значения для kind=choice",
+            "title": "Choices"
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Значение по умолчанию в Kino-trends",
+            "title": "Default"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "group": {
+            "description": "collect | pipeline | publish | rights",
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "bool",
+              "int",
+              "choice"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max"
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Текущее значение (None — Kino-trends не вернул ключ)",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "key",
+          "kind",
+          "label",
+          "description",
+          "group",
+          "value"
+        ],
+        "title": "TrendsSettingItem",
+        "type": "object"
+      },
+      "TrendsSettings": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsSettingItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "TrendsSettings",
+        "type": "object"
+      },
+      "TrendsSettingsPatch": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "description": "`{key: value}` только из белого списка `SETTING_SPECS`; неизвестный ключ или чужой тип — 422.",
+        "title": "TrendsSettingsPatch",
+        "type": "object"
+      },
+      "TrendsStatus": {
+        "properties": {
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Когда опрашивали Kino-trends (ISO, UTC)",
+            "title": "Checked At"
+          },
+          "configured": {
+            "description": "Адрес Kino-trends задан и похож на http(s)-URL",
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему недоступен / не настроен (по-русски)",
+            "title": "Error"
+          },
+          "pipeline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsPipelineCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "public_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "kino_trends_public_url — ссылка «Открыть Kino-trends»",
+            "title": "Public Url"
+          },
+          "reachable": {
+            "description": "Kino-trends ответил на оба запроса статуса",
+            "title": "Reachable",
+            "type": "boolean"
+          },
+          "today": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsTodayCounts"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "url_set": {
+            "description": "Настройка kino_trends_url непустая",
+            "title": "Url Set",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "configured",
+          "url_set",
+          "reachable",
+          "public_url",
+          "error",
+          "today",
+          "pipeline"
+        ],
+        "title": "TrendsStatus",
+        "type": "object"
+      },
+      "TrendsToday": {
+        "additionalProperties": true,
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsPickVideo"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/TrendsTodayRawCounts"
+          },
+          "last_run": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последний сбор: started_at, finished_at, status",
+            "title": "Last Run"
+          },
+          "picks": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsPickVideo"
+            },
+            "title": "Picks",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Текущий сбор: running, phase, progress",
+            "title": "Run"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/TrendsTodaySchedule"
+          },
+          "today": {
+            "description": "Дата дня, YYYY-MM-DD",
+            "title": "Today",
+            "type": "string"
+          },
+          "videos_job": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Фоновый разбор видео: running, last",
+            "title": "Videos Job"
+          }
+        },
+        "required": [
+          "today",
+          "schedule",
+          "picks",
+          "counts"
+        ],
+        "title": "TrendsToday",
+        "type": "object"
+      },
+      "TrendsTodayCounts": {
+        "properties": {
+          "check": {
+            "default": 0,
+            "description": "Роликов на ручную проверку (уровень check)",
+            "title": "Check",
+            "type": "integer"
+          },
+          "clean": {
+            "description": "Чистых роликов (уровень clean) — бейдж сайдбара",
+            "title": "Clean",
+            "type": "integer"
+          },
+          "films": {
+            "description": "Слотов кино в календаре на сегодня",
+            "title": "Films",
+            "type": "integer"
+          },
+          "films_done": {
+            "default": 0,
+            "description": "Из них отмечено «сделано»",
+            "title": "Films Done",
+            "type": "integer"
+          },
+          "picks": {
+            "default": 0,
+            "description": "Роликов в подборке под перезалив",
+            "title": "Picks",
+            "type": "integer"
+          },
+          "videos": {
+            "description": "Роликов в чартах всего",
+            "title": "Videos",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "films",
+          "videos",
+          "clean"
+        ],
+        "title": "TrendsTodayCounts",
+        "type": "object"
+      },
+      "TrendsTodayRawCounts": {
+        "additionalProperties": true,
+        "properties": {
+          "check": {
+            "default": 0,
+            "title": "Check",
+            "type": "integer"
+          },
+          "clean": {
+            "default": 0,
+            "title": "Clean",
+            "type": "integer"
+          },
+          "film_done": {
+            "default": 0,
+            "title": "Film Done",
+            "type": "integer"
+          },
+          "film_total": {
+            "default": 0,
+            "title": "Film Total",
+            "type": "integer"
+          },
+          "picks": {
+            "default": 0,
+            "title": "Picks",
+            "type": "integer"
+          },
+          "used": {
+            "default": 0,
+            "title": "Used",
+            "type": "integer"
+          },
+          "videos": {
+            "default": 0,
+            "title": "Videos",
+            "type": "integer"
+          }
+        },
+        "title": "TrendsTodayRawCounts",
+        "type": "object"
+      },
+      "TrendsTodaySchedule": {
+        "properties": {
+          "today": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmSlot"
+            },
+            "title": "Today",
+            "type": "array"
+          },
+          "tomorrow": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsFilmSlot"
+            },
+            "title": "Tomorrow",
+            "type": "array"
+          }
+        },
+        "required": [
+          "today",
+          "tomorrow"
+        ],
+        "title": "TrendsTodaySchedule",
+        "type": "object"
+      },
+      "TrendsVideo": {
+        "additionalProperties": true,
+        "description": "Строка чарта популярных видео.",
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "topic, format, audience_fit, audience_why, …",
+            "title": "Analysis"
+          },
+          "blocked_ru": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Ru"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "channel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Name"
+          },
+          "channel_subs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Subs"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "status, size, error, file_url",
+            "title": "File"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Разбор кадров: watermark, free_zones, …",
+            "title": "Frames"
+          },
+          "frames_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frames Available"
+          },
+          "growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прирост просмотров в день",
+            "title": "Growth"
+          },
+          "is_short": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Short"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "clean | check | no | unknown",
+            "title": "Level"
+          },
+          "level_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Ru"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "licensed_content": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Licensed Content"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "made_for_kids": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Made For Kids"
+          },
+          "pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick"
+          },
+          "pick_auto": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick Auto"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "regions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regions"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "thumb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used At"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "vpd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Просмотров в день в среднем",
+            "title": "Vpd"
+          }
+        },
+        "required": [
+          "video_id"
+        ],
+        "title": "TrendsVideo",
+        "type": "object"
+      },
+      "TrendsVideoAnalysis": {
+        "additionalProperties": true,
+        "description": "Разбор нейросети по названию, описанию, тегам и цифрам (`analysis`).",
+        "properties": {
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Кто смотрит",
+            "title": "Audience"
+          },
+          "audience_fit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Совпадение с нашей аудиторией 0–1",
+            "title": "Audience Fit"
+          },
+          "audience_why": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audience Why"
+          },
+          "banner_advice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Где ставить наш баннер",
+            "title": "Banner Advice"
+          },
+          "film_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Кадры из фильма — его название",
+            "title": "Film Title"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "has_sponsor": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Sponsor"
+          },
+          "hook": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hook"
+          },
+          "is_reupload": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Уже перезалив или компиляция",
+            "title": "Is Reupload"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "music_heavy": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Music Heavy"
+          },
+          "niche": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche"
+          },
+          "reuse_fit": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пригодность под чужой баннер 0–1",
+            "title": "Reuse Fit"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "why_popular": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Why Popular"
+          }
+        },
+        "title": "TrendsVideoAnalysis",
+        "type": "object"
+      },
+      "TrendsVideoDetail": {
+        "additionalProperties": true,
+        "description": "Большой разбор ролика: строка чарта плюс описание, карточка YouTube, типизированные разбор и кадры,\nзамеры просмотров, файл, блок для заливщика. `frames_url` — наш прокси кадров (если есть).",
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsVideoAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analysis_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis At"
+          },
+          "assessed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessed At"
+          },
+          "blocked_ru": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Ru"
+          },
+          "caption": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Caption"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "cats": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Категория → место в чарте России",
+            "title": "Cats"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "channel_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Name"
+          },
+          "channel_subs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Subs"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "cutter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsPickVideo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Блок для заливщика (как в подборке)"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "hd | sd",
+            "title": "Definition"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "duration_s": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration S"
+          },
+          "embeddable": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Embeddable"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsVideoFile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "first_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Seen At"
+          },
+          "frames": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendsVideoFrames"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "frames_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frames At"
+          },
+          "frames_available": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frames Available"
+          },
+          "frames_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Плитка 6 кадров через наш API (если frames_available)",
+            "title": "Frames Url"
+          },
+          "growth": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прирост просмотров в день",
+            "title": "Growth"
+          },
+          "holder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Канал правообладателя (если распознан)",
+            "title": "Holder"
+          },
+          "is_short": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Short"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang"
+          },
+          "lang_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lang Hint"
+          },
+          "last_seen_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Seen At"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "clean | check | no | unknown",
+            "title": "Level"
+          },
+          "level_ru": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level Ru"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "licensed_content": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Licensed Content"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "made_for_kids": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Made For Kids"
+          },
+          "manual_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Решение оператора: clean | check | no; null — авто",
+            "title": "Manual Level"
+          },
+          "notes": {
+            "description": "Заметки последнего разбора (после analyze)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "cc — поиск Creative Commons, иначе чарт",
+            "title": "Origin"
+          },
+          "pick": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick"
+          },
+          "pick_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick At"
+          },
+          "pick_auto": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick Auto"
+          },
+          "pick_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pick Note"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "regions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Regions"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "series": {
+            "description": "Замеры между прогонами",
+            "items": {
+              "$ref": "#/components/schemas/TrendsVideoSeriesPoint"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "stats_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stats At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "thumb": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "topics": {
+            "description": "Темы YouTube (англ.)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "used_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Used At"
+          },
+          "video_id": {
+            "title": "Video Id",
+            "type": "string"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          },
+          "vpd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Просмотров в день в среднем",
+            "title": "Vpd"
+          }
+        },
+        "required": [
+          "video_id"
+        ],
+        "title": "TrendsVideoDetail",
+        "type": "object"
+      },
+      "TrendsVideoFile": {
+        "additionalProperties": true,
+        "description": "mp4 на хранилище Kino-trends (`file`).",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Прямая ссылка на mp4 (внешний адрес хранилища)",
+            "title": "File Url"
+          },
+          "size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "running | done | error",
+            "title": "Status"
+          }
+        },
+        "title": "TrendsVideoFile",
+        "type": "object"
+      },
+      "TrendsVideoFrames": {
+        "additionalProperties": true,
+        "description": "Что в картинке по шести кадрам с хранилища (`frames`).",
+        "properties": {
+          "banner": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Чужая реклама или плашка",
+            "title": "Banner"
+          },
+          "borders": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Borders"
+          },
+          "clean": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Чужого брендинга нет",
+            "title": "Clean"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему кадры не вынулись",
+            "title": "Error"
+          },
+          "faces": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faces"
+          },
+          "free_zones": {
+            "description": "Свободно под наш баннер: верх, низ, …",
+            "items": {
+              "type": "string"
+            },
+            "title": "Free Zones",
+            "type": "array"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "orientation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "vertical | horizontal | square",
+            "title": "Orientation"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quality"
+          },
+          "screen_recording": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Screen Recording"
+          },
+          "subscribe_cta": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subscribe Cta"
+          },
+          "subtitles": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitles"
+          },
+          "text_overlay": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text Overlay"
+          },
+          "watermark": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watermark"
+          },
+          "watermark_where": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Watermark Where"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "title": "TrendsVideoFrames",
+        "type": "object"
+      },
+      "TrendsVideoLevelRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "level": {
+            "anyOf": [
+              {
+                "enum": [
+                  "clean",
+                  "check",
+                  "no"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Решение оператора; null — вернуть автоматическую оценку",
+            "title": "Level"
+          }
+        },
+        "title": "TrendsVideoLevelRequest",
+        "type": "object"
+      },
+      "TrendsVideoList": {
+        "additionalProperties": true,
+        "properties": {
+          "categories_ru": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Categories Ru",
+            "type": "object"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrendsVideo"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "levels": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "clean / check / no / unknown",
+            "title": "Levels",
+            "type": "object"
+          },
+          "picks": {
+            "default": 0,
+            "title": "Picks",
+            "type": "integer"
+          },
+          "regions_ru": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Regions Ru",
+            "type": "object"
+          },
+          "shorts": {
+            "default": 0,
+            "title": "Shorts",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "TrendsVideoList",
+        "type": "object"
+      },
+      "TrendsVideoPickRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "pick": {
+            "description": "true — в подборку, false — убрать",
+            "title": "Pick",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pick"
+        ],
+        "title": "TrendsVideoPickRequest",
+        "type": "object"
+      },
+      "TrendsVideoSeriesPoint": {
+        "additionalProperties": true,
+        "properties": {
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "ts": {
+            "title": "Ts",
+            "type": "string"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "ts"
+        ],
+        "title": "TrendsVideoSeriesPoint",
+        "type": "object"
+      },
+      "TrendsVideosRefresh": {
+        "additionalProperties": true,
+        "properties": {
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "running": {
+            "default": true,
+            "description": "Работа «популярные видео» идёт (или уже шла)",
+            "title": "Running",
+            "type": "boolean"
+          }
+        },
+        "title": "TrendsVideosRefresh",
+        "type": "object"
+      },
+      "TrendsVideosRefreshRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "charts_only": {
+            "default": false,
+            "description": "Только чарты, без нейросети и разбора кадров",
+            "title": "Charts Only",
+            "type": "boolean"
+          }
+        },
+        "title": "TrendsVideosRefreshRequest",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/trends/films": {
+      "get": {
+        "operationId": "trends_films",
+        "parameters": [
+          {
+            "description": "За сколько дней брать чужие нарезки",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "30",
+              "description": "За сколько дней брать чужие нарезки",
+              "enum": [
+                "7",
+                "30",
+                "90",
+                "all"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Язык нарезок: ru | all",
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "ru",
+              "description": "Язык нарезок: ru | all",
+              "maxLength": 8,
+              "title": "Lang",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "score",
+              "enum": [
+                "score",
+                "growth",
+                "shorts",
+                "views",
+                "median",
+                "vpd",
+                "fresh",
+                "outliers",
+                "channels"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "enum": [
+                "all",
+                "film",
+                "series",
+                "animated",
+                "animated_series",
+                "anime",
+                "tv_show",
+                "franchise"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "genre",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 60,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Genre"
+            }
+          },
+          {
+            "description": "Поиск по названию",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поиск по названию",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Только то, с чем можно работать сейчас (права, исходник, не в работе)",
+            "in": "query",
+            "name": "ready",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Только то, с чем можно работать сейчас (права, исходник, не в работе)",
+              "title": "Ready",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Фильмы и сериалы, которые режут в шортсы: нарезки, права, исходник, признак «готово к нарезке»",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/find-sources": {
+      "post": {
+        "operationId": "trends_films_find_sources",
+        "parameters": [
+          {
+            "description": "Сколько популярных произведений без исходника обойти",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "Сколько популярных произведений без исходника обойти",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmFindSourcesStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Фоновый поиск исходников для топа произведений без них; ход — в /trends/runs (jobs.sources_top)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/{title_id}": {
+      "get": {
+        "operationId": "trends_film",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "default": "30",
+              "enum": [
+                "7",
+                "30",
+                "90",
+                "all"
+              ],
+              "title": "Period",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "default": "ru",
+              "maxLength": 8,
+              "title": "Lang",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Карточка произведения: бриф (почему, план, права, исходники, нарезчику) и статистика нарезок",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/{title_id}/poster": {
+      "get": {
+        "operationId": "trends_film_poster",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Постер произведения через Kino-trends (его кэш), чтобы консоль не ходила на чужие домены",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/{title_id}/rights": {
+      "get": {
+        "operationId": "trends_film_rights",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmRights"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Оценка авторских прав произведения: уровень, риск, причины, правообладатель, улики",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/{title_id}/rights/manual": {
+      "post": {
+        "operationId": "trends_film_rights_manual",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrendsFilmRightsManualRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmRights"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Решение оператора по правам (ok | caution | block) или null — вернуть автоматическую оценку",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/{title_id}/rights/refresh": {
+      "post": {
+        "operationId": "trends_film_rights_refresh",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmRights"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Перепроверить права: спросить модель о правообладателе, перечитать чужие нарезки, исходники",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/films/{title_id}/sources": {
+      "get": {
+        "operationId": "trends_film_sources",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmSources"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Исходники произведения (полный фильм, серии) на YouTube и Rutube с проверкой моделью",
+        "tags": [
+          "trends"
+        ]
+      },
+      "post": {
+        "operationId": "trends_film_sources_find",
+        "parameters": [
+          {
+            "description": "id произведения (Wikidata Q… или слаг)",
+            "in": "path",
+            "name": "title_id",
+            "required": true,
+            "schema": {
+              "description": "id произведения (Wikidata Q… или слаг)",
+              "pattern": "^[A-Za-z0-9_-]{1,40}$",
+              "title": "Title Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsFilmSources"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Найти исходники заново на YouTube и Rutube (поиск и проверка моделью, до минуты)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/pipeline": {
+      "get": {
+        "operationId": "trends_pipeline",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 32,
+                  "pattern": "^[a-z_]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsPipeline"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Очередь конвейера Kino-trends → auto-shorts со счётчиками и состоянием связи",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/pipeline/enqueue": {
+      "post": {
+        "operationId": "trends_enqueue",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrendsEnqueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsPipelineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Поставить кино (title_id) или ролик (video_id) в конвейер Kino-trends",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/pipeline/tick": {
+      "post": {
+        "operationId": "trends_pipeline_tick",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsPipelineTick"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Прогнать конвейер Kino-trends → auto-shorts на один шаг сейчас",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/pipeline/{item_id}/cancel": {
+      "post": {
+        "operationId": "trends_cancel",
+        "parameters": [
+          {
+            "description": "id задания в очереди Kino-trends",
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "description": "id задания в очереди Kino-trends",
+              "minimum": 1,
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsPipelineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Отменить задание конвейера",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/pipeline/{item_id}/retry": {
+      "post": {
+        "operationId": "trends_retry",
+        "parameters": [
+          {
+            "description": "id задания в очереди Kino-trends",
+            "in": "path",
+            "name": "item_id",
+            "required": true,
+            "schema": {
+              "description": "id задания в очереди Kino-trends",
+              "minimum": 1,
+              "title": "Item Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsPipelineItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Повторить задание конвейера (failed, qc_failed, cancelled)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/runs": {
+      "get": {
+        "operationId": "trends_runs",
+        "parameters": [
+          {
+            "description": "Сколько последних прогонов вернуть",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "Сколько последних прогонов вернуть",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsRuns"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Прогоны сбора трендов Kino-trends: история, текущий прогон с фазой и логом, фоновые работы",
+        "tags": [
+          "trends"
+        ]
+      },
+      "post": {
+        "operationId": "trends_run_start",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsRunStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Запустить сбор трендов сейчас (400, если прогон уже идёт)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/runs/cancel": {
+      "post": {
+        "operationId": "trends_run_cancel",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsRunCancelling"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Остановить текущий сбор трендов",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/runs/{run_id}/log": {
+      "get": {
+        "operationId": "trends_run_log",
+        "parameters": [
+          {
+            "description": "id прогона сбора в Kino-trends",
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "description": "id прогона сбора в Kino-trends",
+              "minimum": 1,
+              "title": "Run Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Сколько последних строк лога вернуть",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 300,
+              "description": "Сколько последних строк лога вернуть",
+              "maximum": 2000,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsRunLog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Лог прогона сбора (последние строки, по порядку)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/settings": {
+      "get": {
+        "operationId": "trends_settings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Тумблеры автоматики Kino-trends (белый список) с русскими подписями и типами",
+        "tags": [
+          "trends"
+        ]
+      },
+      "put": {
+        "operationId": "trends_settings_update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrendsSettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Переключить автоматику Kino-trends: `{key: value}` только из белого списка (иначе 422)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/status": {
+      "get": {
+        "operationId": "trends_status",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Состояние моста к Kino-trends: настроен, доступен, счётчики дня и очереди",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/today": {
+      "get": {
+        "operationId": "trends_today",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsToday"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Подборка дня Kino-trends: кино по календарю, чистые ролики, кандидаты, счётчики",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos": {
+      "get": {
+        "operationId": "trends_videos",
+        "parameters": [
+          {
+            "description": "Уровень чистоты",
+            "in": "query",
+            "name": "level",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "clean",
+                    "check",
+                    "no",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Уровень чистоты",
+              "title": "Level"
+            }
+          },
+          {
+            "description": "Минимальное совпадение с аудиторией (0.6)",
+            "in": "query",
+            "name": "fit",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Минимальное совпадение с аудиторией (0.6)",
+              "title": "Fit"
+            }
+          },
+          {
+            "description": "1 — только шортсы, 0 — только длинные",
+            "in": "query",
+            "name": "short",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maximum": 1,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "1 — только шортсы, 0 — только длинные",
+              "title": "Short"
+            }
+          },
+          {
+            "description": "Только подборка",
+            "in": "query",
+            "name": "pick",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Только подборка",
+              "title": "Pick",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "score",
+              "enum": [
+                "score",
+                "audience",
+                "growth",
+                "views",
+                "published",
+                "seen"
+              ],
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Поиск по названию, каналу, описанию",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поиск по названию, каналу, описанию",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "ru (по умолчанию в Kino-trends — все)",
+            "in": "query",
+            "name": "lang",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 8,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ru (по умолчанию в Kino-trends — все)",
+              "title": "Lang"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideoList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Популярные видео СНГ с уровнем чистоты (фильтры level, fit, short, sort, q)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos-refresh": {
+      "post": {
+        "operationId": "trends_videos_refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/TrendsVideosRefreshRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideosRefresh"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Собрать чарты популярных видео и прогнать разбор прямо сейчас (в фоне Kino-trends)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}": {
+      "get": {
+        "operationId": "trends_video",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideoDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Разбор ролика: карточка YouTube, оценка чистоты, нейросеть по тексту и кадрам, замеры, файл",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}/analyze": {
+      "post": {
+        "operationId": "trends_video_analyze",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideoDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Разобрать ролик заново: текст нейросетью, 6 кадров с хранилища, пересчёт оценки (до минуты)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}/file": {
+      "post": {
+        "operationId": "trends_video_file",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideoDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Заказать mp4 ролика на хранилище Kino-trends (прямая ссылка появится в file.file_url)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}/frames": {
+      "get": {
+        "operationId": "trends_video_frames",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Плитка из 6 кадров ролика (кэш Kino-trends); пересчитывается разбором, поэтому кэш короткий",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}/level": {
+      "post": {
+        "operationId": "trends_video_level",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrendsVideoLevelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideoDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Уровень чистоты руками (clean | check | no) или null — вернуть автоматическую оценку",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}/pick": {
+      "post": {
+        "operationId": "trends_video_pick",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrendsVideoPickRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendsVideoDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Взять ролик в подборку под перезалив или убрать из неё (решение оператора, pick_auto=0)",
+        "tags": [
+          "trends"
+        ]
+      }
+    },
+    "/api/v1/trends/videos/{video_id}/thumb": {
+      "get": {
+        "operationId": "trends_video_thumb",
+        "parameters": [
+          {
+            "description": "id ролика YouTube",
+            "in": "path",
+            "name": "video_id",
+            "required": true,
+            "schema": {
+              "description": "id ролика YouTube",
+              "pattern": "^[A-Za-z0-9_-]{6,20}$",
+              "title": "Video Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {}
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Обложка ролика через Kino-trends (его кэш /thumb), чтобы консоль не ходила на чужие домены",
+        "tags": [
+          "trends"
+        ]
+      }
+    }
+  },
+  "tag": "trends"
+}

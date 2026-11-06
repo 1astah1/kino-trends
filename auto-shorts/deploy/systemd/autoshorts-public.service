@@ -1,0 +1,67 @@
+# Auto Shorts v1 — публичный контур: редиректор, лендинг, /go/*, приём конверсий /ingest/v1/events,
+# /health, robots.txt. docs/ARCHITECTURE.md §2.2, §5.3, §8.5.
+# Слушает только 127.0.0.1:18302; снаружи — nginx хоста редиректора (deploy/nginx/public.conf).
+# --proxy-headers с доверием только к 127.0.0.1: реальный IP зрителя нужен для visitor_key (§5.3),
+# подделать X-Forwarded-For снаружи нельзя.
+#
+# AS_PUBLIC_APP — ASGI-приложение. По умолчанию autoshorts.public.app:app (M3). До M3 на стенде можно
+# поставить в .env AS_PUBLIC_APP=autoshorts.webapp.redirect:app (хотфикс M0).
+[Unit]
+Description=Auto Shorts public redirector and ingest (127.0.0.1:18302)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+PartOf=autoshorts.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+Environment=AS_PUBLIC_APP=autoshorts.public.app:app
+# значения из .env важнее Environment= выше
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/autoshorts XDG_CACHE_HOME=/var/cache/autoshorts
+ExecStart=/opt/auto-shorts/.venv/bin/uvicorn ${AS_PUBLIC_APP} --host 127.0.0.1 --port 18302 --workers 1 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header --no-access-log --timeout-graceful-shutdown 5
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+
+# Ресурсы: лендинг лёгкий, но стоит первым в очереди за процессором (клики не должны ждать рендер)
+MemoryHigh=192M
+MemoryMax=256M
+CPUWeight=200
+TasksMax=128
+
+# Песочница
+UMask=0027
+CacheDirectory=autoshorts
+CacheDirectoryMode=0750
+ReadWritePaths=/var/lib/autoshorts
+# legacy config.py (редиректор M0 импортирует его) создаёт каталоги при импорте; убрать в M7-C
+ReadWritePaths=-/opt/auto-shorts/render_tmp -/opt/auto-shorts/assets/master_archive
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=autoshorts.target

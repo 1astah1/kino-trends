@@ -1,0 +1,17 @@
+# systemd-юнит воркера очереди — тянет задачи по стадиям (queue/worker.py).
+[Unit]
+Description=Auto Shorts — Queue Worker
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=autoshorts
+WorkingDirectory=/opt/auto-shorts
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONPATH=/opt/auto-shorts/src
+ExecStart=/opt/auto-shorts/.venv/bin/python -m autoshorts.queue.worker
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

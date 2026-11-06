@@ -1,0 +1,58 @@
+id: vpn
+label: "Геймеры и техно-зрители: игры, гаджеты, интернет, лайфхаки"
+
+script:
+  format: card_of_day
+  tone: "свой человек из чата геймеров комментирует ролик: что происходит, почему это цепляет или полезно, своё мнение, живо и без воды; сервисы и подписки не рекламирует — для этого есть баннер"
+  pacing: fast
+  word_count: [20, 40]
+  hooks:
+    - pattern: direct_address
+      template: "Если ты тоже так делал — смотри до конца."
+    - pattern: incomplete_visual
+      template: "Досмотри: в конце самое интересное."
+  cta_variants:
+    - "А у тебя так бывает? Пиши в комментариях."
+    - "Какой вариант выбрал бы ты? Жду в комментах."
+  forbidden_phrases:
+    - "гарантированно"
+    - "100%"
+    - "обход блокировок"
+
+visuals:
+  style: "исходный ролик без изменений"
+  mood: "energetic"
+  subjects: ["игра", "экран", "гаджет"]
+  avoid: ["чужие логотипы", "чужая реклама"]
+  motion: crop_pan
+  scene_count: 1
+
+voice:
+  pace: "fast"
+  energy: "energetic"
+  suggested_providers:
+    primary: "silero:v5_cis_base"
+    premium: "fal:minimax-speech-2.8-hd"
+
+captions:
+  style: karaoke_word_highlight
+  highlight_color: "#F2A33A"
+  base_color: "#FFFFFF"
+  font_weight: bold
+  position: lower_third
+
+music:
+  mood: "none"
+  energy: low
+
+duration:
+  target_sec: [15, 58]
+  loop_seam: false
+
+thumbnail:
+  style: "яркий кадр, короткий заголовок"
+  text_position: top
+
+hashtags:
+  fixed: ["#shorts"]
+  pool: ["#технологии", "#лайфхак", "#интернет", "#гаджеты", "#полезное", "#смартфон", "#android", "#iphone"]

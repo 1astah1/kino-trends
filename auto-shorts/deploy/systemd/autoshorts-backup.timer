@@ -1,0 +1,14 @@
+# Auto Shorts v1 — расписание дампа базы: ежедневно в 03:00 по Москве (§8.5).
+# Persistent=true: если машина была выключена в 03:00, дамп снимется сразу после загрузки.
+[Unit]
+Description=Auto Shorts daily database backup at 03:00 Europe/Moscow
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 Europe/Moscow
+Persistent=true
+RandomizedDelaySec=5min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

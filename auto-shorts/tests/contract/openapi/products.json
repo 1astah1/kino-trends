@@ -1,0 +1,919 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Product": {
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/ProductBrand"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ProductKind"
+          },
+          "landing": {
+            "$ref": "#/components/schemas/ProductLanding"
+          },
+          "landing_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landing Url"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "redirect_host": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Host"
+          },
+          "redirect_mode": {
+            "$ref": "#/components/schemas/RedirectMode"
+          },
+          "stats_7d": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductStats7d"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только в списке"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProductStatus"
+          },
+          "telegram_bot_username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Bot Username"
+          },
+          "telegram_link_style": {
+            "$ref": "#/components/schemas/TelegramLinkStyle"
+          },
+          "tma_short_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tma Short Name"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "utm_defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Utm Defaults",
+            "type": "object"
+          },
+          "webhook_secret_set": {
+            "description": "Секрет вебхука задан (значение не отдаётся)",
+            "title": "Webhook Secret Set",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "status",
+          "landing_url",
+          "redirect_host",
+          "redirect_mode",
+          "telegram_bot_username",
+          "tma_short_name",
+          "telegram_link_style",
+          "utm_defaults",
+          "brand",
+          "landing",
+          "webhook_secret_set",
+          "stats_7d",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Product",
+        "type": "object"
+      },
+      "ProductBrand": {
+        "additionalProperties": false,
+        "properties": {
+          "display_domain": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9.-]{3,253}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Домен в кадре: umka.chat",
+            "title": "Display Domain"
+          },
+          "logo_asset_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logo Asset Id"
+          },
+          "primary_color": {
+            "anyOf": [
+              {
+                "pattern": "^#[0-9A-Fa-f]{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Primary Color"
+          }
+        },
+        "title": "ProductBrand",
+        "type": "object"
+      },
+      "ProductCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "$ref": "#/components/schemas/ProductBrand"
+          },
+          "id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ProductKind"
+          },
+          "landing": {
+            "$ref": "#/components/schemas/ProductLanding"
+          },
+          "landing_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landing Url"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "redirect_host": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9.-]{3,253}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Host"
+          },
+          "redirect_mode": {
+            "$ref": "#/components/schemas/RedirectMode",
+            "default": "landing_split"
+          },
+          "telegram_bot_username": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_]{5,32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Bot Username"
+          },
+          "telegram_link_style": {
+            "$ref": "#/components/schemas/TelegramLinkStyle",
+            "default": "tg_scheme_with_fallback"
+          },
+          "tma_short_name": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_]{3,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tma Short Name"
+          },
+          "utm_defaults": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Utm Defaults",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "title": "ProductCreate",
+        "type": "object"
+      },
+      "ProductKind": {
+        "enum": [
+          "web_service",
+          "telegram_bot",
+          "telegram_mini_app",
+          "other"
+        ],
+        "title": "ProductKind",
+        "type": "string"
+      },
+      "ProductLanding": {
+        "additionalProperties": false,
+        "properties": {
+          "button_site": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Button Site"
+          },
+          "button_telegram": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Button Telegram"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtitle"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "ProductLanding",
+        "type": "object"
+      },
+      "ProductPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "ProductPage",
+        "type": "object"
+      },
+      "ProductPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "brand": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductBrand"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "landing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProductLanding"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "landing_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Landing Url"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "redirect_host": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9.-]{3,253}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Redirect Host"
+          },
+          "redirect_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RedirectMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "telegram_bot_username": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_]{5,32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Telegram Bot Username"
+          },
+          "telegram_link_style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TelegramLinkStyle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tma_short_name": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_]{3,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tma Short Name"
+          },
+          "utm_defaults": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Utm Defaults"
+          }
+        },
+        "title": "ProductPatch",
+        "type": "object"
+      },
+      "ProductStats7d": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "unique_visitors": {
+            "title": "Unique Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clicks",
+          "unique_visitors",
+          "bot_starts",
+          "first_payments",
+          "revenue_minor",
+          "currency"
+        ],
+        "title": "ProductStats7d",
+        "type": "object"
+      },
+      "ProductStatus": {
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "title": "ProductStatus",
+        "type": "string"
+      },
+      "RedirectMode": {
+        "enum": [
+          "landing_split",
+          "direct_site",
+          "direct_telegram"
+        ],
+        "title": "RedirectMode",
+        "type": "string"
+      },
+      "TelegramLinkStyle": {
+        "enum": [
+          "tg_scheme_with_fallback",
+          "https_tme"
+        ],
+        "title": "TelegramLinkStyle",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/products": {
+      "get": {
+        "operationId": "products_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ProductStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Продукты (+ stats_7d)",
+        "tags": [
+          "products"
+        ]
+      },
+      "post": {
+        "operationId": "products_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Создать продукт",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}": {
+      "get": {
+        "operationId": "products_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Карточка продукта",
+        "tags": [
+          "products"
+        ]
+      },
+      "patch": {
+        "operationId": "products_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProductPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Правка продукта",
+        "tags": [
+          "products"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/archive": {
+      "post": {
+        "operationId": "products_archive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "В архив",
+        "tags": [
+          "products"
+        ]
+      }
+    }
+  },
+  "tag": "products"
+}

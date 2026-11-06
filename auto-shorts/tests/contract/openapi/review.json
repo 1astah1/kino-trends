@@ -1,0 +1,2973 @@
+{
+  "components": {
+    "schemas": {
+      "AuthorColdOpen": {
+        "additionalProperties": false,
+        "properties": {
+          "duck_source": {
+            "default": true,
+            "description": "Голос поверх приглушённого исходника",
+            "title": "Duck Source",
+            "type": "boolean"
+          },
+          "on_screen": {
+            "default": "",
+            "description": "Тезис на экране",
+            "maxLength": 60,
+            "title": "On Screen",
+            "type": "string"
+          },
+          "vo_text": {
+            "default": "",
+            "description": "Хук голосом автора",
+            "maxLength": 160,
+            "title": "Vo Text",
+            "type": "string"
+          }
+        },
+        "title": "AuthorColdOpen",
+        "type": "object"
+      },
+      "AuthorCtaStyle": {
+        "enum": [
+          "question",
+          "loop_back",
+          "offer"
+        ],
+        "title": "AuthorCtaStyle",
+        "type": "string"
+      },
+      "AuthorInsert": {
+        "additionalProperties": false,
+        "properties": {
+          "after_sid": {
+            "description": "Вставка после этого предложения транскрипта",
+            "minimum": 0.0,
+            "title": "After Sid",
+            "type": "integer"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AuthorInsertMode",
+            "default": "freeze_zoom"
+          },
+          "on_screen": {
+            "default": "",
+            "maxLength": 60,
+            "title": "On Screen",
+            "type": "string"
+          },
+          "vo_text": {
+            "default": "",
+            "description": "Комментарий автора",
+            "maxLength": 220,
+            "title": "Vo Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "after_sid"
+        ],
+        "title": "AuthorInsert",
+        "type": "object"
+      },
+      "AuthorInsertMode": {
+        "enum": [
+          "freeze_zoom",
+          "over_ducked"
+        ],
+        "title": "AuthorInsertMode",
+        "type": "string"
+      },
+      "AuthorOutro": {
+        "additionalProperties": false,
+        "properties": {
+          "cta_style": {
+            "$ref": "#/components/schemas/AuthorCtaStyle",
+            "default": "question"
+          },
+          "vo_text": {
+            "default": "",
+            "description": "Вывод или вопрос зрителю",
+            "maxLength": 160,
+            "title": "Vo Text",
+            "type": "string"
+          }
+        },
+        "title": "AuthorOutro",
+        "type": "object"
+      },
+      "AuthorScriptBody": {
+        "additionalProperties": false,
+        "description": "Сценарий авторского слоя = `author.script.AuthorScript` движка. Пустой `vo_text` — части нет.\n\nЛимиты — те же константы движка; движок молча обрезает длинный текст LLM, API отвечает 422.",
+        "properties": {
+          "cold_open": {
+            "$ref": "#/components/schemas/AuthorColdOpen"
+          },
+          "inserts": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorInsert"
+            },
+            "maxItems": 2,
+            "title": "Inserts",
+            "type": "array"
+          },
+          "on_screen_title": {
+            "default": "",
+            "description": "Свой заголовок",
+            "maxLength": 48,
+            "title": "On Screen Title",
+            "type": "string"
+          },
+          "outro": {
+            "$ref": "#/components/schemas/AuthorOutro"
+          }
+        },
+        "title": "AuthorScriptBody",
+        "type": "object"
+      },
+      "AuthorScriptIssue": {
+        "description": "Замечание `lint_script`.\n\n`code`: filler | retells_source | title_from_transcript | forbidden_phrase | content_flag | link |\ntemplate_text | …; `where`: cold_open | insert_0 | insert_1 | outro | title | script.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AuthorScriptIssueSeverity"
+          },
+          "where": {
+            "title": "Where",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "where",
+          "detail"
+        ],
+        "title": "AuthorScriptIssue",
+        "type": "object"
+      },
+      "AuthorScriptIssueSeverity": {
+        "enum": [
+          "info",
+          "warn",
+          "error"
+        ],
+        "title": "AuthorScriptIssueSeverity",
+        "type": "string"
+      },
+      "AuthorScriptMode": {
+        "description": "Откуда текст (`AuthorScriptResult.mode`). heuristic и mock — шаблон, его надо переписать.",
+        "enum": [
+          "llm",
+          "mock",
+          "heuristic",
+          "operator"
+        ],
+        "title": "AuthorScriptMode",
+        "type": "string"
+      },
+      "AuthorScriptSummary": {
+        "description": "Кратко для деталей ролика и приёмки.",
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "boolean"
+          },
+          "issues_count": {
+            "title": "Issues Count",
+            "type": "integer"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorScriptMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "needs_operator_edit": {
+            "title": "Needs Operator Edit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "needs_operator_edit",
+          "blocked",
+          "issues_count"
+        ],
+        "title": "AuthorScriptSummary",
+        "type": "object"
+      },
+      "AuthorShareBreakdown": {
+        "description": "`AuthorShare.to_dict()`: слагаемые метрики §6.3.8 и окна на выходной шкале.",
+        "properties": {
+          "author_only_sec": {
+            "title": "Author Only Sec",
+            "type": "number"
+          },
+          "duration_sec": {
+            "title": "Duration Sec",
+            "type": "number"
+          },
+          "freeze_sec": {
+            "title": "Freeze Sec",
+            "type": "number"
+          },
+          "intervals": {
+            "additionalProperties": {
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "description": "Окна [s, e] по видам вклада",
+            "title": "Intervals",
+            "type": "object"
+          },
+          "own_text_sec": {
+            "title": "Own Text Sec",
+            "type": "number"
+          },
+          "own_voice_sec": {
+            "title": "Own Voice Sec",
+            "type": "number"
+          },
+          "text_capped": {
+            "title": "Text Capped",
+            "type": "boolean"
+          },
+          "text_part": {
+            "title": "Text Part",
+            "type": "number"
+          },
+          "text_sec": {
+            "title": "Text Sec",
+            "type": "number"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "voice_over_sec": {
+            "title": "Voice Over Sec",
+            "type": "number"
+          },
+          "voice_share": {
+            "title": "Voice Share",
+            "type": "number"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "author_only, voice_over, text",
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "value",
+          "duration_sec",
+          "author_only_sec",
+          "voice_over_sec",
+          "text_sec",
+          "own_voice_sec",
+          "own_text_sec",
+          "freeze_sec",
+          "voice_share",
+          "text_part",
+          "text_capped",
+          "weights",
+          "intervals"
+        ],
+        "title": "AuthorShareBreakdown",
+        "type": "object"
+      },
+      "AuthorVoiceKind": {
+        "description": "Чем озвучена реплика (`VoiceTake.kind`): живой голос — лучший ответ на «синтетический голос».",
+        "enum": [
+          "tts",
+          "operator",
+          "mock"
+        ],
+        "title": "AuthorVoiceKind",
+        "type": "string"
+      },
+      "BannerBox": {
+        "description": "Видимый прямоугольник слоя на канве 1080×1920 (оверлей приёмки).",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/BannerLayerKind"
+          },
+          "layer_id": {
+            "title": "Layer Id",
+            "type": "string"
+          },
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "layer_id",
+          "kind",
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "BannerBox",
+        "type": "object"
+      },
+      "BannerLayerKind": {
+        "enum": [
+          "creative",
+          "text_code",
+          "text_erid",
+          "micro_brand",
+          "fallback_plate"
+        ],
+        "title": "BannerLayerKind",
+        "type": "string"
+      },
+      "BannerValidationCode": {
+        "description": "Коды предупреждений редактора и рендера (латиница, стабильны для API и аналитики).",
+        "enum": [
+          "creative_outside_safe_zone",
+          "creative_in_bottom_dead_zone",
+          "micro_brand_in_top_bar",
+          "creative_too_small_to_read",
+          "creative_upscaled_blurry",
+          "creative_aspect_distorted",
+          "animated_too_long",
+          "erid_missing_when_required",
+          "banner_overlaps_captions_zone",
+          "file_too_large",
+          "unsupported_format",
+          "layer_outside_canvas",
+          "creative_clipped_by_slot",
+          "creative_missing",
+          "fallback_plate_used",
+          "text_shrunk_below_min",
+          "text_truncated",
+          "animated_cut_by_window",
+          "impulse_window_stretched",
+          "offer_area_too_tall",
+          "captions_zone_too_small",
+          "effect_unsupported_for_animated"
+        ],
+        "title": "BannerValidationCode",
+        "type": "string"
+      },
+      "BannerVariantRef": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "BannerVariantRef",
+        "type": "object"
+      },
+      "BannerWarning": {
+        "description": "Предупреждение редактора/рендера: `domain.banner_schema.BannerValidationWarning` один в один.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/BannerValidationCode"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "layer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer Id"
+          },
+          "message": {
+            "default": "",
+            "description": "Объяснение для человека, по-русски",
+            "title": "Message",
+            "type": "string"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WarningSeverity"
+          }
+        },
+        "required": [
+          "code",
+          "severity"
+        ],
+        "title": "BannerWarning",
+        "type": "object"
+      },
+      "BannerWindow": {
+        "description": "Окно показа группы слоёв: `persistent` — весь ролик, `with_creative` — импульс и финал.",
+        "properties": {
+          "end_sec": {
+            "title": "End Sec",
+            "type": "number"
+          },
+          "group": {
+            "$ref": "#/components/schemas/LayerShow"
+          },
+          "start_sec": {
+            "title": "Start Sec",
+            "type": "number"
+          }
+        },
+        "required": [
+          "group",
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "BannerWindow",
+        "type": "object"
+      },
+      "ChannelRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "platform"
+        ],
+        "title": "ChannelRef",
+        "type": "object"
+      },
+      "DecidedVia": {
+        "enum": [
+          "web",
+          "telegram",
+          "api"
+        ],
+        "title": "DecidedVia",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Job": {
+        "properties": {
+          "author_script": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorScriptSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нарезка: режим и состояние авторского текста (полностью — /author-script)"
+          },
+          "author_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Share"
+          },
+          "banner_variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelRef"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "error_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Class"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "media": {
+            "$ref": "#/components/schemas/JobMedia"
+          },
+          "niche_id": {
+            "title": "Niche Id",
+            "type": "string"
+          },
+          "niche_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Version"
+          },
+          "originality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OriginalityReportOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нарезка: отчёт об оригинальности финального рендера (стадия qc)"
+          },
+          "package": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobPackageRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "parent_job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Job Id"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/JobPublicationRef"
+            },
+            "title": "Publications",
+            "type": "array"
+          },
+          "qc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobQc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviews": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecisionOut"
+            },
+            "title": "Reviews",
+            "type": "array"
+          },
+          "scheduled_for": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduled For"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobScript"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobSourceRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/JobStageInfo"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          },
+          "words": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WordTiming"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только при `?include=words`",
+            "title": "Words"
+          }
+        },
+        "required": [
+          "id",
+          "video_uid",
+          "kind",
+          "status",
+          "stage",
+          "channel",
+          "niche_id",
+          "niche_version",
+          "product_id",
+          "campaign_id",
+          "banner_variant",
+          "topic",
+          "priority",
+          "scheduled_for",
+          "duration_sec",
+          "cost_usd",
+          "author_share",
+          "qc",
+          "script",
+          "words",
+          "stages",
+          "media",
+          "reviews",
+          "package",
+          "publications",
+          "source",
+          "parent_job_id",
+          "error_class",
+          "error",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Job",
+        "type": "object"
+      },
+      "JobKind": {
+        "enum": [
+          "generate",
+          "clip"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
+      "JobMedia": {
+        "description": "Непрозрачные URL `/api/v1/...`; null — файла ещё нет.",
+        "properties": {
+          "final_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Url"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "preview_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Url"
+          }
+        },
+        "required": [
+          "preview_url",
+          "final_url",
+          "poster_url"
+        ],
+        "title": "JobMedia",
+        "type": "object"
+      },
+      "JobPackageRef": {
+        "properties": {
+          "code": {
+            "description": "Код пакета (трекинг)",
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PackageStatus"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "code"
+        ],
+        "title": "JobPackageRef",
+        "type": "object"
+      },
+      "JobPublicationRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicationStatus"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "id",
+          "platform",
+          "url",
+          "status"
+        ],
+        "title": "JobPublicationRef",
+        "type": "object"
+      },
+      "JobQc": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/QcCheckResult"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "failed_checks": {
+            "items": {
+              "$ref": "#/components/schemas/QcCheck"
+            },
+            "title": "Failed Checks",
+            "type": "array"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/QcWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passed",
+          "failed_checks",
+          "checks",
+          "warnings"
+        ],
+        "title": "JobQc",
+        "type": "object"
+      },
+      "JobScript": {
+        "properties": {
+          "body_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Body Text"
+          },
+          "cta_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cta Text"
+          },
+          "hook_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hook Text"
+          },
+          "voice_cta_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Cta Text"
+          },
+          "voiceover_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voiceover Text"
+          }
+        },
+        "required": [
+          "hook_text",
+          "body_text",
+          "cta_text",
+          "voice_cta_text",
+          "voiceover_text"
+        ],
+        "title": "JobScript",
+        "type": "object"
+      },
+      "JobSourceRef": {
+        "properties": {
+          "clip_candidate_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clip Candidate Id"
+          },
+          "end_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Sec"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "start_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Sec"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_id",
+          "title",
+          "clip_candidate_id",
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "JobSourceRef",
+        "type": "object"
+      },
+      "JobStage": {
+        "enum": [
+          "script",
+          "voice",
+          "visuals",
+          "clip_fetch",
+          "clip_analyze",
+          "author_script",
+          "author_voice",
+          "render",
+          "qc",
+          "package"
+        ],
+        "title": "JobStage",
+        "type": "string"
+      },
+      "JobStageInfo": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/JobStage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          }
+        },
+        "required": [
+          "stage",
+          "status",
+          "task_id",
+          "attempts",
+          "duration_ms",
+          "cost_usd",
+          "error"
+        ],
+        "title": "JobStageInfo",
+        "type": "object"
+      },
+      "JobStatus": {
+        "enum": [
+          "draft",
+          "queued",
+          "processing",
+          "qc_failed",
+          "pending_review",
+          "rework",
+          "approved",
+          "published",
+          "rejected",
+          "failed",
+          "cancelled"
+        ],
+        "title": "JobStatus",
+        "type": "string"
+      },
+      "LayerShow": {
+        "enum": [
+          "persistent",
+          "with_creative"
+        ],
+        "title": "LayerShow",
+        "type": "string"
+      },
+      "OriginalityCheckCode": {
+        "description": "Проверки `originality.build_originality_report` (ключи `CHECK_TITLES_RU` движка).",
+        "enum": [
+          "author_share",
+          "voice_balance",
+          "own_voice",
+          "own_text",
+          "author_text",
+          "author_text_repetition",
+          "repeat_moment",
+          "library_similarity",
+          "foreign_watermark",
+          "rights"
+        ],
+        "title": "OriginalityCheckCode",
+        "type": "string"
+      },
+      "OriginalityCheckOut": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/OriginalityCheckCode"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/OriginalityCheckStatus"
+          },
+          "threshold": {
+            "description": "Порог, если есть",
+            "title": "Threshold"
+          },
+          "title": {
+            "description": "Название проверки по-русски",
+            "title": "Title",
+            "type": "string"
+          },
+          "value": {
+            "description": "Измерено: число или код",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "status",
+          "value",
+          "threshold",
+          "detail"
+        ],
+        "title": "OriginalityCheckOut",
+        "type": "object"
+      },
+      "OriginalityCheckStatus": {
+        "enum": [
+          "pass",
+          "warn",
+          "fail",
+          "info",
+          "skip"
+        ],
+        "title": "OriginalityCheckStatus",
+        "type": "string"
+      },
+      "OriginalityReportOut": {
+        "description": "`OriginalityReport.to_dict()` + подписи; `suggestions` — конкретные подсказки по-русски.",
+        "properties": {
+          "author_share": {
+            "$ref": "#/components/schemas/AuthorShareBreakdown"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalityCheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "computed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Computed At"
+          },
+          "fails": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalityCheckCode"
+            },
+            "title": "Fails",
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "rights": {
+            "additionalProperties": true,
+            "description": "rights_type, owner_name, allowlist_status, attribution_text, valid_until, license",
+            "title": "Rights",
+            "type": "object"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/OriginalityStage"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/OriginalitySummary"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/OriginalityVerdict"
+          },
+          "verdict_label": {
+            "description": "«можно заливать» / «…после правок» / «не заливать…»",
+            "title": "Verdict Label",
+            "type": "string"
+          },
+          "warns": {
+            "items": {
+              "$ref": "#/components/schemas/OriginalityCheckCode"
+            },
+            "title": "Warns",
+            "type": "array"
+          }
+        },
+        "required": [
+          "stage",
+          "verdict",
+          "verdict_label",
+          "summary",
+          "fails",
+          "warns",
+          "checks",
+          "suggestions",
+          "author_share",
+          "rights",
+          "notes",
+          "computed_at"
+        ],
+        "title": "OriginalityReportOut",
+        "type": "object"
+      },
+      "OriginalityStage": {
+        "enum": [
+          "estimate",
+          "final"
+        ],
+        "title": "OriginalityStage",
+        "type": "string"
+      },
+      "OriginalitySummary": {
+        "properties": {
+          "author_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Режим авторского текста: llm | operator | heuristic | mock",
+            "title": "Author Mode"
+          },
+          "author_share": {
+            "title": "Author Share",
+            "type": "number"
+          },
+          "author_share_min": {
+            "title": "Author Share Min",
+            "type": "number"
+          },
+          "duration_sec": {
+            "title": "Duration Sec",
+            "type": "number"
+          },
+          "gate_applies": {
+            "description": "Чужие права: гейт обязателен",
+            "title": "Gate Applies",
+            "type": "boolean"
+          },
+          "gate_passed": {
+            "title": "Gate Passed",
+            "type": "boolean"
+          },
+          "own_text_sec": {
+            "title": "Own Text Sec",
+            "type": "number"
+          },
+          "own_voice_sec": {
+            "title": "Own Voice Sec",
+            "type": "number"
+          },
+          "rights_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RightsType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_share": {
+            "title": "Voice Share",
+            "type": "number"
+          }
+        },
+        "required": [
+          "author_share",
+          "author_share_min",
+          "gate_applies",
+          "gate_passed",
+          "voice_share",
+          "own_voice_sec",
+          "own_text_sec",
+          "duration_sec",
+          "rights_type",
+          "author_mode"
+        ],
+        "title": "OriginalitySummary",
+        "type": "object"
+      },
+      "OriginalityVerdict": {
+        "description": "Итог отчёта (`jobs.originality_verdict`): fail — не заливать, пока не исправлено.",
+        "enum": [
+          "pass",
+          "warn",
+          "fail"
+        ],
+        "title": "OriginalityVerdict",
+        "type": "string"
+      },
+      "PackageStatus": {
+        "enum": [
+          "ready",
+          "downloaded",
+          "published",
+          "superseded"
+        ],
+        "title": "PackageStatus",
+        "type": "string"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PreviousAttempt": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ReviewDecision"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RejectReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "job_id",
+          "decision",
+          "reject_reason",
+          "comment"
+        ],
+        "title": "PreviousAttempt",
+        "type": "object"
+      },
+      "PublicationStatus": {
+        "enum": [
+          "live",
+          "unlisted",
+          "private",
+          "removed_by_platform",
+          "deleted_by_us"
+        ],
+        "title": "PublicationStatus",
+        "type": "string"
+      },
+      "QcCheck": {
+        "enum": [
+          "silence",
+          "clipping",
+          "loudness",
+          "black_frames",
+          "frozen_frames",
+          "duration",
+          "subtitle_sync",
+          "author_share",
+          "banner_face_overlap",
+          "foreign_watermark",
+          "library_similarity",
+          "forbidden_phrase"
+        ],
+        "title": "QcCheck",
+        "type": "string"
+      },
+      "QcCheckResult": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/QcCheck"
+          },
+          "measured": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Измерено, для человека: «-14.2 LUFS»",
+            "title": "Measured"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Порог, для человека: «-14±1.5»",
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "code",
+          "ok",
+          "measured",
+          "threshold"
+        ],
+        "title": "QcCheckResult",
+        "type": "object"
+      },
+      "QcWarning": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/QcCheck"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          }
+        },
+        "required": [
+          "code",
+          "detail"
+        ],
+        "title": "QcWarning",
+        "type": "object"
+      },
+      "Rect": {
+        "additionalProperties": false,
+        "properties": {
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "Rect",
+        "type": "object"
+      },
+      "RejectReason": {
+        "description": "Коды из legacy `models.REJECT_REASONS` + новые. `tehnicheskiy_sboy` убран: это status=failed.",
+        "enum": [
+          "hook_slabyy",
+          "vizual_artefakty",
+          "subtitry_rassinhron",
+          "banner_perekryvaet",
+          "zvuk_problema",
+          "zapreshchennaya_fraza",
+          "dublikat",
+          "ne_ta_dlitelnost",
+          "drugoe",
+          "avtorskiy_sloy_slabyy",
+          "prava_somnitelny",
+          "povtor_shablona"
+        ],
+        "title": "RejectReason",
+        "type": "string"
+      },
+      "ReviewAuthorScript": {
+        "description": "Авторский слой клипа: текст (реплики и заголовок), откуда он и чем озвучен.",
+        "properties": {
+          "blocked": {
+            "title": "Blocked",
+            "type": "boolean"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/AuthorScriptIssue"
+            },
+            "title": "Issues",
+            "type": "array"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorScriptMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "needs_operator_edit": {
+            "title": "Needs Operator Edit",
+            "type": "boolean"
+          },
+          "script": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AuthorScriptBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_kinds": {
+            "description": "tts | operator | mock по репликам",
+            "items": {
+              "$ref": "#/components/schemas/AuthorVoiceKind"
+            },
+            "title": "Voice Kinds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "needs_operator_edit",
+          "blocked",
+          "script",
+          "issues",
+          "voice_kinds"
+        ],
+        "title": "ReviewAuthorScript",
+        "type": "object"
+      },
+      "ReviewBanner": {
+        "description": "Баннер ролика для SVG-оверлея приёмки: из плана рендера (`BannerPlan.to_json()` в артефакте).",
+        "properties": {
+          "boxes": {
+            "description": "Видимые прямоугольники слоёв, канва 1080×1920",
+            "items": {
+              "$ref": "#/components/schemas/BannerBox"
+            },
+            "title": "Boxes",
+            "type": "array"
+          },
+          "captions_overlap": {
+            "description": "Зоны текста, налезшие на баннер в последнем рендере: source_zone | title_zone | …",
+            "items": {
+              "type": "string"
+            },
+            "title": "Captions Overlap",
+            "type": "array"
+          },
+          "captions_zone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rect"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Зона субтитров, канва 1080×1920"
+          },
+          "creative_sha256s": {
+            "description": "Креативы, попавшие в кадр",
+            "items": {
+              "type": "string"
+            },
+            "title": "Creative Sha256S",
+            "type": "array"
+          },
+          "fallback_used": {
+            "description": "Креатива не было — показана запасная плашка",
+            "title": "Fallback Used",
+            "type": "boolean"
+          },
+          "layout_manual": {
+            "description": "Последний рендер — с ручной раскладкой оператора",
+            "title": "Layout Manual",
+            "type": "boolean"
+          },
+          "variant_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant Code"
+          },
+          "variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant Id"
+          },
+          "warnings": {
+            "description": "Предупреждения баннера на момент рендера",
+            "items": {
+              "$ref": "#/components/schemas/BannerWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/BannerWindow"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "variant_id",
+          "variant_code",
+          "creative_sha256s",
+          "fallback_used",
+          "windows",
+          "boxes",
+          "captions_zone",
+          "warnings"
+        ],
+        "title": "ReviewBanner",
+        "type": "object"
+      },
+      "ReviewContext": {
+        "properties": {
+          "author_script": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewAuthorScript"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только нарезка"
+          },
+          "banner": {
+            "$ref": "#/components/schemas/ReviewBanner"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFlag"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "job": {
+            "$ref": "#/components/schemas/ReviewJobInfo"
+          },
+          "media": {
+            "$ref": "#/components/schemas/ReviewMedia"
+          },
+          "originality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OriginalityReportOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нарезка: отчёт об оригинальности финального рендера"
+          },
+          "previous_attempts": {
+            "items": {
+              "$ref": "#/components/schemas/PreviousAttempt"
+            },
+            "title": "Previous Attempts",
+            "type": "array"
+          },
+          "qc": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewQc"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scene_cuts_sec": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Scene Cuts Sec",
+            "type": "array"
+          },
+          "script": {
+            "$ref": "#/components/schemas/ReviewScript"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimilarityInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSourceInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только нарезка"
+          }
+        },
+        "required": [
+          "job",
+          "media",
+          "script",
+          "banner",
+          "scene_cuts_sec",
+          "qc",
+          "flags",
+          "similarity",
+          "cost_usd",
+          "previous_attempts"
+        ],
+        "title": "ReviewContext",
+        "type": "object"
+      },
+      "ReviewDecision": {
+        "enum": [
+          "approve",
+          "rework",
+          "reject",
+          "override_qc",
+          "undo"
+        ],
+        "title": "ReviewDecision",
+        "type": "string"
+      },
+      "ReviewDecisionOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
+          "decided_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By Name"
+          },
+          "decided_via": {
+            "$ref": "#/components/schemas/DecidedVia"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ReviewDecision"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RejectReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rework_from_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "decision",
+          "reject_reason",
+          "rework_from_stage",
+          "comment",
+          "decided_by",
+          "decided_by_name",
+          "decided_via",
+          "created_at"
+        ],
+        "title": "ReviewDecisionOut",
+        "type": "object"
+      },
+      "ReviewFlag": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ReviewFlagCode"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WarningSeverity"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "detail"
+        ],
+        "title": "ReviewFlag",
+        "type": "object"
+      },
+      "ReviewFlagCode": {
+        "description": "Флаги экрана приёмки (ReviewContext.flags, §5.4).",
+        "enum": [
+          "forbidden_phrase",
+          "duration_dead_zone",
+          "banner_in_dead_zone",
+          "library_similarity",
+          "tts_mock",
+          "author_share_low",
+          "foreign_watermark"
+        ],
+        "title": "ReviewFlagCode",
+        "type": "string"
+      },
+      "ReviewJobInfo": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "banner_variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Variant Id"
+          },
+          "channel_id": {
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "niche_id": {
+            "title": "Niche Id",
+            "type": "string"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "video_uid",
+          "kind",
+          "status",
+          "channel_id",
+          "niche_id",
+          "product_id",
+          "banner_variant_id",
+          "attempt_count"
+        ],
+        "title": "ReviewJobInfo",
+        "type": "object"
+      },
+      "ReviewMedia": {
+        "properties": {
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "final_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Url"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "preview_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Url"
+          }
+        },
+        "required": [
+          "preview_url",
+          "final_url",
+          "poster_url",
+          "duration_sec"
+        ],
+        "title": "ReviewMedia",
+        "type": "object"
+      },
+      "ReviewQc": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/QcCheckResult"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "passed",
+          "checks"
+        ],
+        "title": "ReviewQc",
+        "type": "object"
+      },
+      "ReviewQueue": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewQueueItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "ReviewQueue",
+        "type": "object"
+      },
+      "ReviewQueueItem": {
+        "properties": {
+          "attempt_count": {
+            "title": "Attempt Count",
+            "type": "integer"
+          },
+          "channel_id": {
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "flags": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewFlag"
+            },
+            "title": "Flags",
+            "type": "array"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "niche_id": {
+            "title": "Niche Id",
+            "type": "string"
+          },
+          "originality_verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OriginalityVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нарезка: итог отчёта об оригинальности"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Poster Url"
+          },
+          "preview_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Url"
+          },
+          "ready_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Когда ролик попал в очередь приёмки",
+            "title": "Ready At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus",
+            "description": "pending_review | qc_failed"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "video_uid",
+          "kind",
+          "status",
+          "channel_id",
+          "niche_id",
+          "poster_url",
+          "preview_url",
+          "duration_sec",
+          "attempt_count",
+          "flags",
+          "ready_at"
+        ],
+        "title": "ReviewQueueItem",
+        "type": "object"
+      },
+      "ReviewRequest": {
+        "additionalProperties": false,
+        "description": "Решение по ролику. `undo` — отдельным эндпоинтом `/review/undo`.\n\nКонфликт (уже решено в другом канале) — 409 `job_state_conflict` c `details.decided_by`, `decided_via`.",
+        "properties": {
+          "auto_restart": {
+            "default": true,
+            "title": "Auto Restart",
+            "type": "boolean"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "rework",
+              "reject",
+              "override_qc"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "expected_status": {
+            "enum": [
+              "pending_review",
+              "qc_failed"
+            ],
+            "title": "Expected Status",
+            "type": "string"
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RejectReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Обязательна при reject"
+          },
+          "rework_from_stage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobStage"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "decision",
+          "expected_status"
+        ],
+        "title": "ReviewRequest",
+        "type": "object"
+      },
+      "ReviewScript": {
+        "properties": {
+          "cta_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cta Text"
+          },
+          "hook_pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hook Pattern"
+          },
+          "topic": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Topic"
+          },
+          "voiceover_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voiceover Text"
+          },
+          "words": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewWord"
+            },
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "topic",
+          "hook_pattern",
+          "voiceover_text",
+          "cta_text",
+          "words"
+        ],
+        "title": "ReviewScript",
+        "type": "object"
+      },
+      "ReviewSourceInfo": {
+        "description": "Источник клипа и права: что показать рядом с плеером и что обязано попасть в описание.",
+        "properties": {
+          "attribution_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution Text"
+          },
+          "end_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Sec"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "rights_type": {
+            "$ref": "#/components/schemas/RightsType"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "start_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Sec"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "watermark_suspect": {
+            "title": "Watermark Suspect",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source_id",
+          "title",
+          "start_sec",
+          "end_sec",
+          "rights_type",
+          "owner_name",
+          "attribution_text",
+          "license",
+          "watermark_suspect"
+        ],
+        "title": "ReviewSourceInfo",
+        "type": "object"
+      },
+      "ReviewWord": {
+        "properties": {
+          "end_sec": {
+            "title": "End Sec",
+            "type": "number"
+          },
+          "start_sec": {
+            "title": "Start Sec",
+            "type": "number"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "word",
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "ReviewWord",
+        "type": "object"
+      },
+      "RightsType": {
+        "description": "CC-BY-SA и NC не принимаются: несовместимы с промо-баннером (§0.1 п. 14).",
+        "enum": [
+          "own",
+          "licensed_written",
+          "licensed_platform",
+          "cc_by",
+          "public_domain"
+        ],
+        "title": "RightsType",
+        "type": "string"
+      },
+      "SimilarityInfo": {
+        "properties": {
+          "method": {
+            "const": "dhash",
+            "title": "Method",
+            "type": "string"
+          },
+          "nearest_job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nearest Job Id"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "required": [
+          "nearest_job_id",
+          "score",
+          "method"
+        ],
+        "title": "SimilarityInfo",
+        "type": "object"
+      },
+      "TaskStatus": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "title": "TaskStatus",
+        "type": "string"
+      },
+      "WarningSeverity": {
+        "description": "Важность флагов и предупреждений (приёмка, валидация баннера). Не путать с AlertSeverity.",
+        "enum": [
+          "info",
+          "warn",
+          "error"
+        ],
+        "title": "WarningSeverity",
+        "type": "string"
+      },
+      "WordTiming": {
+        "properties": {
+          "end_sec": {
+            "title": "End Sec",
+            "type": "number"
+          },
+          "start_sec": {
+            "title": "Start Sec",
+            "type": "number"
+          },
+          "word": {
+            "title": "Word",
+            "type": "string"
+          }
+        },
+        "required": [
+          "word",
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "WordTiming",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/jobs/{job_id}/review": {
+      "post": {
+        "operationId": "review_decide",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Решение по ролику (409 job_state_conflict, если уже решено)",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/review-context": {
+      "get": {
+        "operationId": "review_context",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Всё для экрана приёмки",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/jobs/{job_id}/review/undo": {
+      "post": {
+        "operationId": "review_undo",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Отмена решения ≤ 10 мин (409, если пакет скачан или есть публикация)",
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/api/v1/review-queue": {
+      "get": {
+        "operationId": "review_queue",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewQueue"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Очередь приёмки",
+        "tags": [
+          "review"
+        ]
+      }
+    }
+  },
+  "tag": "review"
+}

@@ -1,0 +1,2157 @@
+{
+  "components": {
+    "schemas": {
+      "AdMarking": {
+        "additionalProperties": false,
+        "description": "Маркировка рекламы (38-ФЗ ст. 18.1): «Реклама», рекламодатель, erid от ОРД.",
+        "properties": {
+          "advertiser_text": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advertiser Text"
+          },
+          "erid": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9_-]{4,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erid"
+          },
+          "required": {
+            "default": false,
+            "description": "Если true, без erid рендер не должен уходить в публикацию",
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "title": "AdMarking",
+        "type": "object"
+      },
+      "Anchor": {
+        "enum": [
+          "top_left",
+          "top_center",
+          "top_right",
+          "center_left",
+          "center",
+          "center_right",
+          "bottom_left",
+          "bottom_center",
+          "bottom_right"
+        ],
+        "title": "Anchor",
+        "type": "string"
+      },
+      "BannerCreativeBrief": {
+        "description": "Креатив в списках вариантов: миниатюра без полной карточки.",
+        "properties": {
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CreativeKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CreativeStatus"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "sha256",
+          "name",
+          "kind",
+          "status",
+          "width",
+          "height",
+          "thumb_url"
+        ],
+        "title": "BannerCreativeBrief",
+        "type": "object"
+      },
+      "BannerLayer": {
+        "additionalProperties": false,
+        "properties": {
+          "attach": {
+            "$ref": "#/components/schemas/TextAttach",
+            "default": "none"
+          },
+          "attach_gap_px": {
+            "default": 6,
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Attach Gap Px",
+            "type": "integer"
+          },
+          "creative_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "creative: обязателен; micro_brand: логотип вместо текста (необязательно)",
+            "title": "Creative Sha256"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BannerLayerKind"
+          },
+          "loop_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Перебить loop креатива",
+            "title": "Loop Override"
+          },
+          "show": {
+            "$ref": "#/components/schemas/LayerShow",
+            "default": "with_creative"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/BannerSlot"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextStyle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 400,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Текст или шаблон с {code_url}, {erid} …",
+            "title": "Text"
+          },
+          "z": {
+            "default": 0,
+            "description": "Порядок внутри группы: больше — выше",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "slot"
+        ],
+        "title": "BannerLayer",
+        "type": "object"
+      },
+      "BannerLayerKind": {
+        "enum": [
+          "creative",
+          "text_code",
+          "text_erid",
+          "micro_brand",
+          "fallback_plate"
+        ],
+        "title": "BannerLayerKind",
+        "type": "string"
+      },
+      "BannerSlot": {
+        "additionalProperties": false,
+        "description": "Куда и как вписать слой. x, y, w, h — область слота на канве 1080×1920.",
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/Anchor",
+            "default": "center"
+          },
+          "clip_to_slot": {
+            "default": true,
+            "description": "Обрезать всё, что вышло за слот (cover/none/scale>1)",
+            "title": "Clip To Slot",
+            "type": "boolean"
+          },
+          "corner_radius_px": {
+            "default": 0,
+            "maximum": 400.0,
+            "minimum": 0.0,
+            "title": "Corner Radius Px",
+            "type": "integer"
+          },
+          "fit": {
+            "$ref": "#/components/schemas/FitMode",
+            "default": "contain"
+          },
+          "h": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 3840.0,
+            "title": "H",
+            "type": "integer"
+          },
+          "offset_x": {
+            "default": 0,
+            "maximum": 1080.0,
+            "minimum": -1080.0,
+            "title": "Offset X",
+            "type": "integer"
+          },
+          "offset_y": {
+            "default": 0,
+            "maximum": 1920.0,
+            "minimum": -1920.0,
+            "title": "Offset Y",
+            "type": "integer"
+          },
+          "opacity": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "scale": {
+            "default": 1.0,
+            "description": "Множитель поверх fit",
+            "maximum": 4.0,
+            "minimum": 0.05,
+            "title": "Scale",
+            "type": "number"
+          },
+          "shadow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShadowSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "w": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2160.0,
+            "title": "W",
+            "type": "integer"
+          },
+          "x": {
+            "maximum": 2160.0,
+            "minimum": -1080.0,
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "maximum": 3840.0,
+            "minimum": -1920.0,
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "title": "BannerSlot",
+        "type": "object"
+      },
+      "BannerTiming": {
+        "additionalProperties": false,
+        "description": "Тайминг группы `with_creative`. Числа — гипотеза для A/B из research §7.2.",
+        "properties": {
+          "fade_in_ms": {
+            "default": 200,
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Fade In Ms",
+            "type": "integer"
+          },
+          "fade_out_ms": {
+            "default": 200,
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Fade Out Ms",
+            "type": "integer"
+          },
+          "final_repeat": {
+            "default": true,
+            "title": "Final Repeat",
+            "type": "boolean"
+          },
+          "final_repeat_sec": {
+            "default": 2.5,
+            "maximum": 30.0,
+            "minimum": 0.5,
+            "title": "Final Repeat Sec",
+            "type": "number"
+          },
+          "hook_silence_sec": {
+            "default": 2.0,
+            "description": "Первые секунды без оффера",
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Hook Silence Sec",
+            "type": "number"
+          },
+          "impulse_duration_sec": {
+            "default": 4.0,
+            "maximum": 30.0,
+            "minimum": 0.5,
+            "title": "Impulse Duration Sec",
+            "type": "number"
+          },
+          "impulse_min_sec": {
+            "default": 3.0,
+            "description": "Короче не показываем (растягиваем)",
+            "maximum": 30.0,
+            "minimum": 0.3,
+            "title": "Impulse Min Sec",
+            "type": "number"
+          },
+          "impulse_window_pct": {
+            "default": [
+              0.4,
+              0.65
+            ],
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Impulse Window Pct",
+            "type": "array"
+          },
+          "merge_gap_sec": {
+            "default": 1.0,
+            "description": "Окна ближе этого сливаются в одно",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Merge Gap Sec",
+            "type": "number"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TimingMode",
+            "default": "impulse"
+          },
+          "persistent_fade_in_ms": {
+            "default": 0,
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Persistent Fade In Ms",
+            "type": "integer"
+          },
+          "windows": {
+            "description": "Для mode=windows",
+            "items": {
+              "$ref": "#/components/schemas/TimeWindow"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "title": "BannerTiming",
+        "type": "object"
+      },
+      "BannerVariant": {
+        "properties": {
+          "ad_marking": {
+            "$ref": "#/components/schemas/AdMarking"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "code_url_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — шаблон продукта",
+            "title": "Code Url Template"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creatives": {
+            "description": "Креативы из слоёв, по порядку слоёв",
+            "items": {
+              "$ref": "#/components/schemas/BannerCreativeBrief"
+            },
+            "title": "Creatives",
+            "type": "array"
+          },
+          "description_cta_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Cta Template"
+          },
+          "effective_code_url_template": {
+            "description": "Что реально печатается: «u.umka.chat/{code}»",
+            "title": "Effective Code Url Template",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/BannerLayer"
+            },
+            "title": "Layers",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pinned_comment_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Comment Template"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VariantStatus"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/BannerTiming"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "description": "Передавать как expected_version при правке",
+            "title": "Version",
+            "type": "integer"
+          },
+          "voice_cta_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Cta Text"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "campaign_id",
+          "product_id",
+          "code",
+          "name",
+          "status",
+          "weight",
+          "layers",
+          "timing",
+          "ad_marking",
+          "code_url_template",
+          "effective_code_url_template",
+          "voice_cta_text",
+          "pinned_comment_template",
+          "description_cta_template",
+          "notes",
+          "creatives",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BannerVariant",
+        "type": "object"
+      },
+      "BannerVariantCreate": {
+        "additionalProperties": false,
+        "description": "Новый вариант кампании. Без `layers` сервер строит слои по умолчанию\n(`domain.banner_schema.default_banner_variant`): микро-бренд продукта, креатив `creative_sha256`\nв зоне оффера, код ролика под ним; без креатива — запасная плашка.",
+        "properties": {
+          "ad_marking": {
+            "$ref": "#/components/schemas/AdMarking"
+          },
+          "code": {
+            "description": "A, B, C — уникален в кампании",
+            "pattern": "^[A-Za-z0-9_-]{1,16}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "code_url_template": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^[^\\s]*\\{code\\}[^\\s]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "«u.umka.chat/{code}»; null — `<redirect_host продукта>/{code}`",
+            "title": "Code Url Template"
+          },
+          "creative_sha256": {
+            "anyOf": [
+              {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только без layers: креатив для слоёв по умолчанию",
+            "title": "Creative Sha256"
+          },
+          "description_cta_template": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Cta Template"
+          },
+          "layers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BannerLayer"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layers"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pinned_comment_template": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Comment Template"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VariantStatus",
+            "default": "draft",
+            "description": "draft не назначается роликам, пока не станет active"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/BannerTiming"
+          },
+          "voice_cta_text": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Произносимый CTA — уходит в сценарий ролика",
+            "title": "Voice Cta Text"
+          },
+          "weight": {
+            "default": 50,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "name"
+        ],
+        "title": "BannerVariantCreate",
+        "type": "object"
+      },
+      "BannerVariantList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BannerVariant"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BannerVariantList",
+        "type": "object"
+      },
+      "BannerVariantPatch": {
+        "additionalProperties": false,
+        "description": "Частичная правка. `layers` заменяются целиком (редактор шлёт весь список).",
+        "properties": {
+          "ad_marking": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdMarking"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code_url_template": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^[^\\s]*\\{code\\}[^\\s]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code Url Template"
+          },
+          "description_cta_template": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Cta Template"
+          },
+          "expected_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Автосохранение редактора: не совпало — 409 version_conflict",
+            "title": "Expected Version"
+          },
+          "layers": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BannerLayer"
+                },
+                "maxItems": 16,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layers"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pinned_comment_template": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Comment Template"
+          },
+          "timing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerTiming"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "voice_cta_text": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Произносимый CTA — уходит в сценарий ролика",
+            "title": "Voice Cta Text"
+          },
+          "weight": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight"
+          }
+        },
+        "title": "BannerVariantPatch",
+        "type": "object"
+      },
+      "Campaign": {
+        "properties": {
+          "allocation": {
+            "$ref": "#/components/schemas/CampaignAllocation"
+          },
+          "banner_template_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пресет для новых вариантов (необязательно)",
+            "title": "Banner Template Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "integer"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CampaignStatus"
+          },
+          "targeting": {
+            "$ref": "#/components/schemas/CampaignTargeting"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "variants_count": {
+            "title": "Variants Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "product_id",
+          "name",
+          "status",
+          "banner_template_id",
+          "allocation",
+          "priority",
+          "targeting",
+          "starts_at",
+          "ends_at",
+          "notes",
+          "variants_count",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Campaign",
+        "type": "object"
+      },
+      "CampaignAllocation": {
+        "enum": [
+          "weighted",
+          "round_robin",
+          "manual"
+        ],
+        "title": "CampaignAllocation",
+        "type": "string"
+      },
+      "CampaignCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "allocation": {
+            "$ref": "#/components/schemas/CampaignAllocation",
+            "default": "weighted"
+          },
+          "banner_template_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пресет для новых вариантов",
+            "title": "Banner Template Id"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "priority": {
+            "default": 100,
+            "maximum": 1000.0,
+            "minimum": 0.0,
+            "title": "Priority",
+            "type": "integer"
+          },
+          "product_id": {
+            "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+            "title": "Product Id",
+            "type": "string"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "targeting": {
+            "$ref": "#/components/schemas/CampaignTargeting"
+          }
+        },
+        "required": [
+          "product_id",
+          "name"
+        ],
+        "title": "CampaignCreate",
+        "type": "object"
+      },
+      "CampaignPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Campaign"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "CampaignPage",
+        "type": "object"
+      },
+      "CampaignPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "allocation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampaignAllocation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "banner_template_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Template Id"
+          },
+          "ends_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ends At"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "targeting": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CampaignTargeting"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "CampaignPatch",
+        "type": "object"
+      },
+      "CampaignStatus": {
+        "enum": [
+          "draft",
+          "active",
+          "paused",
+          "ended"
+        ],
+        "title": "CampaignStatus",
+        "type": "string"
+      },
+      "CampaignStatusChange": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/CampaignStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "CampaignStatusChange",
+        "type": "object"
+      },
+      "CampaignTargeting": {
+        "additionalProperties": false,
+        "description": "Пустой список — без ограничения по измерению.",
+        "properties": {
+          "channel_ids": {
+            "items": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "type": "string"
+            },
+            "title": "Channel Ids",
+            "type": "array"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/JobKind"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "niche_ids": {
+            "items": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "type": "string"
+            },
+            "title": "Niche Ids",
+            "type": "array"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "title": "Platforms",
+            "type": "array"
+          }
+        },
+        "title": "CampaignTargeting",
+        "type": "object"
+      },
+      "CreativeKind": {
+        "enum": [
+          "static",
+          "animated"
+        ],
+        "title": "CreativeKind",
+        "type": "string"
+      },
+      "CreativeStatus": {
+        "description": "Состояние загруженного креатива. Статика нормализуется сразу (`ready` в ответе загрузки),\nанимация — тяжёлой задачей очереди (`processing` → `ready` | `failed`).",
+        "enum": [
+          "processing",
+          "ready",
+          "failed"
+        ],
+        "title": "CreativeStatus",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "FitMode": {
+        "enum": [
+          "contain",
+          "cover",
+          "none"
+        ],
+        "title": "FitMode",
+        "type": "string"
+      },
+      "JobKind": {
+        "enum": [
+          "generate",
+          "clip"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
+      "LayerShow": {
+        "enum": [
+          "persistent",
+          "with_creative"
+        ],
+        "title": "LayerShow",
+        "type": "string"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "ShadowSpec": {
+        "additionalProperties": false,
+        "description": "Тень под креативом. Выключена по умолчанию (слот `shadow=None`).",
+        "properties": {
+          "blur_px": {
+            "default": 12,
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Blur Px",
+            "type": "integer"
+          },
+          "color": {
+            "default": "#000000",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "offset_x": {
+            "default": 0,
+            "maximum": 40.0,
+            "minimum": -40.0,
+            "title": "Offset X",
+            "type": "integer"
+          },
+          "offset_y": {
+            "default": 6,
+            "maximum": 40.0,
+            "minimum": -40.0,
+            "title": "Offset Y",
+            "type": "integer"
+          },
+          "opacity": {
+            "default": 0.35,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          }
+        },
+        "title": "ShadowSpec",
+        "type": "object"
+      },
+      "TextAlign": {
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "title": "TextAlign",
+        "type": "string"
+      },
+      "TextAttach": {
+        "enum": [
+          "none",
+          "below_creative",
+          "above_creative",
+          "inside_bottom",
+          "inside_top"
+        ],
+        "title": "TextAttach",
+        "type": "string"
+      },
+      "TextStyle": {
+        "additionalProperties": false,
+        "description": "Стиль служебного текста (код, erid, микро-бренд, запасная плашка).",
+        "properties": {
+          "align": {
+            "$ref": "#/components/schemas/TextAlign",
+            "default": "center"
+          },
+          "bg_color": {
+            "default": "#000000",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Bg Color",
+            "type": "string"
+          },
+          "bg_opacity": {
+            "default": 0.55,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Bg Opacity",
+            "type": "number"
+          },
+          "color": {
+            "default": "#FFFFFF",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "corner_radius_px": {
+            "default": 10,
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Corner Radius Px",
+            "type": "integer"
+          },
+          "font_file": {
+            "default": "Montserrat-Bold.ttf",
+            "pattern": "^[A-Za-z0-9._-]{1,80}\\.(ttf|otf)$",
+            "title": "Font File",
+            "type": "string"
+          },
+          "hug_text": {
+            "default": true,
+            "description": "Подложка по размеру текста, а не во весь слот",
+            "title": "Hug Text",
+            "type": "boolean"
+          },
+          "line_spacing": {
+            "default": 1.12,
+            "maximum": 2.0,
+            "minimum": 0.8,
+            "title": "Line Spacing",
+            "type": "number"
+          },
+          "max_font_px": {
+            "default": 44,
+            "maximum": 200.0,
+            "minimum": 8.0,
+            "title": "Max Font Px",
+            "type": "integer"
+          },
+          "max_lines": {
+            "default": 1,
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Max Lines",
+            "type": "integer"
+          },
+          "min_font_px": {
+            "default": 24,
+            "maximum": 200.0,
+            "minimum": 8.0,
+            "title": "Min Font Px",
+            "type": "integer"
+          },
+          "padding_x": {
+            "default": 16,
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Padding X",
+            "type": "integer"
+          },
+          "padding_y": {
+            "default": 8,
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Padding Y",
+            "type": "integer"
+          },
+          "stroke_color": {
+            "default": "#000000",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Stroke Color",
+            "type": "string"
+          },
+          "stroke_px": {
+            "default": 0,
+            "maximum": 12.0,
+            "minimum": 0.0,
+            "title": "Stroke Px",
+            "type": "integer"
+          },
+          "text_opacity": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Text Opacity",
+            "type": "number"
+          }
+        },
+        "title": "TextStyle",
+        "type": "object"
+      },
+      "TimeWindow": {
+        "additionalProperties": false,
+        "properties": {
+          "end_sec": {
+            "exclusiveMinimum": 0.0,
+            "title": "End Sec",
+            "type": "number"
+          },
+          "start_sec": {
+            "minimum": 0.0,
+            "title": "Start Sec",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "TimeWindow",
+        "type": "object"
+      },
+      "TimingMode": {
+        "enum": [
+          "impulse",
+          "persistent",
+          "windows"
+        ],
+        "title": "TimingMode",
+        "type": "string"
+      },
+      "VariantStatus": {
+        "enum": [
+          "draft",
+          "active",
+          "paused",
+          "archived"
+        ],
+        "title": "VariantStatus",
+        "type": "string"
+      },
+      "VariantStatusChange": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/VariantStatus"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "VariantStatusChange",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/banner-variants/{variant_id}": {
+      "patch": {
+        "operationId": "campaigns_variants_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "title": "Variant Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerVariantPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerVariant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Правка варианта",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/banner-variants/{variant_id}/status": {
+      "post": {
+        "operationId": "campaigns_variants_set_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "title": "Variant Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariantStatusChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerVariant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Статус варианта",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns": {
+      "get": {
+        "operationId": "campaigns_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CampaignStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Кампании",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "post": {
+        "operationId": "campaigns_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Создать кампанию",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}": {
+      "get": {
+        "operationId": "campaigns_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Кампания",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "patch": {
+        "operationId": "campaigns_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Правка кампании",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/status": {
+      "post": {
+        "operationId": "campaigns_set_status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignStatusChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Campaign"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Статус кампании",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    },
+    "/api/v1/campaigns/{campaign_id}/variants": {
+      "get": {
+        "operationId": "campaigns_variants_list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerVariantList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Варианты",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "post": {
+        "operationId": "campaigns_variants_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerVariantCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerVariant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Создать вариант",
+        "tags": [
+          "campaigns"
+        ]
+      }
+    }
+  },
+  "tag": "campaigns"
+}

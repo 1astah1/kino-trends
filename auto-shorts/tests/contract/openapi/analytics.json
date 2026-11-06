@@ -1,0 +1,5827 @@
+{
+  "components": {
+    "schemas": {
+      "AgePoint": {
+        "description": "Точки кривой «просмотры от возраста» в карточке ролика.",
+        "enum": [
+          "h1",
+          "h2",
+          "h4",
+          "h8",
+          "h12",
+          "h24",
+          "h48",
+          "h72",
+          "d7",
+          "d14",
+          "d30"
+        ],
+        "title": "AgePoint",
+        "type": "string"
+      },
+      "AgeVerdict": {
+        "description": "Какой срез по возрасту уже готов для вердикта.",
+        "enum": [
+          "h24",
+          "h72",
+          "d7"
+        ],
+        "title": "AgeVerdict",
+        "type": "string"
+      },
+      "AgeViewsPoint": {
+        "description": "Просмотры на ровный возраст на фоне коридора p25–p75 канала (ролики канала за 90 дней).",
+        "properties": {
+          "age": {
+            "$ref": "#/components/schemas/AgePoint"
+          },
+          "age_hours": {
+            "title": "Age Hours",
+            "type": "integer"
+          },
+          "channel_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Median"
+          },
+          "channel_p25": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel P25"
+          },
+          "channel_p75": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel P75"
+          },
+          "interpolated": {
+            "title": "Interpolated",
+            "type": "boolean"
+          },
+          "reached": {
+            "description": "Ролик уже старше этого возраста",
+            "title": "Reached",
+            "type": "boolean"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Линейная интерполяция между снимками; без экстраполяции",
+            "title": "Views"
+          }
+        },
+        "required": [
+          "age",
+          "age_hours",
+          "views",
+          "interpolated",
+          "reached",
+          "channel_p25",
+          "channel_median",
+          "channel_p75"
+        ],
+        "title": "AgeViewsPoint",
+        "type": "object"
+      },
+      "AnalyticsBasis": {
+        "enum": [
+          "engaged",
+          "public"
+        ],
+        "title": "AnalyticsBasis",
+        "type": "string"
+      },
+      "AnalyticsBreakdown": {
+        "properties": {
+          "basis_fallback": {
+            "title": "Basis Fallback",
+            "type": "boolean"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/AnalyticsDimension"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "min_videos_for_stats": {
+            "description": "ab_min_videos_per_variant",
+            "title": "Min Videos For Stats",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/BreakdownRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "sort": {
+            "title": "Sort",
+            "type": "string"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AnalyticsTotals"
+          }
+        },
+        "required": [
+          "dimension",
+          "range",
+          "filters",
+          "basis_fallback",
+          "sort",
+          "total_rows",
+          "limit",
+          "offset",
+          "min_videos_for_stats",
+          "rows",
+          "totals"
+        ],
+        "title": "AnalyticsBreakdown",
+        "type": "object"
+      },
+      "AnalyticsCohorts": {
+        "properties": {
+          "aggregate": {
+            "$ref": "#/components/schemas/CohortAggregate"
+          },
+          "basis_fallback": {
+            "title": "Basis Fallback",
+            "type": "boolean"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/AnalyticsGranularity"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/CohortMetric"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CohortRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "metric",
+          "granularity",
+          "aggregate",
+          "range",
+          "filters",
+          "basis_fallback",
+          "rows"
+        ],
+        "title": "AnalyticsCohorts",
+        "type": "object"
+      },
+      "AnalyticsCosts": {
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/AnalyticsGranularity"
+          },
+          "group_by": {
+            "$ref": "#/components/schemas/CostGroupBy"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/CostGroupRow"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "series": {
+            "description": "Расход по группам и дням/неделям, $",
+            "items": {
+              "$ref": "#/components/schemas/TimeseriesSeries"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/CostTotals"
+          }
+        },
+        "required": [
+          "range",
+          "filters",
+          "granularity",
+          "group_by",
+          "totals",
+          "series",
+          "groups",
+          "annotations"
+        ],
+        "title": "AnalyticsCosts",
+        "type": "object"
+      },
+      "AnalyticsDimension": {
+        "description": "Измерение разреза; `track` — трек ролика (`jobs.kind`: generate | clip), `variant` — баннер A/B.",
+        "enum": [
+          "video",
+          "channel",
+          "niche",
+          "product",
+          "campaign",
+          "variant",
+          "track",
+          "platform"
+        ],
+        "title": "AnalyticsDimension",
+        "type": "string"
+      },
+      "AnalyticsFilters": {
+        "description": "Общие фильтры аналитики (§5.2). Мультифильтры — повтором: `?channel_id=a&channel_id=b`.",
+        "properties": {
+          "banner_variant_id": {
+            "items": {
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "title": "Banner Variant Id",
+            "type": "array"
+          },
+          "basis": {
+            "$ref": "#/components/schemas/AnalyticsBasis",
+            "default": "public",
+            "description": "public | engaged (engaged — только с OAuth, M4-D)"
+          },
+          "campaign_id": {
+            "items": {
+              "minimum": 1.0,
+              "type": "integer"
+            },
+            "title": "Campaign Id",
+            "type": "array"
+          },
+          "channel_id": {
+            "items": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "type": "string"
+            },
+            "title": "Channel Id",
+            "type": "array"
+          },
+          "cohort_age": {
+            "$ref": "#/components/schemas/CohortAge",
+            "default": "lifetime",
+            "description": "Только для mode=cohort"
+          },
+          "date_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "YYYY-MM-DD включительно",
+            "title": "Date To"
+          },
+          "include_overhead": {
+            "default": false,
+            "description": "Накладные (без ролика) в spend_usd",
+            "title": "Include Overhead",
+            "type": "boolean"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/AnalyticsMode",
+            "default": "activity",
+            "description": "activity | cohort"
+          },
+          "niche_id": {
+            "items": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "type": "string"
+            },
+            "title": "Niche Id",
+            "type": "array"
+          },
+          "platform": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "title": "Platform",
+            "type": "array"
+          },
+          "product_id": {
+            "items": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "type": "string"
+            },
+            "title": "Product Id",
+            "type": "array"
+          },
+          "track": {
+            "description": "Трек: generate | clip",
+            "items": {
+              "$ref": "#/components/schemas/JobKind"
+            },
+            "title": "Track",
+            "type": "array"
+          }
+        },
+        "title": "AnalyticsFilters",
+        "type": "object"
+      },
+      "AnalyticsFunnel": {
+        "properties": {
+          "attribution": {
+            "$ref": "#/components/schemas/AttributionSplit"
+          },
+          "basis_fallback": {
+            "title": "Basis Fallback",
+            "type": "boolean"
+          },
+          "branches": {
+            "$ref": "#/components/schemas/FunnelBranches"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/FunnelCosts"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "views": {
+            "title": "Views",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "range",
+          "filters",
+          "basis_fallback",
+          "views",
+          "branches",
+          "attribution",
+          "costs"
+        ],
+        "title": "AnalyticsFunnel",
+        "type": "object"
+      },
+      "AnalyticsGranularity": {
+        "enum": [
+          "day",
+          "week"
+        ],
+        "title": "AnalyticsGranularity",
+        "type": "string"
+      },
+      "AnalyticsGroupBy": {
+        "description": "Группировка рядов: `none` — один ряд, иначе как `AnalyticsDimension`.",
+        "enum": [
+          "none",
+          "video",
+          "channel",
+          "niche",
+          "product",
+          "campaign",
+          "variant",
+          "track",
+          "platform"
+        ],
+        "title": "AnalyticsGroupBy",
+        "type": "string"
+      },
+      "AnalyticsMetric": {
+        "description": "Числовые поля `AnalyticsTotals` — всё, что можно вывести рядом, отсортировать и выгрузить.",
+        "enum": [
+          "videos_produced",
+          "videos_published",
+          "videos_rejected",
+          "videos_failed",
+          "views",
+          "engaged_views",
+          "likes",
+          "comments",
+          "clicks",
+          "landing_views",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "direct_bot_starts",
+          "visitors",
+          "bot_starts",
+          "users",
+          "tma_opens",
+          "signups",
+          "first_payments",
+          "payments",
+          "revenue_minor",
+          "spend_usd",
+          "spend_rub",
+          "overhead_usd",
+          "rejected_spend_usd",
+          "ctr_per_1k_views",
+          "cr_visitor_to_start",
+          "cr_start_to_payment",
+          "cost_per_visitor_usd",
+          "cost_per_user_usd",
+          "cost_per_bot_start_usd",
+          "cost_per_first_payment_usd",
+          "cost_per_published_video_usd",
+          "cost_per_video_usd",
+          "romi"
+        ],
+        "title": "AnalyticsMetric",
+        "type": "string"
+      },
+      "AnalyticsMode": {
+        "enum": [
+          "activity",
+          "cohort"
+        ],
+        "title": "AnalyticsMode",
+        "type": "string"
+      },
+      "AnalyticsReport": {
+        "description": "`GET /analytics/export?report=…`.",
+        "enum": [
+          "summary",
+          "timeseries",
+          "breakdown",
+          "funnel",
+          "cohorts",
+          "costs",
+          "experiment",
+          "video"
+        ],
+        "title": "AnalyticsReport",
+        "type": "string"
+      },
+      "AnalyticsSummary": {
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "attribution": {
+            "$ref": "#/components/schemas/AttributionSplit"
+          },
+          "basis_fallback": {
+            "description": "Просили engaged, а данных нет: посчитано по public",
+            "title": "Basis Fallback",
+            "type": "boolean"
+          },
+          "cohort": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CohortInfo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только mode=cohort"
+          },
+          "data_freshness": {
+            "$ref": "#/components/schemas/DataFreshness"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/AnalyticsTotals"
+          },
+          "previous_range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AnalyticsTotals"
+          }
+        },
+        "required": [
+          "range",
+          "previous_range",
+          "filters",
+          "basis_fallback",
+          "totals",
+          "previous",
+          "attribution",
+          "cohort",
+          "data_freshness",
+          "annotations"
+        ],
+        "title": "AnalyticsSummary",
+        "type": "object"
+      },
+      "AnalyticsTimeseries": {
+        "properties": {
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "basis_fallback": {
+            "title": "Basis Fallback",
+            "type": "boolean"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/AnalyticsFilters"
+          },
+          "granularity": {
+            "$ref": "#/components/schemas/AnalyticsGranularity"
+          },
+          "group_by": {
+            "$ref": "#/components/schemas/AnalyticsGroupBy"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/AnalyticsMetric"
+          },
+          "range": {
+            "$ref": "#/components/schemas/DateRange"
+          },
+          "series": {
+            "items": {
+              "$ref": "#/components/schemas/TimeseriesSeries"
+            },
+            "title": "Series",
+            "type": "array"
+          },
+          "top": {
+            "title": "Top",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "metric",
+          "granularity",
+          "group_by",
+          "top",
+          "range",
+          "filters",
+          "basis_fallback",
+          "series",
+          "annotations"
+        ],
+        "title": "AnalyticsTimeseries",
+        "type": "object"
+      },
+      "AnalyticsTotals": {
+        "description": "Итоги по набору роликов и периоду. Доли и цены — `null`, если знаменатель 0.",
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "clicks": {
+            "description": "Входы в редиректор: landing + direct",
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "comments": {
+            "title": "Comments",
+            "type": "integer"
+          },
+          "cost_per_bot_start_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Bot Start Usd"
+          },
+          "cost_per_first_payment_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per First Payment Usd"
+          },
+          "cost_per_published_video_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Расход всех роликов периода (включая брак) / опубликованные",
+            "title": "Cost Per Published Video Usd"
+          },
+          "cost_per_user_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per User Usd"
+          },
+          "cost_per_video_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Расход / сделанные ролики",
+            "title": "Cost Per Video Usd"
+          },
+          "cost_per_visitor_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Visitor Usd"
+          },
+          "cr_start_to_payment": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cr Start To Payment"
+          },
+          "cr_visitor_to_start": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cr Visitor To Start"
+          },
+          "ctr_per_1k_views": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr Per 1K Views"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Валюта выручки (RUB)",
+            "title": "Currency"
+          },
+          "direct_bot_starts": {
+            "description": "Старты бота без _l (не через лендинг)",
+            "title": "Direct Bot Starts",
+            "type": "integer"
+          },
+          "engaged_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только при OAuth (M4-D)",
+            "title": "Engaged Views"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "landing_views": {
+            "title": "Landing Views",
+            "type": "integer"
+          },
+          "likes": {
+            "title": "Likes",
+            "type": "integer"
+          },
+          "overhead_usd": {
+            "description": "Расход без ролика; в spend_usd — только при include_overhead",
+            "title": "Overhead Usd",
+            "type": "number"
+          },
+          "payments": {
+            "title": "Payments",
+            "type": "integer"
+          },
+          "rejected_spend_usd": {
+            "description": "Расход на отклонённые, упавшие и отменённые",
+            "title": "Rejected Spend Usd",
+            "type": "number"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "romi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "(выручка₽ − расход₽) / расход₽",
+            "title": "Romi"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          },
+          "spend_rub": {
+            "title": "Spend Rub",
+            "type": "number"
+          },
+          "spend_usd": {
+            "title": "Spend Usd",
+            "type": "number"
+          },
+          "tma_opens": {
+            "title": "Tma Opens",
+            "type": "integer"
+          },
+          "to_site": {
+            "title": "To Site",
+            "type": "integer"
+          },
+          "to_telegram": {
+            "title": "To Telegram",
+            "type": "integer"
+          },
+          "unique_visitors": {
+            "title": "Unique Visitors",
+            "type": "integer"
+          },
+          "users": {
+            "description": "Уникальные пользователи бота (user_ref_hash у bot_start)",
+            "title": "Users",
+            "type": "integer"
+          },
+          "videos_failed": {
+            "title": "Videos Failed",
+            "type": "integer"
+          },
+          "videos_produced": {
+            "description": "Роликов дошло до приёмки (включая брак)",
+            "title": "Videos Produced",
+            "type": "integer"
+          },
+          "videos_published": {
+            "title": "Videos Published",
+            "type": "integer"
+          },
+          "videos_rejected": {
+            "title": "Videos Rejected",
+            "type": "integer"
+          },
+          "views": {
+            "title": "Views",
+            "type": "integer"
+          },
+          "visitors": {
+            "description": "unique_visitors + direct_bot_starts",
+            "title": "Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "videos_produced",
+          "videos_published",
+          "videos_rejected",
+          "videos_failed",
+          "views",
+          "engaged_views",
+          "likes",
+          "comments",
+          "clicks",
+          "landing_views",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "direct_bot_starts",
+          "visitors",
+          "bot_starts",
+          "users",
+          "tma_opens",
+          "signups",
+          "first_payments",
+          "payments",
+          "revenue_minor",
+          "currency",
+          "spend_usd",
+          "spend_rub",
+          "overhead_usd",
+          "rejected_spend_usd",
+          "ctr_per_1k_views",
+          "cr_visitor_to_start",
+          "cr_start_to_payment",
+          "cost_per_visitor_usd",
+          "cost_per_user_usd",
+          "cost_per_bot_start_usd",
+          "cost_per_first_payment_usd",
+          "cost_per_published_video_usd",
+          "cost_per_video_usd",
+          "romi"
+        ],
+        "title": "AnalyticsTotals",
+        "type": "object"
+      },
+      "AttributionSplit": {
+        "description": "Уровни атрибуции (§6.6): в разрезы роликов попадает только exact.",
+        "properties": {
+          "channel": {
+            "$ref": "#/components/schemas/AttributionTotals"
+          },
+          "direct": {
+            "$ref": "#/components/schemas/AttributionTotals"
+          },
+          "exact": {
+            "$ref": "#/components/schemas/AttributionTotals"
+          }
+        },
+        "required": [
+          "exact",
+          "channel",
+          "direct"
+        ],
+        "title": "AttributionSplit",
+        "type": "object"
+      },
+      "AttributionTotals": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          },
+          "visitors": {
+            "title": "Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "visitors",
+          "bot_starts",
+          "users",
+          "signups",
+          "first_payments",
+          "revenue_minor"
+        ],
+        "title": "AttributionTotals",
+        "type": "object"
+      },
+      "BannerVariantRef": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "BannerVariantRef",
+        "type": "object"
+      },
+      "BreakdownRow": {
+        "properties": {
+          "key": {
+            "description": "Значение измерения (для video — publication_id строкой); 'none' — без значения",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/AnalyticsTotals"
+          },
+          "n_mature": {
+            "description": "Роликов старше ab_min_age_hours",
+            "title": "N Mature",
+            "type": "integer"
+          },
+          "n_videos": {
+            "title": "N Videos",
+            "type": "integer"
+          },
+          "needs_more_n": {
+            "description": "n_mature < ab_min_videos_per_variant: сравнивать рано",
+            "title": "Needs More N",
+            "type": "boolean"
+          },
+          "p_value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Манн–Уитни ln(views_72h): группа против остальных",
+            "title": "P Value"
+          },
+          "share_spend": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Spend"
+          },
+          "share_views": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share Views"
+          },
+          "video": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BreakdownVideo"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только dimension=video"
+          },
+          "views_72h_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 72H Median"
+          },
+          "views_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Медиана просмотров на ролик в выбранном режиме",
+            "title": "Views Median"
+          },
+          "views_p25": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views P25"
+          },
+          "views_p75": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views P75"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "n_videos",
+          "n_mature",
+          "metrics",
+          "views_median",
+          "views_p25",
+          "views_p75",
+          "views_72h_median",
+          "share_views",
+          "share_spend",
+          "needs_more_n",
+          "p_value",
+          "video"
+        ],
+        "title": "BreakdownRow",
+        "type": "object"
+      },
+      "BreakdownVideo": {
+        "description": "Колонки лидерборда роликов (`dimension=video`).",
+        "properties": {
+          "age_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Hours"
+          },
+          "banner_variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelRef"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "latest_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Views"
+          },
+          "manual_due": {
+            "title": "Manual Due",
+            "type": "boolean"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "platform_video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Video Id"
+          },
+          "poster_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "/api/v1/jobs/{job_id}/media/poster",
+            "title": "Poster Url"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicationStatus"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "track": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgeVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          },
+          "views_24h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 24H"
+          },
+          "views_72h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 72H"
+          },
+          "views_7d": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 7D"
+          }
+        },
+        "required": [
+          "publication_id",
+          "job_id",
+          "video_uid",
+          "title",
+          "url",
+          "platform",
+          "platform_video_id",
+          "channel",
+          "niche_id",
+          "product_id",
+          "campaign_id",
+          "banner_variant",
+          "track",
+          "status",
+          "published_at",
+          "age_hours",
+          "latest_views",
+          "views_24h",
+          "views_72h",
+          "views_7d",
+          "verdict",
+          "poster_url",
+          "stale",
+          "manual_due"
+        ],
+        "title": "BreakdownVideo",
+        "type": "object"
+      },
+      "ChannelRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "platform"
+        ],
+        "title": "ChannelRef",
+        "type": "object"
+      },
+      "ChartAnnotation": {
+        "description": "Опорная линия на временных графиках.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ChartAnnotationCode"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "code",
+          "label"
+        ],
+        "title": "ChartAnnotation",
+        "type": "object"
+      },
+      "ChartAnnotationCode": {
+        "enum": [
+          "yt_public_views_change"
+        ],
+        "title": "ChartAnnotationCode",
+        "type": "string"
+      },
+      "CohortAge": {
+        "description": "Возраст ролика, к которому считается когорта (`mode=cohort`).",
+        "enum": [
+          "h24",
+          "h72",
+          "d7",
+          "d14",
+          "d30",
+          "lifetime"
+        ],
+        "title": "CohortAge",
+        "type": "string"
+      },
+      "CohortAggregate": {
+        "enum": [
+          "median",
+          "sum",
+          "mean"
+        ],
+        "title": "CohortAggregate",
+        "type": "string"
+      },
+      "CohortCounts": {
+        "description": "Сколько роликов когорты уже достигли возраста (незрелые в значение не входят).",
+        "properties": {
+          "d14": {
+            "title": "D14",
+            "type": "integer"
+          },
+          "d30": {
+            "title": "D30",
+            "type": "integer"
+          },
+          "d7": {
+            "title": "D7",
+            "type": "integer"
+          },
+          "h24": {
+            "title": "H24",
+            "type": "integer"
+          },
+          "h72": {
+            "title": "H72",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "h24",
+          "h72",
+          "d7",
+          "d14",
+          "d30"
+        ],
+        "title": "CohortCounts",
+        "type": "object"
+      },
+      "CohortInfo": {
+        "properties": {
+          "age": {
+            "$ref": "#/components/schemas/CohortAge"
+          },
+          "immature": {
+            "title": "Immature",
+            "type": "integer"
+          },
+          "videos": {
+            "description": "Роликов опубликовано в периоде",
+            "title": "Videos",
+            "type": "integer"
+          },
+          "videos_mature": {
+            "description": "Из них достигли возраста age",
+            "title": "Videos Mature",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "age",
+          "videos",
+          "videos_mature",
+          "immature"
+        ],
+        "title": "CohortInfo",
+        "type": "object"
+      },
+      "CohortMetric": {
+        "enum": [
+          "views",
+          "visitors",
+          "bot_starts",
+          "users",
+          "first_payments",
+          "revenue_minor",
+          "ctr_per_1k_views"
+        ],
+        "title": "CohortMetric",
+        "type": "string"
+      },
+      "CohortRow": {
+        "properties": {
+          "cohort": {
+            "description": "День или понедельник недели публикации",
+            "format": "date",
+            "title": "Cohort",
+            "type": "string"
+          },
+          "mature": {
+            "$ref": "#/components/schemas/CohortCounts"
+          },
+          "n_videos": {
+            "title": "N Videos",
+            "type": "integer"
+          },
+          "values": {
+            "$ref": "#/components/schemas/CohortValues"
+          }
+        },
+        "required": [
+          "cohort",
+          "n_videos",
+          "values",
+          "mature"
+        ],
+        "title": "CohortRow",
+        "type": "object"
+      },
+      "CohortValues": {
+        "properties": {
+          "d14": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D14"
+          },
+          "d30": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D30"
+          },
+          "d7": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D7"
+          },
+          "h24": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H24"
+          },
+          "h72": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H72"
+          }
+        },
+        "required": [
+          "h24",
+          "h72",
+          "d7",
+          "d14",
+          "d30"
+        ],
+        "title": "CohortValues",
+        "type": "object"
+      },
+      "CollectorReason": {
+        "description": "Причина не-ok состояния (`collector_state.reason`).",
+        "enum": [
+          "no_api_key",
+          "quota_exhausted",
+          "quota_soft_limit",
+          "network_error",
+          "http_error",
+          "auth_error",
+          "tool_missing",
+          "not_configured",
+          "manual_only"
+        ],
+        "title": "CollectorReason",
+        "type": "string"
+      },
+      "CollectorState": {
+        "description": "Состояние коллектора (`collector_state.state`).",
+        "enum": [
+          "ok",
+          "idle",
+          "disabled",
+          "degraded",
+          "paused",
+          "failing"
+        ],
+        "title": "CollectorState",
+        "type": "string"
+      },
+      "CollectorStatus": {
+        "description": "Строка `collector_state` + счётчики публикаций, для плашки свежести, Обзора и Настроек.",
+        "properties": {
+          "cluster_id": {
+            "description": "Куст (свой ключ YouTube на куст); 'default' — общий",
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "collector": {
+            "$ref": "#/components/schemas/MetricsSource"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "key_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Имя секрета ключа API (yt_data); значение никогда не отдаётся",
+            "title": "Key Secret"
+          },
+          "key_set": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Задан ли секрет ключа (null — коллектору ключ не нужен)",
+            "title": "Key Set"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "last_ok_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ok At"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пояснение для человека, по-русски",
+            "title": "Message"
+          },
+          "paused_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Until"
+          },
+          "publications_due": {
+            "description": "Из них с наступившим next_poll_at",
+            "title": "Publications Due",
+            "type": "integer"
+          },
+          "publications_total": {
+            "description": "Публикаций, которые ведёт этот коллектор",
+            "title": "Publications Total",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/CollectorState"
+          }
+        },
+        "required": [
+          "collector",
+          "cluster_id",
+          "state",
+          "reason",
+          "message",
+          "key_secret",
+          "key_set",
+          "last_run_at",
+          "last_ok_at",
+          "last_error_at",
+          "last_error",
+          "consecutive_failures",
+          "paused_until",
+          "publications_total",
+          "publications_due"
+        ],
+        "title": "CollectorStatus",
+        "type": "object"
+      },
+      "ConversionCount": {
+        "properties": {
+          "amount_minor": {
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/ConversionEventType"
+          },
+          "unique_users": {
+            "title": "Unique Users",
+            "type": "integer"
+          },
+          "via_landing": {
+            "description": "Из них через лендинг (_l)",
+            "title": "Via Landing",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event_type",
+          "count",
+          "unique_users",
+          "via_landing",
+          "amount_minor"
+        ],
+        "title": "ConversionCount",
+        "type": "object"
+      },
+      "ConversionEventType": {
+        "enum": [
+          "bot_start",
+          "tma_open",
+          "site_visit",
+          "signup",
+          "trial_start",
+          "lead",
+          "first_payment",
+          "payment",
+          "refund"
+        ],
+        "title": "ConversionEventType",
+        "type": "string"
+      },
+      "CostGroupBy": {
+        "enum": [
+          "provider",
+          "step",
+          "track",
+          "outcome",
+          "channel",
+          "niche",
+          "product"
+        ],
+        "title": "CostGroupBy",
+        "type": "string"
+      },
+      "CostGroupRow": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          },
+          "spend_usd": {
+            "title": "Spend Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "spend_usd",
+          "calls",
+          "share"
+        ],
+        "title": "CostGroupRow",
+        "type": "object"
+      },
+      "CostItem": {
+        "properties": {
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "step_name": {
+            "title": "Step Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "step_name",
+          "provider",
+          "calls",
+          "cost_usd"
+        ],
+        "title": "CostItem",
+        "type": "object"
+      },
+      "CostTotals": {
+        "properties": {
+          "cost_per_published_video_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Расход всех роликов периода (включая брак) / опубликованные",
+            "title": "Cost Per Published Video Usd"
+          },
+          "cost_per_video_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Video Usd"
+          },
+          "fx_usd_rub": {
+            "title": "Fx Usd Rub",
+            "type": "number"
+          },
+          "in_progress_spend_usd": {
+            "title": "In Progress Spend Usd",
+            "type": "number"
+          },
+          "overhead_usd": {
+            "title": "Overhead Usd",
+            "type": "number"
+          },
+          "published_spend_usd": {
+            "title": "Published Spend Usd",
+            "type": "number"
+          },
+          "rejected_spend_usd": {
+            "description": "Отклонённые, упавшие и отменённые",
+            "title": "Rejected Spend Usd",
+            "type": "number"
+          },
+          "spend_rub": {
+            "title": "Spend Rub",
+            "type": "number"
+          },
+          "spend_usd": {
+            "title": "Spend Usd",
+            "type": "number"
+          },
+          "videos_failed": {
+            "title": "Videos Failed",
+            "type": "integer"
+          },
+          "videos_produced": {
+            "title": "Videos Produced",
+            "type": "integer"
+          },
+          "videos_published": {
+            "title": "Videos Published",
+            "type": "integer"
+          },
+          "videos_rejected": {
+            "title": "Videos Rejected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "spend_usd",
+          "spend_rub",
+          "fx_usd_rub",
+          "overhead_usd",
+          "published_spend_usd",
+          "rejected_spend_usd",
+          "in_progress_spend_usd",
+          "videos_produced",
+          "videos_published",
+          "videos_rejected",
+          "videos_failed",
+          "cost_per_published_video_usd",
+          "cost_per_video_usd"
+        ],
+        "title": "CostTotals",
+        "type": "object"
+      },
+      "CsvDialect": {
+        "description": "`excel_ru` — для Excel с русской локалью: `;`, десятичная запятая, русские заголовки, время МСК.\n`rfc4180` — для машин: `,`, точка, заголовки-ключи латиницей, время ISO 8601 UTC с `Z`.\nОба — UTF-8 с BOM и переводом строки CRLF.",
+        "enum": [
+          "excel_ru",
+          "rfc4180"
+        ],
+        "title": "CsvDialect",
+        "type": "string"
+      },
+      "DataFreshness": {
+        "description": "Плашка свежести (§7.3 «Аналитика»): насколько цифрам можно верить прямо сейчас.",
+        "properties": {
+          "analytics_pulled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "YouTube Analytics (OAuth, M4-D) — в этом прогоне всегда null",
+            "title": "Analytics Pulled At"
+          },
+          "clicks_last_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clicks Last At"
+          },
+          "collectors": {
+            "items": {
+              "$ref": "#/components/schemas/CollectorStatus"
+            },
+            "title": "Collectors",
+            "type": "array"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "conversions_last_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversions Last At"
+          },
+          "metrics_oldest_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Самый старый просроченный next_poll_at",
+            "title": "Metrics Oldest Due At"
+          },
+          "metrics_polled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последний успешный опрос любой публикации",
+            "title": "Metrics Polled At"
+          },
+          "public_counts_age_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Медианный возраст последнего снимка живых публикаций, минут",
+            "title": "Public Counts Age Min"
+          },
+          "publications_manual_due": {
+            "title": "Publications Manual Due",
+            "type": "integer"
+          },
+          "publications_stale": {
+            "title": "Publications Stale",
+            "type": "integer"
+          },
+          "quota": {
+            "description": "Текущие сутки квоты",
+            "items": {
+              "$ref": "#/components/schemas/QuotaDay"
+            },
+            "title": "Quota",
+            "type": "array"
+          },
+          "rollup_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последний успешный stats_rollup",
+            "title": "Rollup At"
+          },
+          "stale": {
+            "description": "Есть предупреждения, из-за которых цифры неполные",
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/FreshnessWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "computed_at",
+          "metrics_polled_at",
+          "metrics_oldest_due_at",
+          "public_counts_age_min",
+          "publications_stale",
+          "publications_manual_due",
+          "rollup_at",
+          "clicks_last_at",
+          "conversions_last_at",
+          "analytics_pulled_at",
+          "collectors",
+          "quota",
+          "stale",
+          "warnings"
+        ],
+        "title": "DataFreshness",
+        "type": "object"
+      },
+      "DateRange": {
+        "properties": {
+          "date_from": {
+            "format": "date",
+            "title": "Date From",
+            "type": "string"
+          },
+          "date_to": {
+            "format": "date",
+            "title": "Date To",
+            "type": "string"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "timezone": {
+            "description": "business_timezone, в котором считаются дни",
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date_from",
+          "date_to",
+          "days",
+          "timezone"
+        ],
+        "title": "DateRange",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "FreshnessWarning": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/FreshnessWarningCode"
+          },
+          "message": {
+            "description": "Для человека, по-русски",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "FreshnessWarning",
+        "type": "object"
+      },
+      "FreshnessWarningCode": {
+        "enum": [
+          "collector_disabled",
+          "collector_failing",
+          "quota_exhausted",
+          "metrics_overdue",
+          "manual_input_due",
+          "rollup_stale",
+          "engaged_views_unavailable",
+          "public_views_inflated"
+        ],
+        "title": "FreshnessWarningCode",
+        "type": "string"
+      },
+      "FunnelBranches": {
+        "description": "Ветка домена: просмотры → лендинг → посетители → на сайт → регистрации → оплаты.\nВетка бота: просмотры → в Telegram + старты напрямую → старты → пользователи → оплаты.",
+        "properties": {
+          "bot": {
+            "items": {
+              "$ref": "#/components/schemas/FunnelStep"
+            },
+            "title": "Bot",
+            "type": "array"
+          },
+          "domain": {
+            "items": {
+              "$ref": "#/components/schemas/FunnelStep"
+            },
+            "title": "Domain",
+            "type": "array"
+          }
+        },
+        "required": [
+          "domain",
+          "bot"
+        ],
+        "title": "FunnelBranches",
+        "type": "object"
+      },
+      "FunnelCosts": {
+        "properties": {
+          "cost_per_bot_start_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Bot Start Usd"
+          },
+          "cost_per_first_payment_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per First Payment Usd"
+          },
+          "cost_per_user_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per User Usd"
+          },
+          "cost_per_visitor_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Visitor Usd"
+          },
+          "spend_usd": {
+            "title": "Spend Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "spend_usd",
+          "cost_per_visitor_usd",
+          "cost_per_user_usd",
+          "cost_per_bot_start_usd",
+          "cost_per_first_payment_usd"
+        ],
+        "title": "FunnelCosts",
+        "type": "object"
+      },
+      "FunnelStep": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/FunnelStepCode"
+          },
+          "cost_per_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "spend_usd / value",
+            "title": "Cost Per Usd"
+          },
+          "per_1k_views": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per 1K Views"
+          },
+          "rate_from_prev": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Доля от предыдущего шага ветки, 0..1",
+            "title": "Rate From Prev"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "code",
+          "value",
+          "rate_from_prev",
+          "per_1k_views",
+          "cost_per_usd"
+        ],
+        "title": "FunnelStep",
+        "type": "object"
+      },
+      "FunnelStepCode": {
+        "enum": [
+          "views",
+          "clicks",
+          "landing_views",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "direct_bot_starts",
+          "visitors",
+          "bot_starts",
+          "users",
+          "signups",
+          "first_payments"
+        ],
+        "title": "FunnelStepCode",
+        "type": "string"
+      },
+      "JobKind": {
+        "enum": [
+          "generate",
+          "clip"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
+      "LadderStep": {
+        "properties": {
+          "age_hours": {
+            "title": "Age Hours",
+            "type": "number"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LadderStepStatus"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "step",
+          "age_hours",
+          "due_at",
+          "captured_at",
+          "status"
+        ],
+        "title": "LadderStep",
+        "type": "object"
+      },
+      "LadderStepStatus": {
+        "enum": [
+          "done",
+          "due",
+          "missed",
+          "future"
+        ],
+        "title": "LadderStepStatus",
+        "type": "string"
+      },
+      "MetricsSnapshot": {
+        "properties": {
+          "age_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Hours"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ручной ввод: кто",
+            "title": "Created By"
+          },
+          "engaged_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engaged Views"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MetricsSource"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "id",
+          "publication_id",
+          "captured_at",
+          "age_hours",
+          "views",
+          "likes",
+          "comments",
+          "shares",
+          "engaged_views",
+          "source",
+          "created_by",
+          "note"
+        ],
+        "title": "MetricsSnapshot",
+        "type": "object"
+      },
+      "MetricsSource": {
+        "enum": [
+          "yt_data",
+          "yt_analytics",
+          "vk_api",
+          "ytdlp",
+          "manual"
+        ],
+        "title": "MetricsSource",
+        "type": "string"
+      },
+      "OriginalityVerdict": {
+        "description": "Итог отчёта (`jobs.originality_verdict`): fail — не заливать, пока не исправлено.",
+        "enum": [
+          "pass",
+          "warn",
+          "fail"
+        ],
+        "title": "OriginalityVerdict",
+        "type": "string"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PlatformKind": {
+        "enum": [
+          "short",
+          "clip",
+          "video"
+        ],
+        "title": "PlatformKind",
+        "type": "string"
+      },
+      "Publication": {
+        "properties": {
+          "age_views": {
+            "$ref": "#/components/schemas/PublicationAgeViews"
+          },
+          "banner_variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "canonical_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Url"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelRef"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationFreshness"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: свежесть метрик, коллектор и ручной ввод"
+          },
+          "has_claim": {
+            "title": "Has Claim",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/PublicationLatest"
+          },
+          "next_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Poll At"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "originality_verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OriginalityVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нарезка: итог отчёта на момент заливки"
+          },
+          "package_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Id"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "platform_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform_video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Video Id"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicationStatus"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "tracking": {
+            "$ref": "#/components/schemas/PublicationTracking"
+          },
+          "traffic": {
+            "$ref": "#/components/schemas/PublicationTraffic"
+          },
+          "unit_economics": {
+            "$ref": "#/components/schemas/PublicationUnitEconomics"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgeVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "verify_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Detail"
+          },
+          "verify_status": {
+            "$ref": "#/components/schemas/VerifyStatus"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "package_id",
+          "video_uid",
+          "kind",
+          "platform",
+          "platform_video_id",
+          "platform_kind",
+          "url",
+          "canonical_url",
+          "status",
+          "status_reason",
+          "verify_status",
+          "verify_detail",
+          "verified_at",
+          "has_claim",
+          "channel",
+          "niche_id",
+          "product_id",
+          "campaign_id",
+          "banner_variant",
+          "tracking",
+          "latest",
+          "age_views",
+          "verdict",
+          "traffic",
+          "unit_economics",
+          "originality_verdict",
+          "next_poll_at",
+          "published_at",
+          "created_at"
+        ],
+        "title": "Publication",
+        "type": "object"
+      },
+      "PublicationAgeViews": {
+        "description": "Просмотры на ровный возраст: линейная интерполяция между снимками, без экстраполяции (§6.5).",
+        "properties": {
+          "d14": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: для когорт d14",
+            "title": "D14"
+          },
+          "d30": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: для когорт d30",
+            "title": "D30"
+          },
+          "d7": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D7"
+          },
+          "h24": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H24"
+          },
+          "h72": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H72"
+          }
+        },
+        "required": [
+          "h24",
+          "h72",
+          "d7"
+        ],
+        "title": "PublicationAgeViews",
+        "type": "object"
+      },
+      "PublicationFreshness": {
+        "description": "Свежесть метрик одной публикации (`Publication.freshness`, карточка ролика).",
+        "properties": {
+          "collector": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Коллектор, который сейчас ведёт публикацию"
+          },
+          "collector_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collector_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Время последнего снимка (любой источник)",
+            "title": "Last Captured At"
+          },
+          "last_poll_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Poll Error"
+          },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Polled At"
+          },
+          "manual_due": {
+            "description": "Ждёт ручного ввода (manual_due_at <= now)",
+            "title": "Manual Due",
+            "type": "boolean"
+          },
+          "manual_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Due At"
+          },
+          "metrics_age_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Минут с последнего снимка",
+            "title": "Metrics Age Min"
+          },
+          "next_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Poll At"
+          },
+          "poll_failures": {
+            "title": "Poll Failures",
+            "type": "integer"
+          },
+          "poll_step": {
+            "description": "Ступень лестницы опроса",
+            "title": "Poll Step",
+            "type": "integer"
+          },
+          "stale": {
+            "description": "next_poll_at просрочен больше чем на METRICS_OVERDUE_GRACE_MIN",
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "collector",
+          "collector_state",
+          "collector_reason",
+          "last_polled_at",
+          "last_captured_at",
+          "next_poll_at",
+          "poll_step",
+          "metrics_age_min",
+          "stale",
+          "manual_due",
+          "manual_due_at",
+          "poll_failures",
+          "last_poll_error"
+        ],
+        "title": "PublicationFreshness",
+        "type": "object"
+      },
+      "PublicationLatest": {
+        "properties": {
+          "avg_pct_viewed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Pct Viewed"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "engaged_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engaged Views"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "retention_3s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention 3S"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Источник последнего снимка (M4)"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "captured_at",
+          "views",
+          "likes",
+          "comments",
+          "engaged_views",
+          "retention_3s",
+          "avg_pct_viewed"
+        ],
+        "title": "PublicationLatest",
+        "type": "object"
+      },
+      "PublicationStatus": {
+        "enum": [
+          "live",
+          "unlisted",
+          "private",
+          "removed_by_platform",
+          "deleted_by_us"
+        ],
+        "title": "PublicationStatus",
+        "type": "string"
+      },
+      "PublicationTracking": {
+        "properties": {
+          "codes": {
+            "description": "Код пакета и алиас площадки",
+            "items": {
+              "type": "string"
+            },
+            "title": "Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "codes"
+        ],
+        "title": "PublicationTracking",
+        "type": "object"
+      },
+      "PublicationTraffic": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "landing_views": {
+            "title": "Landing Views",
+            "type": "integer"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          },
+          "to_site": {
+            "title": "To Site",
+            "type": "integer"
+          },
+          "to_telegram": {
+            "title": "To Telegram",
+            "type": "integer"
+          },
+          "unique_visitors": {
+            "title": "Unique Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "landing_views",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "bot_starts",
+          "signups",
+          "first_payments",
+          "revenue_minor",
+          "currency"
+        ],
+        "title": "PublicationTraffic",
+        "type": "object"
+      },
+      "PublicationUnitEconomics": {
+        "properties": {
+          "cost_per_visitor_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Visitor Usd"
+          },
+          "ctr_per_1k_views": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr Per 1K Views"
+          },
+          "job_cost_usd": {
+            "title": "Job Cost Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "job_cost_usd",
+          "ctr_per_1k_views",
+          "cost_per_visitor_usd"
+        ],
+        "title": "PublicationUnitEconomics",
+        "type": "object"
+      },
+      "QuotaApi": {
+        "description": "`api_quota_usage.api` (CHECK в 0017).",
+        "enum": [
+          "youtube_data",
+          "youtube_analytics",
+          "vk_api"
+        ],
+        "title": "QuotaApi",
+        "type": "string"
+      },
+      "QuotaDay": {
+        "properties": {
+          "api": {
+            "$ref": "#/components/schemas/QuotaApi"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "hard_stop": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Жёсткий стоп опроса (yt_quota_hard_units)",
+            "title": "Hard Stop"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Суточный лимит единиц (YouTube Data — 10 000)",
+            "title": "Limit"
+          },
+          "pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "units / limit × 100",
+            "title": "Pct"
+          },
+          "quota_day": {
+            "format": "date",
+            "title": "Quota Day",
+            "type": "string"
+          },
+          "soft_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Порог алерта quota_80, %",
+            "title": "Soft Pct"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "api",
+          "cluster_id",
+          "quota_day",
+          "units",
+          "calls",
+          "errors",
+          "limit",
+          "hard_stop",
+          "soft_pct",
+          "pct",
+          "updated_at"
+        ],
+        "title": "QuotaDay",
+        "type": "object"
+      },
+      "TimeseriesPoint": {
+        "properties": {
+          "t": {
+            "description": "День или понедельник недели (business_timezone)",
+            "format": "date",
+            "title": "T",
+            "type": "string"
+          },
+          "v": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "V"
+          }
+        },
+        "required": [
+          "t",
+          "v"
+        ],
+        "title": "TimeseriesPoint",
+        "type": "object"
+      },
+      "TimeseriesSeries": {
+        "properties": {
+          "key": {
+            "description": "Значение группы; 'other' — свёрнутый хвост, 'none' — без значения",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TimeseriesPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "total",
+          "points"
+        ],
+        "title": "TimeseriesSeries",
+        "type": "object"
+      },
+      "TrafficGranularity": {
+        "enum": [
+          "hour",
+          "day"
+        ],
+        "title": "TrafficGranularity",
+        "type": "string"
+      },
+      "VerifyStatus": {
+        "enum": [
+          "pending",
+          "ok",
+          "channel_mismatch",
+          "not_found",
+          "unverifiable"
+        ],
+        "title": "VerifyStatus",
+        "type": "string"
+      },
+      "VideoAnalytics": {
+        "properties": {
+          "age_views": {
+            "items": {
+              "$ref": "#/components/schemas/AgeViewsPoint"
+            },
+            "title": "Age Views",
+            "type": "array"
+          },
+          "annotations": {
+            "items": {
+              "$ref": "#/components/schemas/ChartAnnotation"
+            },
+            "title": "Annotations",
+            "type": "array"
+          },
+          "conversions": {
+            "items": {
+              "$ref": "#/components/schemas/ConversionCount"
+            },
+            "title": "Conversions",
+            "type": "array"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/VideoCosts"
+          },
+          "funnel": {
+            "$ref": "#/components/schemas/FunnelBranches"
+          },
+          "ladder": {
+            "items": {
+              "$ref": "#/components/schemas/LadderStep"
+            },
+            "title": "Ladder",
+            "type": "array"
+          },
+          "publication": {
+            "$ref": "#/components/schemas/Publication"
+          },
+          "recent_conversions": {
+            "description": "Последние 20 событий",
+            "items": {
+              "$ref": "#/components/schemas/VideoConversionEvent"
+            },
+            "title": "Recent Conversions",
+            "type": "array"
+          },
+          "snapshots": {
+            "description": "Все снимки по времени",
+            "items": {
+              "$ref": "#/components/schemas/MetricsSnapshot"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AnalyticsTotals",
+            "description": "За всю жизнь ролика"
+          },
+          "traffic": {
+            "items": {
+              "$ref": "#/components/schemas/VideoTrafficPoint"
+            },
+            "title": "Traffic",
+            "type": "array"
+          },
+          "traffic_granularity": {
+            "$ref": "#/components/schemas/TrafficGranularity"
+          }
+        },
+        "required": [
+          "publication",
+          "totals",
+          "snapshots",
+          "ladder",
+          "age_views",
+          "traffic_granularity",
+          "traffic",
+          "conversions",
+          "recent_conversions",
+          "funnel",
+          "costs",
+          "annotations"
+        ],
+        "title": "VideoAnalytics",
+        "type": "object"
+      },
+      "VideoConversionEvent": {
+        "properties": {
+          "amount_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Minor"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "event_type": {
+            "$ref": "#/components/schemas/ConversionEventType"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "via_landing": {
+            "title": "Via Landing",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "event_type",
+          "via_landing",
+          "amount_minor",
+          "currency"
+        ],
+        "title": "VideoConversionEvent",
+        "type": "object"
+      },
+      "VideoCosts": {
+        "properties": {
+          "brief_share_usd": {
+            "description": "Доля разбора брифа трендоскаута",
+            "title": "Brief Share Usd",
+            "type": "number"
+          },
+          "cost_per_bot_start_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Bot Start Usd"
+          },
+          "cost_per_first_payment_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per First Payment Usd"
+          },
+          "cost_per_user_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per User Usd"
+          },
+          "cost_per_visitor_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Visitor Usd"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CostItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "job_cost_usd": {
+            "description": "generation_events самого ролика",
+            "title": "Job Cost Usd",
+            "type": "number"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "romi": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Romi"
+          },
+          "source_share_usd": {
+            "description": "Доля ASR/LLM источника (нарезка)",
+            "title": "Source Share Usd",
+            "type": "number"
+          },
+          "total_rub": {
+            "title": "Total Rub",
+            "type": "number"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "job_cost_usd",
+          "source_share_usd",
+          "brief_share_usd",
+          "total_usd",
+          "total_rub",
+          "items",
+          "cost_per_visitor_usd",
+          "cost_per_user_usd",
+          "cost_per_bot_start_usd",
+          "cost_per_first_payment_usd",
+          "revenue_minor",
+          "romi"
+        ],
+        "title": "VideoCosts",
+        "type": "object"
+      },
+      "VideoTrafficPoint": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "direct_bot_starts": {
+            "title": "Direct Bot Starts",
+            "type": "integer"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "landing_views": {
+            "title": "Landing Views",
+            "type": "integer"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          },
+          "t": {
+            "format": "date-time",
+            "title": "T",
+            "type": "string"
+          },
+          "to_site": {
+            "title": "To Site",
+            "type": "integer"
+          },
+          "to_telegram": {
+            "title": "To Telegram",
+            "type": "integer"
+          },
+          "unique_visitors": {
+            "title": "Unique Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "t",
+          "clicks",
+          "landing_views",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "direct_bot_starts",
+          "bot_starts",
+          "signups",
+          "first_payments",
+          "revenue_minor"
+        ],
+        "title": "VideoTrafficPoint",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/analytics/breakdown": {
+      "get": {
+        "operationId": "analytics_breakdown",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dimension",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsDimension",
+              "default": "channel"
+            }
+          },
+          {
+            "description": "Метрика AnalyticsMetric или n_videos, views_median, views_72h_median, label, published_at (только video); `-` — по убыванию",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "-views",
+              "description": "Метрика AnalyticsMetric или n_videos, views_median, views_72h_median, label, published_at (только video); `-` — по убыванию",
+              "pattern": "^-?[a-z0-9_]+$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsBreakdown"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Разрез по ролику, каналу, нише, продукту, кампании, варианту, треку или площадке",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/cohorts": {
+      "get": {
+        "operationId": "analytics_cohorts",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortMetric",
+              "default": "views"
+            }
+          },
+          {
+            "description": "Когорта — день или неделя публикации",
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsGranularity",
+              "default": "week",
+              "description": "Когорта — день или неделя публикации"
+            }
+          },
+          {
+            "in": "query",
+            "name": "aggregate",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAggregate",
+              "default": "median"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsCohorts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Когорты по дате публикации × возраст ролика (24 ч … 30 дней)",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/costs": {
+      "get": {
+        "operationId": "analytics_costs",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsGranularity",
+              "default": "day"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CostGroupBy",
+              "default": "provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Top",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsCosts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Расход по провайдерам, шагам и исходам; честная цена опубликованного ролика",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/export": {
+      "get": {
+        "operationId": "analytics_export",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "report",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsReport",
+              "default": "breakdown"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dialect",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CsvDialect",
+              "default": "excel_ru"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dimension",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsDimension",
+              "default": "video"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMetric",
+              "default": "views"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsGranularity",
+              "default": "day"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsGroupBy",
+              "default": "none"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cost_group_by",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CostGroupBy",
+              "default": "provider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cohort_metric",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortMetric",
+              "default": "views"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Top",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "default": "-views",
+              "pattern": "^-?[a-z0-9_]+$",
+              "title": "Sort",
+              "type": "string"
+            }
+          },
+          {
+            "description": "report=video",
+            "in": "query",
+            "name": "publication_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "report=video",
+              "title": "Publication Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "CSV (UTF-8 с BOM), Content-Disposition: attachment"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Выгрузка отчёта в CSV: summary, timeseries, breakdown, funnel, cohorts, costs, …",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/freshness": {
+      "get": {
+        "operationId": "analytics_freshness",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataFreshness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Свежесть данных: опрос метрик, ролл-ап, коллекторы, квоты",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/funnel": {
+      "get": {
+        "operationId": "analytics_funnel",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsFunnel"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Воронка двух веток: просмотры → переходы → старты → оплаты, цена шага",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/summary": {
+      "get": {
+        "operationId": "analytics_summary",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Итоги периода, прошлый период, уровни атрибуции, свежесть данных",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/timeseries": {
+      "get": {
+        "operationId": "analytics_timeseries",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Channel Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Niche Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Product Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Campaign Id",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "minimum": 1,
+                "type": "integer"
+              },
+              "title": "Banner Variant Id",
+              "type": "array"
+            }
+          },
+          {
+            "description": "Трек: generate | clip",
+            "in": "query",
+            "name": "track",
+            "required": false,
+            "schema": {
+              "description": "Трек: generate | clip",
+              "items": {
+                "$ref": "#/components/schemas/JobKind"
+              },
+              "title": "Track",
+              "type": "array"
+            }
+          },
+          {
+            "description": "activity | cohort",
+            "in": "query",
+            "name": "mode",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMode",
+              "default": "activity",
+              "description": "activity | cohort"
+            }
+          },
+          {
+            "description": "public | engaged (engaged — только с OAuth, M4-D)",
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public",
+              "description": "public | engaged (engaged — только с OAuth, M4-D)"
+            }
+          },
+          {
+            "description": "Только для mode=cohort",
+            "in": "query",
+            "name": "cohort_age",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/CohortAge",
+              "default": "lifetime",
+              "description": "Только для mode=cohort"
+            }
+          },
+          {
+            "description": "Накладные (без ролика) в spend_usd",
+            "in": "query",
+            "name": "include_overhead",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Накладные (без ролика) в spend_usd",
+              "title": "Include Overhead",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsMetric",
+              "default": "views"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsGranularity",
+              "default": "day"
+            }
+          },
+          {
+            "in": "query",
+            "name": "group_by",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsGroupBy",
+              "default": "none"
+            }
+          },
+          {
+            "in": "query",
+            "name": "top",
+            "required": false,
+            "schema": {
+              "default": 8,
+              "maximum": 20,
+              "minimum": 1,
+              "title": "Top",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsTimeseries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Ряд метрики по дням или неделям, с группировкой (хвост — в other)",
+        "tags": [
+          "analytics"
+        ]
+      }
+    },
+    "/api/v1/analytics/videos/{publication_id}": {
+      "get": {
+        "operationId": "analytics_video",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "basis",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/AnalyticsBasis",
+              "default": "public"
+            }
+          },
+          {
+            "description": "Пусто — hour для роликов младше 7 дней, иначе day",
+            "in": "query",
+            "name": "traffic_granularity",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/TrafficGranularity"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Пусто — hour для роликов младше 7 дней, иначе day",
+              "title": "Traffic Granularity"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoAnalytics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Карточка ролика: лестница снимков, просмотры от возраста, трафик, конверсии, стоимость",
+        "tags": [
+          "analytics"
+        ]
+      }
+    }
+  },
+  "tag": "analytics"
+}

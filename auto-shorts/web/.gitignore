@@ -1,0 +1,17 @@
+# зависимости и сборка
+/node_modules
+/.next/
+/out/
+/out-mock/
+*.tsbuildinfo
+# генерируется next dev/build/typegen
+next-env.d.ts
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# локальные env
+.env*.local

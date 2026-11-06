@@ -1,0 +1,12 @@
+# Контекст сборки deploy/Dockerfile. BuildKit использует этот файл вместо корневого .dockerignore,
+# когда Dockerfile лежит рядом с ним (<Dockerfile>.dockerignore).
+# Белый список: всё запрещено, кроме того, что нужно образу. .env, .venv, web/, render_tmp/, .git
+# и медиа в контекст не попадают — ни секреты, ни гигабайты.
+*
+!pyproject.toml
+!src/
+!config/
+!deploy/docker-entrypoint.sh
+**/__pycache__
+**/*.pyc
+**/*.egg-info

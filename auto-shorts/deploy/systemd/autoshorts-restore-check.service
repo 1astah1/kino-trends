@@ -1,0 +1,46 @@
+# Auto Shorts v1 — еженедельная проверка восстановления (§8.5): свежий дамп восстанавливается во временную
+# базу, сверяется число строк ключевых таблиц, база удаляется; при ошибке открывается алерт.
+# Команда autoshorts-admin restore-check появится в M7-A (src/autoshorts/cli/ops.py). До этого таймер
+# не включать: юнит упадёт с «unknown command».
+# Роли базы нужен CREATEDB (временная база), дампы читаются из BACKUP_DIR.
+[Unit]
+Description=Auto Shorts weekly backup restore check
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service autoshorts-backup.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/autoshorts XDG_CACHE_HOME=/var/cache/autoshorts
+ExecStart=/opt/auto-shorts/.venv/bin/autoshorts-admin restore-check
+TimeoutStartSec=2h
+Nice=10
+MemoryMax=512M
+
+UMask=0027
+CacheDirectory=autoshorts
+CacheDirectoryMode=0750
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=

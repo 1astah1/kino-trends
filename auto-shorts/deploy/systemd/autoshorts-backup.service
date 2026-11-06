@@ -1,0 +1,43 @@
+# Auto Shorts v1 — ежедневный дамп базы (deploy/backup.sh): pg_dump -Fc, 7 дневных + 4 недельных (§8.5).
+# Запускается таймером autoshorts-backup.timer; вручную: systemctl start autoshorts-backup.
+# BACKUP_DIR берётся из .env (по умолчанию /var/backups/autoshorts) и должен существовать:
+#   install -d -o autoshorts -g autoshorts -m 0750 /var/backups/autoshorts
+[Unit]
+Description=Auto Shorts daily database backup (pg_dump -Fc)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+Environment=BACKUP_DIR=/var/backups/autoshorts
+EnvironmentFile=/opt/auto-shorts/.env
+ExecStart=/opt/auto-shorts/deploy/backup.sh
+TimeoutStartSec=2h
+Nice=10
+MemoryMax=512M
+
+UMask=0027
+ReadWritePaths=/var/backups/autoshorts
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=

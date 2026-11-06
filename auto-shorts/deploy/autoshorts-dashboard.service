@@ -1,0 +1,23 @@
+# systemd-юнит дашборда. Копировать в /etc/systemd/system/ на VPS-воркере,
+# затем: sudo systemctl daemon-reload && sudo systemctl enable --now autoshorts-dashboard
+[Unit]
+Description=Auto Shorts — Dashboard
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=autoshorts
+WorkingDirectory=/opt/auto-shorts
+EnvironmentFile=/opt/auto-shorts/.env
+ExecStart=/opt/auto-shorts/.venv/bin/python -m uvicorn autoshorts.webapp.dashboard:app --app-dir src --port 18234 --host 127.0.0.1
+# M0 (ARCHITECTURE §3.3 п.3): дашборд слушает только 127.0.0.1. Раньше он торчал на 0.0.0.0:18234
+# с HTTP Basic по голому HTTP, и пароль уходил в сеть открытым текстом (base64).
+# Доступ снаружи — только через обратный прокси с TLS на самом хосте (deploy/nginx-dashboard.conf)
+# либо SSH-туннелем: ssh -L 18234:127.0.0.1:18234 <сервер>. Traefik из docker-контейнера (Coolify)
+# до 127.0.0.1 хоста не достаёт — для него нужен отдельный маршрут, а не возврат на 0.0.0.0.
+# Проверка после рестарта: ss -ltn | grep 18234 должен показать только 127.0.0.1:18234.
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

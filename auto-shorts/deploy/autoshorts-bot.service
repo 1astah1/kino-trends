@@ -1,0 +1,17 @@
+# systemd-юнит Telegram-бота приёмки.
+[Unit]
+Description=Auto Shorts — Telegram Review Bot
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=autoshorts
+WorkingDirectory=/opt/auto-shorts
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONPATH=/opt/auto-shorts/src
+ExecStart=/opt/auto-shorts/.venv/bin/python -m autoshorts.bot.telegram_bot
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

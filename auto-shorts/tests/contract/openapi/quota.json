@@ -1,0 +1,520 @@
+{
+  "components": {
+    "schemas": {
+      "CollectorReason": {
+        "description": "Причина не-ok состояния (`collector_state.reason`).",
+        "enum": [
+          "no_api_key",
+          "quota_exhausted",
+          "quota_soft_limit",
+          "network_error",
+          "http_error",
+          "auth_error",
+          "tool_missing",
+          "not_configured",
+          "manual_only"
+        ],
+        "title": "CollectorReason",
+        "type": "string"
+      },
+      "CollectorState": {
+        "description": "Состояние коллектора (`collector_state.state`).",
+        "enum": [
+          "ok",
+          "idle",
+          "disabled",
+          "degraded",
+          "paused",
+          "failing"
+        ],
+        "title": "CollectorState",
+        "type": "string"
+      },
+      "CollectorStatus": {
+        "description": "Строка `collector_state` + счётчики публикаций, для плашки свежести, Обзора и Настроек.",
+        "properties": {
+          "cluster_id": {
+            "description": "Куст (свой ключ YouTube на куст); 'default' — общий",
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "collector": {
+            "$ref": "#/components/schemas/MetricsSource"
+          },
+          "consecutive_failures": {
+            "title": "Consecutive Failures",
+            "type": "integer"
+          },
+          "key_secret": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Имя секрета ключа API (yt_data); значение никогда не отдаётся",
+            "title": "Key Secret"
+          },
+          "key_set": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Задан ли секрет ключа (null — коллектору ключ не нужен)",
+            "title": "Key Set"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "last_error_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error At"
+          },
+          "last_ok_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Ok At"
+          },
+          "last_run_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Run At"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пояснение для человека, по-русски",
+            "title": "Message"
+          },
+          "paused_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paused Until"
+          },
+          "publications_due": {
+            "description": "Из них с наступившим next_poll_at",
+            "title": "Publications Due",
+            "type": "integer"
+          },
+          "publications_total": {
+            "description": "Публикаций, которые ведёт этот коллектор",
+            "title": "Publications Total",
+            "type": "integer"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/CollectorState"
+          }
+        },
+        "required": [
+          "collector",
+          "cluster_id",
+          "state",
+          "reason",
+          "message",
+          "key_secret",
+          "key_set",
+          "last_run_at",
+          "last_ok_at",
+          "last_error_at",
+          "last_error",
+          "consecutive_failures",
+          "paused_until",
+          "publications_total",
+          "publications_due"
+        ],
+        "title": "CollectorStatus",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "MetricsSource": {
+        "enum": [
+          "yt_data",
+          "yt_analytics",
+          "vk_api",
+          "ytdlp",
+          "manual"
+        ],
+        "title": "MetricsSource",
+        "type": "string"
+      },
+      "QuotaApi": {
+        "description": "`api_quota_usage.api` (CHECK в 0017).",
+        "enum": [
+          "youtube_data",
+          "youtube_analytics",
+          "vk_api"
+        ],
+        "title": "QuotaApi",
+        "type": "string"
+      },
+      "QuotaDay": {
+        "properties": {
+          "api": {
+            "$ref": "#/components/schemas/QuotaApi"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "cluster_id": {
+            "title": "Cluster Id",
+            "type": "string"
+          },
+          "errors": {
+            "title": "Errors",
+            "type": "integer"
+          },
+          "hard_stop": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Жёсткий стоп опроса (yt_quota_hard_units)",
+            "title": "Hard Stop"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Суточный лимит единиц (YouTube Data — 10 000)",
+            "title": "Limit"
+          },
+          "pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "units / limit × 100",
+            "title": "Pct"
+          },
+          "quota_day": {
+            "format": "date",
+            "title": "Quota Day",
+            "type": "string"
+          },
+          "soft_pct": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Порог алерта quota_80, %",
+            "title": "Soft Pct"
+          },
+          "units": {
+            "title": "Units",
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "required": [
+          "api",
+          "cluster_id",
+          "quota_day",
+          "units",
+          "calls",
+          "errors",
+          "limit",
+          "hard_stop",
+          "soft_pct",
+          "pct",
+          "updated_at"
+        ],
+        "title": "QuotaDay",
+        "type": "object"
+      },
+      "QuotaUsage": {
+        "properties": {
+          "collectors": {
+            "items": {
+              "$ref": "#/components/schemas/CollectorStatus"
+            },
+            "title": "Collectors",
+            "type": "array"
+          },
+          "date_from": {
+            "format": "date",
+            "title": "Date From",
+            "type": "string"
+          },
+          "date_to": {
+            "format": "date",
+            "title": "Date To",
+            "type": "string"
+          },
+          "items": {
+            "description": "По дням, новые сверху",
+            "items": {
+              "$ref": "#/components/schemas/QuotaDay"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "reset_at": {
+            "description": "Следующий сброс квоты YouTube (полночь America/Los_Angeles), UTC",
+            "format": "date-time",
+            "title": "Reset At",
+            "type": "string"
+          },
+          "today": {
+            "description": "Текущие сутки квоты по API и кусту (нули, если вызовов не было)",
+            "items": {
+              "$ref": "#/components/schemas/QuotaDay"
+            },
+            "title": "Today",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date_from",
+          "date_to",
+          "items",
+          "today",
+          "reset_at",
+          "collectors"
+        ],
+        "title": "QuotaUsage",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/quota": {
+      "get": {
+        "operationId": "quota_get",
+        "parameters": [
+          {
+            "description": "YYYY-MM-DD, сутки квоты",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD, сутки квоты",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно",
+              "title": "Date To"
+            }
+          },
+          {
+            "description": "Повтором: ?api=youtube_data&api=vk_api",
+            "in": "query",
+            "name": "api",
+            "required": false,
+            "schema": {
+              "description": "Повтором: ?api=youtube_data&api=vk_api",
+              "items": {
+                "$ref": "#/components/schemas/QuotaApi"
+              },
+              "title": "Api",
+              "type": "array"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cluster_id",
+            "required": false,
+            "schema": {
+              "items": {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              "title": "Cluster Id",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaUsage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Расход квот API по дням и кустам, текущие сутки, состояние коллекторов",
+        "tags": [
+          "quota"
+        ]
+      }
+    }
+  },
+  "tag": "quota"
+}

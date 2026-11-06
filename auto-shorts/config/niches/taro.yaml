@@ -1,0 +1,69 @@
+# Ниша: таро / pick-a-card. См. ТЗ §4 "Формат под нишу".
+# Один файл прошивает все стадии — сценарий, голос, визуал, субтитры, баннер.
+id: taro
+label: "Таро — выбери карту"
+
+script:
+  format: pick_a_card          # pick_a_card | numerology | card_of_day | horoscope_12
+  tone: "вкрадчивый, мистический, без нажима"
+  pacing: medium
+  word_count: [55, 80]          # под целевые 15-25 сек озвучки
+  hooks:
+    - pattern: incomplete_visual
+      template: "Три карты. Одна из них уже знает ответ на твой вопрос."
+    - pattern: direct_address
+      template: "Это для тебя, если ты сейчас думаешь о {theme}."
+    - pattern: stakes_escalation
+      template: "То, что выпадет третьим, изменит то, как ты понимаешь эту неделю."
+  cta_variants:
+    - "Какая легла тебе — 1, 2 или 3? Пиши в комментах, что происходит у тебя прямо сейчас."
+    - "Напиши номер карты — разберём в следующем ролике."
+  # Словарный фильтр — см. ТЗ §4. Блокирует формулировки, которые ловят все площадки разом
+  # (ФЗ "О рекламе" ст.5/24, TikTok Ads, Google Ads, Telegram Bot ToS).
+  forbidden_phrases:
+    - "гарантированно"
+    - "100%"
+    - "300% сбудется"
+    - "обязательно сбудется"
+    - "излечит"
+    - "вылечит"
+    - "снимет болезнь"
+    - "уберёт порчу"
+    - "уберёт болезнь"
+    - "вам не нужен врач"
+    - "у вас порча"
+    - "венец безбрачия"
+
+visuals:
+  style: "rider-waite tarot, mystical, candles, smoke, starlight, dark academia palette"
+  mood: "spiritual, calm, intriguing"
+  subjects: ["карты таро рубашкой вверх", "свечи", "дым", "звёздное небо", "хрустальный шар"]
+  avoid: ["фотореалистичные лица крупным планом", "кириллический текст внутри генерации"]
+  motion: crop_pan              # crop_pan | prerendered_loop — НИКОГДА zoompan, см. ТЗ §9
+  scene_count: 6
+
+voice:
+  pace: "medium-slow"
+  energy: "low, intimate, слегка с придыханием"
+  suggested_providers:
+    primary: "silero:v5_cis_base"     # MIT, бесплатно — см. лицензионный разбор в ТЗ §2
+    premium: "fal:minimax-speech-2.8-hd"
+
+captions:
+  style: karaoke_word_highlight
+  highlight_color: "#F2C14E"
+  base_color: "#FFFFFF"
+  font_weight: bold
+  position: lower_third          # см. safe zone в banner.yaml
+
+music:
+  mood: "ambient, low drone, singing bowl"
+  energy: low
+
+duration:
+  target_sec: [15, 25]           # старт вне спорной зоны 26-44с, см. ТЗ §3
+  loop_seam: true
+
+thumbnail:
+  style: "крупная карта таро, тёмный фон, минимум текста"
+  text_position: top
