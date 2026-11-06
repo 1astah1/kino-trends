@@ -1,0 +1,3044 @@
+{
+  "components": {
+    "schemas": {
+      "AllowlistStatus": {
+        "enum": [
+          "not_needed",
+          "requested",
+          "allowlisted",
+          "unknown"
+        ],
+        "title": "AllowlistStatus",
+        "type": "string"
+      },
+      "DeferReason": {
+        "enum": [
+          "disk_low",
+          "load_high",
+          "mem_low",
+          "budget_exhausted",
+          "quota_exhausted"
+        ],
+        "title": "DeferReason",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "RightsType": {
+        "description": "CC-BY-SA и NC не принимаются: несовместимы с промо-баннером (§0.1 п. 14).",
+        "enum": [
+          "own",
+          "licensed_written",
+          "licensed_platform",
+          "cc_by",
+          "public_domain"
+        ],
+        "title": "RightsType",
+        "type": "string"
+      },
+      "RightsWarning": {
+        "properties": {
+          "code": {
+            "description": "Код предупреждения движка (латиница), см. RIGHTS_WARNING_LABELS",
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "description": "Подпись по-русски",
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "RightsWarning",
+        "type": "object"
+      },
+      "SceneSpan": {
+        "properties": {
+          "end_sec": {
+            "title": "End Sec",
+            "type": "number"
+          },
+          "start_sec": {
+            "title": "Start Sec",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "SceneSpan",
+        "type": "object"
+      },
+      "SelectionMode": {
+        "description": "Кто фактически выбрал (`SelectionResult.mode` движка). UI обязан подписывать mock и heuristic.",
+        "enum": [
+          "llm",
+          "mock",
+          "heuristic"
+        ],
+        "title": "SelectionMode",
+        "type": "string"
+      },
+      "SelectorChoice": {
+        "description": "Кто выбирает моменты. `auto` — LLM, если настроен ключ (LLM_API_KEY), иначе эвристика.",
+        "enum": [
+          "auto",
+          "llm",
+          "heuristic"
+        ],
+        "title": "SelectorChoice",
+        "type": "string"
+      },
+      "Source": {
+        "properties": {
+          "candidates_count": {
+            "title": "Candidates Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "file_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Bytes"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fps"
+          },
+          "has_audio": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Audio"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "jobs_count": {
+            "title": "Jobs Count",
+            "type": "integer"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "media": {
+            "$ref": "#/components/schemas/SourceMedia"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "options": {
+            "$ref": "#/components/schemas/SourceOptions"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/SourceOrigin"
+          },
+          "origin_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin Url"
+          },
+          "original_retain_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Retain Until"
+          },
+          "pipeline": {
+            "items": {
+              "$ref": "#/components/schemas/SourcePipelineStep"
+            },
+            "title": "Pipeline",
+            "type": "array"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourcePlatformInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Общий прогресс до ready, 0–100",
+            "title": "Progress"
+          },
+          "proxy_retain_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proxy Retain Until"
+          },
+          "rights": {
+            "$ref": "#/components/schemas/SourceRights"
+          },
+          "selection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceSelectionInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SourceStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "transcript": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceTranscriptInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "video_codec": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Codec"
+          },
+          "watermark": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceWatermark"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "watermark_suspect": {
+            "title": "Watermark Suspect",
+            "type": "boolean"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "origin",
+          "origin_url",
+          "status",
+          "error",
+          "language",
+          "niche_id",
+          "duration_sec",
+          "width",
+          "height",
+          "fps",
+          "video_codec",
+          "has_audio",
+          "file_bytes",
+          "sha256",
+          "rights",
+          "watermark_suspect",
+          "watermark",
+          "platform",
+          "options",
+          "pipeline",
+          "progress",
+          "media",
+          "transcript",
+          "selection",
+          "candidates_count",
+          "jobs_count",
+          "original_retain_until",
+          "proxy_retain_until",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "Source",
+        "type": "object"
+      },
+      "SourceFromUpload": {
+        "additionalProperties": false,
+        "properties": {
+          "language": {
+            "default": "ru",
+            "pattern": "^[a-z]{2}$",
+            "title": "Language",
+            "type": "string"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rights": {
+            "$ref": "#/components/schemas/SourceRightsIn",
+            "description": "Обязательно: без прав источник не создаётся"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "upload_id": {
+            "description": "tus-загрузка с purpose=source",
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rights",
+          "upload_id",
+          "title"
+        ],
+        "title": "SourceFromUpload",
+        "type": "object"
+      },
+      "SourceFromUrl": {
+        "additionalProperties": false,
+        "description": "Только своё или лицензированное видео. Звук сначала (audio-first), 1080p — секциями на clip_fetch.",
+        "properties": {
+          "language": {
+            "default": "ru",
+            "pattern": "^[a-z]{2}$",
+            "title": "Language",
+            "type": "string"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceOptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rights": {
+            "$ref": "#/components/schemas/SourceRightsIn",
+            "description": "Обязательно: без прав источник не создаётся"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто — с площадки",
+            "title": "Title"
+          },
+          "url": {
+            "maxLength": 2000,
+            "pattern": "^https?://\\S{3,2000}$",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rights",
+          "url"
+        ],
+        "title": "SourceFromUrl",
+        "type": "object"
+      },
+      "SourceMedia": {
+        "description": "Непрозрачные URL `/api/v1/...`; null — файла ещё нет.",
+        "properties": {
+          "audio_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Url"
+          },
+          "peaks_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Peaks Url"
+          },
+          "proxy_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proxy Url"
+          },
+          "storyboard_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Storyboard Url"
+          },
+          "transcript_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transcript Url"
+          }
+        },
+        "required": [
+          "proxy_url",
+          "audio_url",
+          "peaks_url",
+          "storyboard_url",
+          "transcript_url"
+        ],
+        "title": "SourceMedia",
+        "type": "object"
+      },
+      "SourceOptions": {
+        "additionalProperties": false,
+        "description": "Опции отбора и распознавания (`sources.options`, `SelectionConfig.from_options` движка).",
+        "properties": {
+          "asr_provider": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9_]{2,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ключ провайдера ASR; по умолчанию — default из /providers",
+            "title": "Asr Provider"
+          },
+          "detail_pass": {
+            "default": true,
+            "description": "Второй проход LLM по шортлисту с контекстом ±60 с",
+            "title": "Detail Pass",
+            "type": "boolean"
+          },
+          "max_candidates": {
+            "default": 12,
+            "description": "Сколько моментов показать",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Max Candidates",
+            "type": "integer"
+          },
+          "max_clip_sec": {
+            "default": 58.0,
+            "description": "VK жёстко ≤ 58 с",
+            "maximum": 60.0,
+            "minimum": 10.0,
+            "title": "Max Clip Sec",
+            "type": "number"
+          },
+          "min_clip_sec": {
+            "default": 15.0,
+            "maximum": 58.0,
+            "minimum": 5.0,
+            "title": "Min Clip Sec",
+            "type": "number"
+          },
+          "selector": {
+            "$ref": "#/components/schemas/SelectorChoice",
+            "default": "auto"
+          },
+          "target_clip_sec": {
+            "default": 30.0,
+            "maximum": 58.0,
+            "minimum": 10.0,
+            "title": "Target Clip Sec",
+            "type": "number"
+          },
+          "target_count": {
+            "default": 6,
+            "description": "Сколько клипов нужно (шортлист × 2)",
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Target Count",
+            "type": "integer"
+          },
+          "tighten_pauses": {
+            "default": false,
+            "description": "Джамп-каты по паузам; для музыки не включать",
+            "title": "Tighten Pauses",
+            "type": "boolean"
+          }
+        },
+        "title": "SourceOptions",
+        "type": "object"
+      },
+      "SourceOrigin": {
+        "enum": [
+          "upload",
+          "url"
+        ],
+        "title": "SourceOrigin",
+        "type": "string"
+      },
+      "SourcePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SourceRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "SourcePage",
+        "type": "object"
+      },
+      "SourcePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "niche_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "original_retain_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Retain Until"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "SourcePatch",
+        "type": "object"
+      },
+      "SourcePeaks": {
+        "description": "`peaks.json` (`pipeline/peaks.py`), грузится в `WaveSurfer.create({peaks, duration})` как есть.",
+        "properties": {
+          "channels": {
+            "title": "Channels",
+            "type": "integer"
+          },
+          "duration": {
+            "title": "Duration",
+            "type": "number"
+          },
+          "format": {
+            "const": "wavesurfer",
+            "title": "Format",
+            "type": "string"
+          },
+          "length": {
+            "title": "Length",
+            "type": "integer"
+          },
+          "max": {
+            "title": "Max",
+            "type": "number"
+          },
+          "peaks": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Peaks",
+            "type": "array"
+          },
+          "points_per_min": {
+            "title": "Points Per Min",
+            "type": "integer"
+          },
+          "sample_rate": {
+            "title": "Sample Rate",
+            "type": "integer"
+          },
+          "samples_per_point": {
+            "title": "Samples Per Point",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "format",
+          "duration",
+          "sample_rate",
+          "points_per_min",
+          "samples_per_point",
+          "length",
+          "channels",
+          "max",
+          "peaks"
+        ],
+        "title": "SourcePeaks",
+        "type": "object"
+      },
+      "SourcePipelineStep": {
+        "properties": {
+          "chunks_done": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ASR по кускам",
+            "title": "Chunks Done"
+          },
+          "chunks_total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunks Total"
+          },
+          "defer_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeferReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "0–100",
+            "title": "Progress"
+          },
+          "queue_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Место в тяжёлой очереди (1 — следующий)",
+            "title": "Queue Position"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SourceStepStatus"
+          },
+          "step": {
+            "$ref": "#/components/schemas/SourceStep"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          }
+        },
+        "required": [
+          "step",
+          "status",
+          "task_id",
+          "progress"
+        ],
+        "title": "SourcePipelineStep",
+        "type": "object"
+      },
+      "SourcePlatformInfo": {
+        "description": "Сводка площадки для URL-источника (`source_ingest.platform_summary`): сверка лицензии.",
+        "properties": {
+          "extractor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extractor"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "upload_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "YYYYMMDD, как отдаёт yt-dlp",
+            "title": "Upload Date"
+          },
+          "uploader": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploader"
+          },
+          "video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Id"
+          },
+          "webpage_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Webpage Url"
+          }
+        },
+        "required": [
+          "extractor",
+          "video_id",
+          "webpage_url",
+          "uploader",
+          "license",
+          "upload_date"
+        ],
+        "title": "SourcePlatformInfo",
+        "type": "object"
+      },
+      "SourceReprocess": {
+        "additionalProperties": false,
+        "properties": {
+          "asr_provider": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9_]{2,63}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Asr Provider"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/SourceReprocessStep"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "steps"
+        ],
+        "title": "SourceReprocess",
+        "type": "object"
+      },
+      "SourceReprocessStep": {
+        "enum": [
+          "prepare",
+          "transcribe",
+          "select",
+          "scenes"
+        ],
+        "title": "SourceReprocessStep",
+        "type": "string"
+      },
+      "SourceRights": {
+        "properties": {
+          "allowlist_status": {
+            "$ref": "#/components/schemas/AllowlistStatus"
+          },
+          "attribution_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attribution Text"
+          },
+          "gate_applies": {
+            "description": "Чужие права: гейт author_share ≥ clip_author_share_min",
+            "title": "Gate Applies",
+            "type": "boolean"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License"
+          },
+          "license_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Url"
+          },
+          "owner_channel_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Channel Url"
+          },
+          "owner_name": {
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "proof_file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`/api/v1/...`, если приложен документ",
+            "title": "Proof File Url"
+          },
+          "proof_note": {
+            "title": "Proof Note",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded By"
+          },
+          "rights_type": {
+            "$ref": "#/components/schemas/RightsType"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/RightsWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "rights_type",
+          "owner_name",
+          "owner_channel_url",
+          "proof_note",
+          "proof_file_url",
+          "allowlist_status",
+          "attribution_text",
+          "license",
+          "license_url",
+          "valid_until",
+          "warnings",
+          "gate_applies",
+          "recorded_by",
+          "recorded_at",
+          "updated_at"
+        ],
+        "title": "SourceRights",
+        "type": "object"
+      },
+      "SourceRightsIn": {
+        "additionalProperties": false,
+        "description": "Запись прав (таблица `source_rights`) — обязательна при создании источника.\n\nПоля — это `source_ingest.RightsRecord` движка; проверка — `source_ingest.validate_rights`.",
+        "properties": {
+          "allowlist_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AllowlistStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Content ID allowlist; по умолчанию own → not_needed, иначе unknown"
+          },
+          "attribution_text": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Обязательна, кроме own: автор, название, источник, лицензия, изменения",
+            "title": "Attribution Text"
+          },
+          "license": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Например «CC BY 4.0»",
+            "title": "License"
+          },
+          "license_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Url"
+          },
+          "owner_channel_url": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Owner Channel Url"
+          },
+          "owner_name": {
+            "description": "Правообладатель (ключ `owner` тоже принимается)",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Owner Name",
+            "type": "string"
+          },
+          "proof_note": {
+            "description": "Чем подтверждено: договор, лицензия на странице, дата",
+            "maxLength": 4000,
+            "minLength": 3,
+            "title": "Proof Note",
+            "type": "string"
+          },
+          "proof_upload_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-f0-9]{32}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Скан договора или скриншот лицензии: tus-загрузка с purpose=rights_doc",
+            "title": "Proof Upload Id"
+          },
+          "rights_type": {
+            "$ref": "#/components/schemas/RightsType",
+            "description": "own | licensed_written | licensed_platform | cc_by | public_domain (`licensed` = licensed_written)"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Срок действия прав (лицензии)",
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "rights_type",
+          "owner_name",
+          "proof_note"
+        ],
+        "title": "SourceRightsIn",
+        "type": "object"
+      },
+      "SourceRow": {
+        "properties": {
+          "candidates_count": {
+            "title": "Candidates Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "current_step": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceStep"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "jobs_count": {
+            "title": "Jobs Count",
+            "type": "integer"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/SourceOrigin"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress"
+          },
+          "queue_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Position"
+          },
+          "rights_type": {
+            "$ref": "#/components/schemas/RightsType"
+          },
+          "selection_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SelectionMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SourceStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "watermark_suspect": {
+            "title": "Watermark Suspect",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "origin",
+          "status",
+          "error",
+          "language",
+          "niche_id",
+          "duration_sec",
+          "rights_type",
+          "watermark_suspect",
+          "current_step",
+          "progress",
+          "queue_position",
+          "candidates_count",
+          "jobs_count",
+          "selection_mode",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SourceRow",
+        "type": "object"
+      },
+      "SourceScenes": {
+        "properties": {
+          "coverage": {
+            "description": "Какие отрезки [s, e] источника уже просчитаны",
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "title": "Coverage",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SceneSpan"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "coverage"
+        ],
+        "title": "SourceScenes",
+        "type": "object"
+      },
+      "SourceSelectionInfo": {
+        "description": "Итог последнего отбора (`sources.selection`, `SelectionResult.to_dict()` без кандидатов).",
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "fallback": {
+            "description": "LLM был выбран, но упал — кандидаты от эвристики",
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "label": {
+            "description": "Подпись для UI: «LLM umka/…», «Эвристика без LLM — ключ не задан»",
+            "title": "Label",
+            "type": "string"
+          },
+          "llm_configured": {
+            "description": "Ключ LLM задан (LLM_API_KEY или секрет провайдера)",
+            "title": "Llm Configured",
+            "type": "boolean"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/SelectionMode"
+          },
+          "n_blocked": {
+            "title": "N Blocked",
+            "type": "integer"
+          },
+          "n_candidates": {
+            "title": "N Candidates",
+            "type": "integer"
+          },
+          "n_requests": {
+            "title": "N Requests",
+            "type": "integer"
+          },
+          "params": {
+            "$ref": "#/components/schemas/SourceOptions"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "label",
+          "llm_configured",
+          "fallback",
+          "params",
+          "n_candidates",
+          "n_blocked",
+          "n_requests",
+          "cost_usd",
+          "warnings",
+          "task_id",
+          "finished_at"
+        ],
+        "title": "SourceSelectionInfo",
+        "type": "object"
+      },
+      "SourceStatus": {
+        "enum": [
+          "queued",
+          "downloading",
+          "preparing",
+          "transcribing",
+          "selecting",
+          "ready",
+          "failed",
+          "archived"
+        ],
+        "title": "SourceStatus",
+        "type": "string"
+      },
+      "SourceStep": {
+        "description": "Шаги конвейера источника (§6.3.1) → задачи source_download | source_prepare |\nsource_transcribe_chunk × N / source_transcribe_cloud | source_select | source_scenes.",
+        "enum": [
+          "download",
+          "prepare",
+          "transcribe",
+          "select",
+          "scenes"
+        ],
+        "title": "SourceStep",
+        "type": "string"
+      },
+      "SourceStepStatus": {
+        "enum": [
+          "pending",
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "skipped"
+        ],
+        "title": "SourceStepStatus",
+        "type": "string"
+      },
+      "SourceStoryboard": {
+        "description": "Раскадровка (`pipeline/storyboard.py`): кадр каждые `interval_sec`, листы cols×rows плиток.",
+        "properties": {
+          "cols": {
+            "title": "Cols",
+            "type": "integer"
+          },
+          "count": {
+            "description": "Всего плиток",
+            "title": "Count",
+            "type": "integer"
+          },
+          "interval_sec": {
+            "title": "Interval Sec",
+            "type": "number"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "sheets": {
+            "description": "URL листов `/api/v1/sources/{id}/storyboard/{sheet_idx}`",
+            "items": {
+              "type": "string"
+            },
+            "title": "Sheets",
+            "type": "array"
+          },
+          "tile_h": {
+            "title": "Tile H",
+            "type": "integer"
+          },
+          "tile_w": {
+            "title": "Tile W",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "interval_sec",
+          "tile_w",
+          "tile_h",
+          "cols",
+          "rows",
+          "count",
+          "sheets"
+        ],
+        "title": "SourceStoryboard",
+        "type": "object"
+      },
+      "SourceTranscript": {
+        "properties": {
+          "duration_sec": {
+            "title": "Duration Sec",
+            "type": "number"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider_key": {
+            "title": "Provider Key",
+            "type": "string"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptSentence"
+            },
+            "title": "Sentences",
+            "type": "array"
+          },
+          "source_id": {
+            "title": "Source Id",
+            "type": "integer"
+          },
+          "words": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptWord"
+            },
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "source_id",
+          "language",
+          "duration_sec",
+          "provider_key",
+          "model",
+          "words",
+          "sentences"
+        ],
+        "title": "SourceTranscript",
+        "type": "object"
+      },
+      "SourceTranscriptInfo": {
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider_key": {
+            "title": "Provider Key",
+            "type": "string"
+          },
+          "rtfx": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rtfx"
+          },
+          "sentences_count": {
+            "title": "Sentences Count",
+            "type": "integer"
+          },
+          "words_count": {
+            "title": "Words Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider_key",
+          "model",
+          "language",
+          "words_count",
+          "sentences_count",
+          "duration_sec",
+          "rtfx",
+          "cost_usd",
+          "created_at"
+        ],
+        "title": "SourceTranscriptInfo",
+        "type": "object"
+      },
+      "SourceWatermark": {
+        "description": "Проверка чужих логотипов на подготовке (`clipping/watermark_check.py`). Маскировки нет.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Что найдено: логотип и счёт, угол статичного оверлея",
+            "title": "Detail"
+          },
+          "frames_checked": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frames Checked"
+          },
+          "logos_checked": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logos Checked"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WatermarkSeverity"
+          },
+          "suspect": {
+            "title": "Suspect",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "suspect",
+          "severity",
+          "detail",
+          "frames_checked",
+          "logos_checked"
+        ],
+        "title": "SourceWatermark",
+        "type": "object"
+      },
+      "TaskAccepted": {
+        "description": "202: работа поставлена в очередь.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "title": "TaskAccepted",
+        "type": "object"
+      },
+      "TranscriptFormat": {
+        "enum": [
+          "json",
+          "srt",
+          "vtt"
+        ],
+        "title": "TranscriptFormat",
+        "type": "string"
+      },
+      "TranscriptSentence": {
+        "properties": {
+          "e": {
+            "title": "E",
+            "type": "number"
+          },
+          "s": {
+            "title": "S",
+            "type": "number"
+          },
+          "sid": {
+            "title": "Sid",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "w0": {
+            "description": "Индекс первого слова",
+            "title": "W0",
+            "type": "integer"
+          },
+          "w1": {
+            "description": "Индекс последнего слова (включительно)",
+            "title": "W1",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sid",
+          "s",
+          "e",
+          "text",
+          "w0",
+          "w1"
+        ],
+        "title": "TranscriptSentence",
+        "type": "object"
+      },
+      "TranscriptWord": {
+        "properties": {
+          "e": {
+            "description": "Конец, с",
+            "title": "E",
+            "type": "number"
+          },
+          "p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Уверенность ASR, если есть",
+            "title": "P"
+          },
+          "s": {
+            "description": "Начало, с",
+            "title": "S",
+            "type": "number"
+          },
+          "sid": {
+            "description": "Предложение",
+            "title": "Sid",
+            "type": "integer"
+          },
+          "w": {
+            "description": "Слово с пунктуацией",
+            "title": "W",
+            "type": "string"
+          }
+        },
+        "required": [
+          "w",
+          "s",
+          "e",
+          "sid"
+        ],
+        "title": "TranscriptWord",
+        "type": "object"
+      },
+      "WatermarkSeverity": {
+        "enum": [
+          "ok",
+          "hint",
+          "warning"
+        ],
+        "title": "WatermarkSeverity",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/sources": {
+      "get": {
+        "operationId": "sources_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SourceStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SourceOrigin"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Origin"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Niche Id"
+            }
+          },
+          {
+            "description": "Поиск по названию",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поиск по названию",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Поле сортировки из белого списка, `-` — по убыванию",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^-?[a-z0-9_]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-created_at",
+              "description": "Поле сортировки из белого списка, `-` — по убыванию",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourcePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Источники",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/from-upload": {
+      "post": {
+        "operationId": "sources_create_from_upload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceFromUpload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Source"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Источник из tus-загрузки (права обязательны; 409 upload_not_complete)",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/from-url": {
+      "post": {
+        "operationId": "sources_create_from_url",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceFromUrl"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Source"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Источник по ссылке: своё или лицензированное (права обязательны)",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}": {
+      "delete": {
+        "operationId": "sources_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "purge_files",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Purge Files",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Удалить источник (?purge_files=true — и файлы)",
+        "tags": [
+          "sources"
+        ]
+      },
+      "get": {
+        "operationId": "sources_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Source"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Источник и прогресс",
+        "tags": [
+          "sources"
+        ]
+      },
+      "patch": {
+        "operationId": "sources_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourcePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Source"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Правка источника",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/media/audio": {
+      "get": {
+        "operationId": "sources_media_audio",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "audio/mp4": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Звук источника m4a (Range)"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Звук для прослушивания кандидата",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/media/proxy": {
+      "get": {
+        "operationId": "sources_media_proxy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Прокси 540p, GOP 1 с (Range)"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Прокси 540p для студии",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/peaks": {
+      "get": {
+        "operationId": "sources_peaks",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourcePeaks"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Волна (формат wavesurfer; файл отдаётся как есть)",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/reprocess": {
+      "post": {
+        "operationId": "sources_reprocess",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceReprocess"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Перезапустить шаги: prepare, transcribe, select, scenes",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/rights": {
+      "get": {
+        "operationId": "sources_rights_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRights"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Права на источник",
+        "tags": [
+          "sources"
+        ]
+      },
+      "put": {
+        "operationId": "sources_rights_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRightsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRights"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Заменить запись прав (аудит; CC BY-SA/NC/ND — 422)",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/scenes": {
+      "get": {
+        "operationId": "sources_scenes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_sec",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Start Sec"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_sec",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "End Sec"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceScenes"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Склейки в отрезке (что посчитано)",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/storyboard": {
+      "get": {
+        "operationId": "sources_storyboard",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceStoryboard"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Раскадровка: сетка и листы",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/storyboard/{sheet_idx}": {
+      "get": {
+        "operationId": "sources_storyboard_sheet",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "sheet_idx",
+            "required": true,
+            "schema": {
+              "title": "Sheet Idx",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Лист спрайта"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Лист раскадровки",
+        "tags": [
+          "sources"
+        ]
+      }
+    },
+    "/api/v1/sources/{source_id}/transcript": {
+      "get": {
+        "operationId": "sources_transcript",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TranscriptFormat",
+              "default": "json"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceTranscript"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Транскрипт: json (слова и предложения) или srt/vtt",
+        "tags": [
+          "sources"
+        ]
+      }
+    }
+  },
+  "tag": "sources"
+}

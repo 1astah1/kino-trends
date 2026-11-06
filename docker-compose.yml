@@ -1,0 +1,284 @@
+# Auto Shorts — docker compose для РАЗРАБОТКИ (docs/ARCHITECTURE.md §8.4). Прод работает под systemd
+# (deploy/systemd, deploy/nginx, §8.5), этот файл туда не едет.
+#
+# Все сервисы спрятаны за профилями: голый `docker compose up -d` ничего не поднимает. На общем боксе
+# (4 ядра, 7,7 ГБ, swap занят) случайный запуск всего стека вытеснил бы соседние проекты.
+# Политика перезапуска — on-failure с лимитом: упавший без базы сервис не крутится вечно и не
+# воскресает сам после перезагрузки хоста.
+#
+# Порты только на 127.0.0.1: api 18300, web 18301, public 18302, postgres 5442.
+# 5432 занят системным PostgreSQL 16 — compose его не трогает.
+#
+# ── Режим A: всё в compose (отдельная машина разработчика) ──────────────────────────────────────
+#   mkdir -p var/media var/models var/backups          # иначе docker создаст их от root
+#   COMPOSE_PROFILES=db,app docker compose up -d --build   # postgres + migrate + api + public + worker-light
+#   docker compose --profile heavy up -d worker-heavy      # тяжёлый воркер — только по требованию
+#   docker compose --profile web up -d web                 # next dev → http://127.0.0.1:18301
+#   docker compose --profile bot up -d bot
+#   Тесты: TEST_DATABASE_URL=postgresql://autoshorts:autoshorts@127.0.0.1:5442/autoshorts_test
+#
+# ── Режим B: экономный (общий бокс) ───────────────────────────────────────────────────────────────
+#   postgres и web в compose не поднимаются; api, public и воркеры идут из .venv против ОТДЕЛЬНОЙ базы
+#   в системном PG16 (не legacy-базы "autoshorts"): deploy/dev/mode-b.sh. Тяжёлый воркер и web —
+#   контейнерами только по требованию и в сети хоста (иначе до 127.0.0.1:5432 и api из .venv не достать):
+#   docker compose -f docker-compose.yml -f deploy/compose.mode-b.yml --profile heavy up -d worker-heavy
+#   docker compose -f docker-compose.yml -f deploy/compose.mode-b.yml --profile web up -d web
+#
+# Переменные подстановки (из окружения или .env, имена латиницей):
+#   AS_UID / AS_GID        uid/gid хозяина файлов в ./var (id -u / id -g), по умолчанию 1000
+#   AS_PIP_EXTRAS          "" или "clipping" (onnx-asr, onnxruntime, opencv) — тяжёлые, по требованию
+#   AS_PUBLIC_APP          ASGI-приложение редиректора; до M3 — autoshorts.webapp.redirect:app
+#   AS_HEAVY_IO_DEVICE     блочное устройство для лимитов IO тяжёлого воркера (lsblk), по умолчанию /dev/sda
+#   AS_DEV_DATABASE_URL, AS_DEV_MEDIA_ROOT — только режим B, см. deploy/compose.mode-b.yml
+
+name: autoshorts
+
+x-app-env: &app-env
+  APP_ENV: dev
+  DATABASE_URL: postgresql://autoshorts:autoshorts@postgres:5432/autoshorts
+  MEDIA_ROOT: /var/lib/autoshorts/media
+  MODELS_DIR: /var/lib/autoshorts/models
+  BACKUP_DIR: /var/lib/autoshorts/backups
+  RESOURCE_PROFILE: shared_dev
+  ADMIN_BASE_URL: http://127.0.0.1:18301
+  PUBLIC_BASE_URL: http://127.0.0.1:18302
+  # legacy config.py создаёт каталоги при импорте (бот и редиректор до M3) — уводим их в медиатом,
+  # иначе процесс без прав на /app упадёт на mkdir. Убрать вместе с config.py в M7-C.
+  RENDER_TMP_DIR: /var/lib/autoshorts/media/legacy/render_tmp
+  MASTER_ARCHIVE_DIR: /var/lib/autoshorts/media/legacy/master_archive
+  FONTS_DIR: /app/config/fonts
+
+x-app: &app
+  image: autoshorts-app:dev
+  build:
+    context: .
+    dockerfile: deploy/Dockerfile
+    args:
+      APP_UID: ${AS_UID:-1000}
+      APP_GID: ${AS_GID:-1000}
+      PIP_EXTRAS: ${AS_PIP_EXTRAS:-}
+  # Секреты разработчика (AS_SECRETS_KEY, REDIRECT_SALT, ключи провайдеров) — из .env.
+  # Инфраструктурные переменные ниже важнее .env: контейнер всегда смотрит в свою базу и свои тома.
+  env_file:
+    - path: .env
+      required: false
+  environment: *app-env
+  volumes:
+    - ./src:/app/src:ro
+    - ./config:/app/config:ro
+    - ./var/media:/var/lib/autoshorts/media
+    - ./var/models:/var/lib/autoshorts/models
+    - ./var/backups:/var/lib/autoshorts/backups
+  restart: on-failure:5
+  stop_grace_period: 30s
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+x-after-migrate: &after-migrate
+  # required: false — в режиме без профиля db (база снаружи) зависимость просто не действует
+  migrate:
+    condition: service_completed_successfully
+    required: false
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["db"]
+    environment:
+      POSTGRES_USER: autoshorts
+      POSTGRES_PASSWORD: autoshorts
+      POSTGRES_DB: autoshorts
+    command:
+      - postgres
+      - -c
+      - shared_buffers=64MB
+      - -c
+      - max_connections=30
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - effective_cache_size=256MB
+    ports:
+      - "127.0.0.1:5442:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    mem_limit: 384m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autoshorts -d autoshorts"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: on-failure:5
+
+  # Схема создаётся раннером миграций (0001–…), а не init-скриптом postgres.
+  migrate:
+    <<: *app
+    profiles: ["db"]
+    command: ["autoshorts-admin", "migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    profiles: ["app"]
+    command:
+      - uvicorn
+      - autoshorts.api.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+      # SSE-соединения иначе держат остановку до stop_grace_period
+      - --timeout-graceful-shutdown
+      - "5"
+    ports:
+      - "127.0.0.1:18300:8000"
+    mem_limit: 384m
+    cpus: "1.0"
+    depends_on: *after-migrate
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  public:
+    <<: *app
+    profiles: ["app"]
+    command:
+      - uvicorn
+      - ${AS_PUBLIC_APP:-autoshorts.public.app:app}
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8001"
+      - --workers
+      - "1"
+      - --no-access-log  # §5.3/§8.5: в логах нет сырых IP зрителей
+    ports:
+      - "127.0.0.1:18302:8001"
+    mem_limit: 160m
+    cpus: "0.5"
+    depends_on: *after-migrate
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker-light:
+    <<: *app
+    profiles: ["app"]
+    command: ["autoshorts-worker", "--class", "light", "--concurrency", "2"]
+    mem_limit: 512m
+    cpus: "1.0"
+    depends_on: *after-migrate
+
+  # Ровно один экземпляр: advisory lock 771001 в базе (flock /run/lock в контейнере локален).
+  # Лимиты повторяют профиль shared_dev (§8.1): 2 ядра, 1,5 ГБ без свопа, IO 60/40 МБ/с.
+  worker-heavy:
+    <<: *app
+    profiles: ["heavy"]
+    command: ["autoshorts-worker", "--class", "heavy"]
+    environment:
+      <<: *app-env
+      FFMPEG_THREADS: "2"
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+      NUMBA_NUM_THREADS: "1"
+    mem_limit: 1536m
+    # своп на боксе занят целиком — тяжёлому воркеру его не даём (memswap = mem)
+    memswap_limit: 1536m
+    cpus: "2.0"
+    cpu_shares: 256
+    blkio_config:
+      device_read_bps:
+        - path: ${AS_HEAVY_IO_DEVICE:-/dev/sda}
+          rate: 60mb
+      device_write_bps:
+        - path: ${AS_HEAVY_IO_DEVICE:-/dev/sda}
+          rate: 40mb
+    stop_grace_period: 60s
+    depends_on: *after-migrate
+
+  bot:
+    <<: *app
+    profiles: ["bot"]
+    command: ["python", "-m", "autoshorts.bot.telegram_bot"]
+    mem_limit: 192m
+    depends_on: *after-migrate
+
+  # node_modules и .next живут в именованных томах: `npm ci` в alpine-контейнере не должен
+  # затирать node_modules хоста (glibc-сборки, которыми пользуется `npm run dev` из web/),
+  # а .next контейнера — конфликтовать с .next хоста. web-init отдаёт тома пользователю AS_UID.
+  web-init:
+    image: node:22-alpine
+    profiles: ["web"]
+    user: "0:0"
+    command: ["sh", "-c", "chown ${AS_UID:-1000}:${AS_GID:-1000} /web/node_modules /web/.next"]
+    volumes:
+      - web-node-modules:/web/node_modules
+      - web-next:/web/.next
+    restart: "no"
+
+  web:
+    image: node:22-alpine
+    profiles: ["web"]
+    init: true
+    user: "${AS_UID:-1000}:${AS_GID:-1000}"
+    working_dir: /web
+    # npm ci — только когда поменялся package-lock.json (хеш кладётся рядом с node_modules)
+    command:
+      - sh
+      - -c
+      - >-
+        set -e;
+        lock_hash=$$(sha256sum package-lock.json | cut -d' ' -f1);
+        if [ "$$(cat node_modules/.as-lock-hash 2>/dev/null)" != "$$lock_hash" ]; then
+        npm ci --no-audit --no-fund && echo "$$lock_hash" > node_modules/.as-lock-hash; fi;
+        exec node_modules/.bin/next dev -H "$${AS_WEB_HOST:-0.0.0.0}" -p "$${AS_WEB_PORT:-3000}"
+    environment:
+      AS_API_ORIGIN: http://api:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_ALLOWED_DEV_ORIGINS: 127.0.0.1,localhost
+      NODE_OPTIONS: --max-old-space-size=768
+      HOME: /tmp
+      npm_config_cache: /tmp/.npm
+      npm_config_update_notifier: "false"
+    volumes:
+      - ./web:/web
+      - web-node-modules:/web/node_modules
+      - web-next:/web/.next
+    ports:
+      - "127.0.0.1:18301:3000"
+    mem_limit: 1g
+    cpus: "1.5"
+    restart: on-failure:3
+    depends_on:
+      web-init:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata: {}
+  web-node-modules: {}
+  web-next: {}

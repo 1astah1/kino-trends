@@ -1,0 +1,51 @@
+# Баннерный слой. Координаты и тайминг — ТЗ §7 "Баннерный слой".
+# Универсальный конфиг под любой продукт: меняется здесь, шаблон рендера не трогаем.
+canvas: {w: 1080, h: 1920}
+
+# Безопасные зоны кадра (community-derived, проверять скриншотами на реальных устройствах)
+safe_zone:
+  top_dead_below: 170       # y < 170 — верхний бар площадки
+  bottom_dead_above: 1500   # y > 1500 — описание/кнопка «Подписаться»
+  right_dead_after: 930     # x > 930 — правый рэйл (лайк/шер/аватар)
+
+layer_1_micro_brand:
+  enabled: true
+  text: "umka.chat"
+  height_px: 50
+  opacity: 0.75
+  position: {x: 146, y: 56}   # выше правого рэйла, вне верхнего бара
+  persistent: true            # висит весь ролик
+
+layer_2_offer_banner:
+  enabled: true
+  height_px: 160
+  text_size_px: 66
+  font_weight: bold
+  position: {x1: 60, y1: 1150, x2: 900, y2: 1400}
+  style: native_caption        # тот же sans-serif что у субтитров, подложка 60-80% непрозрачности
+  background_opacity: 0.7
+  corner_radius_px: 14
+  timing:
+    hook_silence_sec: 2.0      # 0-2 сек — только микро-бренд, никакого оффера
+    impulse_window_pct: [0.40, 0.65]   # импульс на 40-65% хронометража
+    impulse_duration_sec: [3, 5]
+    fade_in_ms: 200
+    final_repeat: true          # финал = петля, без статичного эндкарда
+    final_repeat_over_action: true
+    final_repeat_sec: 2.5       # длительность повторного показа в конце ролика
+
+qr_code:
+  enabled: false                # см. ТЗ: скан-рейт 0.004-0.010%, не основной канал
+
+platform_overrides:
+  vk:
+    # VK: не занимать верхние 10% и нижние 20% кадра (официальная рекомендация)
+    safe_zone:
+      top_dead_below: 192
+      bottom_dead_above: 1536
+    layer_2_offer_banner:
+      note: "ссылку в описание клипа НЕ ставить — правило VK, см. ТЗ §5"
+  tiktok:
+    layer_2_offer_banner:
+      enabled: false
+      note: "TikTok API запрещает логотипы/вотермарки/промо-текст — см. ТЗ §7"

@@ -1,0 +1,1478 @@
+{
+  "components": {
+    "schemas": {
+      "AutopublishState": {
+        "description": "Автозалив пакета через API площадки (0019): очередь → заливка → готово, ошибка или отмена.",
+        "enum": [
+          "scheduled",
+          "uploading",
+          "done",
+          "failed",
+          "cancelled"
+        ],
+        "title": "AutopublishState",
+        "type": "string"
+      },
+      "ChecklistCode": {
+        "enum": [
+          "file_downloaded",
+          "right_account",
+          "texts_pasted",
+          "hashtags",
+          "related_video",
+          "pinned_comment",
+          "ai_disclosure",
+          "ad_marking",
+          "content_id",
+          "published"
+        ],
+        "title": "ChecklistCode",
+        "type": "string"
+      },
+      "ChecklistItem": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ChecklistCode"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          },
+          "done_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done At"
+          },
+          "done_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done By"
+          },
+          "required": {
+            "default": true,
+            "description": "Например, ai_disclosure — только при синтетике",
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "done",
+          "done_at"
+        ],
+        "title": "ChecklistItem",
+        "type": "object"
+      },
+      "ChecklistPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/ChecklistCode"
+          },
+          "done": {
+            "title": "Done",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "done"
+        ],
+        "title": "ChecklistPatch",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "JobKind": {
+        "enum": [
+          "generate",
+          "clip"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
+      "OriginalityVerdict": {
+        "description": "Итог отчёта (`jobs.originality_verdict`): fail — не заливать, пока не исправлено.",
+        "enum": [
+          "pass",
+          "warn",
+          "fail"
+        ],
+        "title": "OriginalityVerdict",
+        "type": "string"
+      },
+      "PackageAutopublish": {
+        "description": "Автозалив через API площадки (0019). Нет блока — пакет в автозалив не ставили.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Слот заливки (UTC); для failed/done — последний",
+            "title": "At"
+          },
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему не залито или отложено, по-русски",
+            "title": "Error"
+          },
+          "privacy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VideoPrivacy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "$ref": "#/components/schemas/AutopublishState"
+          },
+          "video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "id ролика на площадке сразу после заливки",
+            "title": "Video Id"
+          },
+          "video_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Video Url"
+          }
+        },
+        "required": [
+          "state",
+          "at",
+          "privacy",
+          "attempts",
+          "error",
+          "video_id",
+          "video_url"
+        ],
+        "title": "PackageAutopublish",
+        "type": "object"
+      },
+      "PackageChannel": {
+        "properties": {
+          "account_hint": {
+            "description": "В какой аккаунт зайти: «Brand Account: … (@handle)»",
+            "title": "Account Hint",
+            "type": "string"
+          },
+          "display_name": {
+            "description": "Название канала, как на площадке",
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "platform_channel_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Channel Ref"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "platform",
+          "account_hint",
+          "platform_channel_ref"
+        ],
+        "title": "PackageChannel",
+        "type": "object"
+      },
+      "PackageFile": {
+        "properties": {
+          "download_url": {
+            "title": "Download Url",
+            "type": "string"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "size_bytes": {
+            "title": "Size Bytes",
+            "type": "integer"
+          },
+          "text_url": {
+            "title": "Text Url",
+            "type": "string"
+          },
+          "zip_url": {
+            "title": "Zip Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "download_url",
+          "filename",
+          "size_bytes",
+          "duration_sec",
+          "text_url",
+          "zip_url"
+        ],
+        "title": "PackageFile",
+        "type": "object"
+      },
+      "PackageOriginality": {
+        "description": "Нарезка: итог отчёта об оригинальности на момент сборки пакета.",
+        "properties": {
+          "author_share": {
+            "title": "Author Share",
+            "type": "number"
+          },
+          "gate_applies": {
+            "title": "Gate Applies",
+            "type": "boolean"
+          },
+          "gate_passed": {
+            "title": "Gate Passed",
+            "type": "boolean"
+          },
+          "suggestions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          },
+          "verdict": {
+            "$ref": "#/components/schemas/OriginalityVerdict"
+          }
+        },
+        "required": [
+          "verdict",
+          "author_share",
+          "gate_applies",
+          "gate_passed",
+          "suggestions"
+        ],
+        "title": "PackageOriginality",
+        "type": "object"
+      },
+      "PackagePatch": {
+        "additionalProperties": false,
+        "description": "Автосохранение текстов (оператор) → `texts_mode = operator`.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 5000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "hashtags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 15,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hashtags"
+          },
+          "pinned_comment": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Comment"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "PackagePatch",
+        "type": "object"
+      },
+      "PackagePublicationRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicationStatus"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "verify_status": {
+            "$ref": "#/components/schemas/VerifyStatus"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "status",
+          "verify_status",
+          "published_at"
+        ],
+        "title": "PackagePublicationRef",
+        "type": "object"
+      },
+      "PackageRebuild": {
+        "additionalProperties": false,
+        "properties": {
+          "regenerate_texts": {
+            "default": false,
+            "description": "true — заново через LLM (или шаблон)",
+            "title": "Regenerate Texts",
+            "type": "boolean"
+          }
+        },
+        "title": "PackageRebuild",
+        "type": "object"
+      },
+      "PackageStatus": {
+        "enum": [
+          "ready",
+          "downloaded",
+          "published",
+          "superseded"
+        ],
+        "title": "PackageStatus",
+        "type": "string"
+      },
+      "PackageTexts": {
+        "properties": {
+          "attribution_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Чужие права (CC BY, лицензии): обязано быть в описании — уже вставлено в description",
+            "title": "Attribution Text"
+          },
+          "audio_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Audio Note"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "description_max": {
+            "title": "Description Max",
+            "type": "integer"
+          },
+          "hashtags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hashtags",
+            "type": "array"
+          },
+          "pinned_comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Comment"
+          },
+          "related_video_hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Related Video Hint"
+          },
+          "texts_label": {
+            "description": "«LLM umka/…» или «шаблон без LLM — проверьте тексты»",
+            "title": "Texts Label",
+            "type": "string"
+          },
+          "texts_mode": {
+            "$ref": "#/components/schemas/PackageTextsMode"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "title_max": {
+            "title": "Title Max",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title",
+          "title_max",
+          "description",
+          "description_max",
+          "hashtags",
+          "pinned_comment",
+          "related_video_hint",
+          "audio_note",
+          "attribution_text",
+          "texts_mode",
+          "texts_label"
+        ],
+        "title": "PackageTexts",
+        "type": "object"
+      },
+      "PackageTextsMode": {
+        "description": "Откуда тексты (`upload_packages.texts_mode`): template — без LLM, UI подписывает.",
+        "enum": [
+          "llm",
+          "template",
+          "operator"
+        ],
+        "title": "PackageTextsMode",
+        "type": "string"
+      },
+      "PackageTracking": {
+        "properties": {
+          "code": {
+            "description": "Код пакета: 5 символов Crockford base32 (нижний регистр)",
+            "title": "Code",
+            "type": "string"
+          },
+          "redirect_url": {
+            "description": "https://u.<домен>/<code>",
+            "title": "Redirect Url",
+            "type": "string"
+          },
+          "site_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Лендинг с utm_campaign=<code>",
+            "title": "Site Url"
+          },
+          "telegram_https_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "https://telegram.me/<bot>?start=<code>",
+            "title": "Telegram Https Url"
+          },
+          "telegram_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "tg://resolve?domain=<bot>&start=<code>",
+            "title": "Telegram Url"
+          }
+        },
+        "required": [
+          "code",
+          "redirect_url",
+          "telegram_url",
+          "telegram_https_url",
+          "site_url"
+        ],
+        "title": "PackageTracking",
+        "type": "object"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PublicationStatus": {
+        "enum": [
+          "live",
+          "unlisted",
+          "private",
+          "removed_by_platform",
+          "deleted_by_us"
+        ],
+        "title": "PublicationStatus",
+        "type": "string"
+      },
+      "UploadPackage": {
+        "properties": {
+          "ai_disclosure_required": {
+            "title": "Ai Disclosure Required",
+            "type": "boolean"
+          },
+          "autopublish": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageAutopublish"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "channel": {
+            "$ref": "#/components/schemas/PackageChannel"
+          },
+          "checklist": {
+            "items": {
+              "$ref": "#/components/schemas/ChecklistItem"
+            },
+            "title": "Checklist",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "downloaded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Downloaded At"
+          },
+          "file": {
+            "$ref": "#/components/schemas/PackageFile"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "marked_uploaded_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marked Uploaded At"
+          },
+          "originality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackageOriginality"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только нарезка"
+          },
+          "publication": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PackagePublicationRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/PackageStatus"
+          },
+          "texts": {
+            "$ref": "#/components/schemas/PackageTexts"
+          },
+          "tracking": {
+            "$ref": "#/components/schemas/PackageTracking"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "video_uid",
+          "kind",
+          "status",
+          "channel",
+          "texts",
+          "checklist",
+          "tracking",
+          "file",
+          "ai_disclosure_required",
+          "originality",
+          "publication",
+          "downloaded_at",
+          "marked_uploaded_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "UploadPackage",
+        "type": "object"
+      },
+      "UploadPackagePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/UploadPackage"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "UploadPackagePage",
+        "type": "object"
+      },
+      "VerifyStatus": {
+        "enum": [
+          "pending",
+          "ok",
+          "channel_mismatch",
+          "not_found",
+          "unverifiable"
+        ],
+        "title": "VerifyStatus",
+        "type": "string"
+      },
+      "VideoPrivacy": {
+        "enum": [
+          "public",
+          "unlisted",
+          "private"
+        ],
+        "title": "VideoPrivacy",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/jobs/{job_id}/package": {
+      "get": {
+        "operationId": "packages_job_package_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Текущий пакет ролика (404 package_not_found)",
+        "tags": [
+          "packages"
+        ]
+      },
+      "post": {
+        "operationId": "packages_job_package_rebuild",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackageRebuild"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Пересобрать пакет (409 package_not_ready)",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages": {
+      "get": {
+        "operationId": "packages_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/PackageStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Platform"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackagePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Очередь «К заливке»",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages/{package_id}": {
+      "get": {
+        "operationId": "packages_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Пакет",
+        "tags": [
+          "packages"
+        ]
+      },
+      "patch": {
+        "operationId": "packages_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackagePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Правка текстов пакета",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages/{package_id}/checklist": {
+      "patch": {
+        "operationId": "packages_checklist_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChecklistPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Отметить пункт чек-листа",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages/{package_id}/mark-uploaded": {
+      "post": {
+        "operationId": "packages_mark_uploaded",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPackage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "«Залил, ссылку вставлю позже»",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages/{package_id}/text": {
+      "get": {
+        "operationId": "packages_text",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Тексты пакета одним файлом"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Тексты одним файлом",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages/{package_id}/video": {
+      "get": {
+        "operationId": "packages_video",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "video/mp4": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Финальный файл (attachment, Range)"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Скачать ролик (ставит downloaded)",
+        "tags": [
+          "packages"
+        ]
+      }
+    },
+    "/api/v1/packages/{package_id}/zip": {
+      "get": {
+        "operationId": "packages_zip",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "package_id",
+            "required": true,
+            "schema": {
+              "title": "Package Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Видео и тексты (ZIP_STORED)"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Архив пакета",
+        "tags": [
+          "packages"
+        ]
+      }
+    }
+  },
+  "tag": "packages"
+}

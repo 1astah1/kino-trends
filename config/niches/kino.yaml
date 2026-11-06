@@ -1,0 +1,62 @@
+id: kino
+label: "Кино и сериалы — лучшие сцены"
+
+script:
+  format: card_of_day
+  tone: "кинокритик-друг: коротко, с интригой, без спойлеров развязки"
+  pacing: fast
+  word_count: [25, 45]
+  hooks:
+    - pattern: direct_address
+      template: "Эту сцену из «{title}» пересматривают по десять раз."
+    - pattern: incomplete_visual
+      template: "Досмотри до конца: тут поворот, которого никто не ждал."
+  cta_variants:
+    - "Какой фильм разобрать следующим? Пиши в комментариях."
+  forbidden_phrases:
+    - "гарантированно"
+    - "100%"
+    - "скачать бесплатно"
+
+selection:
+  mode: scene          # законченные сцены с диалогом: завязка → поворот → развязка или клиффхэнгер
+  min_payoff: 5
+  min_emotion: 4
+
+visuals:
+  style: "кадры фильма без изменений, минимум наложений"
+  mood: "cinematic"
+  subjects: ["сцена", "герой", "диалог"]
+  avoid: ["чужие логотипы", "кириллический текст внутри генерации"]
+  motion: crop_pan
+  scene_count: 1
+
+voice:
+  pace: "fast"
+  energy: "intrigued"
+  suggested_providers:
+    primary: "silero:v5_cis_base"
+    premium: "fal:minimax-speech-2.8-hd"
+
+captions:
+  style: karaoke_word_highlight
+  highlight_color: "#F2A33A"
+  base_color: "#FFFFFF"
+  font_weight: bold
+  position: lower_third
+
+music:
+  mood: "none"
+  energy: low
+
+duration:
+  target_sec: [30, 58]
+  loop_seam: false
+
+thumbnail:
+  style: "кадр сцены крупно, название фильма"
+  text_position: top
+
+hashtags:
+  fixed: ["#shorts", "#кино"]
+  pool: ["#фильм", "#фильмы", "#лучшиесцены", "#моментыизфильмов", "#сериалы", "#киномомент", "#чтопосмотреть", "#сцена"]

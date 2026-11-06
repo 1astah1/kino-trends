@@ -1,0 +1,23 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+render_tmp/
+*.mp4
+*.wav
+*.m4a
+*.ass
+.pytest_cache/
+*.egg-info/
+
+# рабочие данные: модели, медиа, образцы, бенчмарки
+var/
+
+# локальные копии env с секретами (пример — .env.example, deploy/env/*.example)
+.env.*
+!.env.example
+*.bak-*
+# сборки панели
+web/out-*/
+# адрес стенда для scripts/deploy_stand.sh
+.stand.env

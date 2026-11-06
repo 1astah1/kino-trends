@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Shorts Publisher</title>
+<style>
+:root { --bg: #F7F7F5; --surface: #FFFFFF; --fg: #1A1A18; --muted: #5E5E58; --line: #E2E2DC; --accent: #1F5FBF; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121211; --surface: #1B1B19; --fg: #EDEDE8; --muted: #A3A39B; --line: #2E2E2A; --accent: #8DB4FF; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #121211; --surface: #1B1B19; --fg: #EDEDE8; --muted: #A3A39B; --line: #2E2E2A; --accent: #8DB4FF; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+main { max-width: 760px; margin: 0 auto; padding: 40px 16px 64px; display: flex; flex-direction: column; gap: 22px; }
+h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-size: 19px; margin: 8px 0 0; }
+p, ul { margin: 0; max-width: 68ch; }
+ul { padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+a { color: var(--accent); text-underline-offset: 3px; }
+.muted { color: var(--muted); font-size: 14.5px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+nav { display: flex; gap: 16px; flex-wrap: wrap; font-size: 15px; }
+</style>
+</head>
+<body>
+<main>
+<h1>Shorts Publisher</h1>
+<p>Shorts Publisher is a private publishing tool. The channel owner uses it to upload short videos they prepared to their own YouTube channels on a schedule.</p>
+<div class="card">
+  <p>There is no public sign-up and no third-party users. Only the owner of a channel connects it, through the standard Google sign-in screen.</p>
+  <p>The tool uses the YouTube Data API to upload videos, read the connected channel's name, and update or remove videos it uploaded earlier.</p>
+</div>
+<nav><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a></nav>
+<p class="muted">Shorts Publisher uses YouTube API Services. By connecting a channel you agree to the <a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a>.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,759 @@
+{
+  "components": {
+    "schemas": {
+      "ConversionEventType": {
+        "enum": [
+          "bot_start",
+          "tma_open",
+          "site_visit",
+          "signup",
+          "trial_start",
+          "lead",
+          "first_payment",
+          "payment",
+          "refund"
+        ],
+        "title": "ConversionEventType",
+        "type": "string"
+      },
+      "ConversionTestRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "event_type": {
+            "$ref": "#/components/schemas/ConversionEventType",
+            "default": "bot_start"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{1,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто — канальный или тестовый код",
+            "title": "Tag"
+          }
+        },
+        "title": "ConversionTestRequest",
+        "type": "object"
+      },
+      "ConversionTestResult": {
+        "properties": {
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "invalid_signature | stale_timestamp | … при отказе",
+            "title": "Error Code"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "http_status": {
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "response": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngestResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "http_status",
+          "event_id",
+          "error_code",
+          "response",
+          "request_id"
+        ],
+        "title": "ConversionTestResult",
+        "type": "object"
+      },
+      "DeeplinkExample": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DeeplinkKind"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "url",
+          "description"
+        ],
+        "title": "DeeplinkExample",
+        "type": "object"
+      },
+      "DeeplinkKind": {
+        "enum": [
+          "bot_start",
+          "bot_start_landing",
+          "tma_startapp",
+          "site_utm"
+        ],
+        "title": "DeeplinkKind",
+        "type": "string"
+      },
+      "EmitterSnippets": {
+        "properties": {
+          "node": {
+            "description": "node:crypto + fetch",
+            "title": "Node",
+            "type": "string"
+          },
+          "python": {
+            "description": "stdlib: hmac, json, urllib (эталон public/emitter_snippet.py)",
+            "title": "Python",
+            "type": "string"
+          }
+        },
+        "required": [
+          "python",
+          "node"
+        ],
+        "title": "EmitterSnippets",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "IngestEventStatus": {
+        "enum": [
+          "accepted",
+          "duplicate",
+          "unknown_tag",
+          "invalid"
+        ],
+        "title": "IngestEventStatus",
+        "type": "string"
+      },
+      "IngestOutcome": {
+        "description": "Исход запроса в журнале `ingest_requests.outcome`.",
+        "enum": [
+          "accepted",
+          "invalid_signature",
+          "stale_timestamp",
+          "unknown_product",
+          "payload_too_large",
+          "rate_limited",
+          "invalid_body"
+        ],
+        "title": "IngestOutcome",
+        "type": "string"
+      },
+      "IngestRequestLogItem": {
+        "description": "Строка `ingest_requests`: вкладка показывает и отказы (подпись, время, размер).",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "events_total": {
+            "title": "Events Total",
+            "type": "integer"
+          },
+          "http_status": {
+            "title": "Http Status",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "invalid": {
+            "title": "Invalid",
+            "type": "integer"
+          },
+          "is_test": {
+            "title": "Is Test",
+            "type": "boolean"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/IngestOutcome"
+          },
+          "received_at": {
+            "format": "date-time",
+            "title": "Received At",
+            "type": "string"
+          },
+          "unknown_tag": {
+            "title": "Unknown Tag",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "received_at",
+          "outcome",
+          "http_status",
+          "events_total",
+          "accepted",
+          "duplicates",
+          "unknown_tag",
+          "invalid",
+          "is_test",
+          "detail"
+        ],
+        "title": "IngestRequestLogItem",
+        "type": "object"
+      },
+      "IngestResponse": {
+        "description": "200: счётчики не пересекаются; `unknown_tag` — сохранено как прямой трафик продукта.",
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "duplicates": {
+            "title": "Duplicates",
+            "type": "integer"
+          },
+          "invalid": {
+            "default": 0,
+            "title": "Invalid",
+            "type": "integer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/IngestResult"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "unknown_tag": {
+            "title": "Unknown Tag",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "accepted",
+          "duplicates",
+          "unknown_tag",
+          "results"
+        ],
+        "title": "IngestResponse",
+        "type": "object"
+      },
+      "IngestResult": {
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Для invalid: что не так (латиница)",
+            "title": "Error"
+          },
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IngestEventStatus"
+          }
+        },
+        "required": [
+          "event_id",
+          "status"
+        ],
+        "title": "IngestResult",
+        "type": "object"
+      },
+      "IntegrationHeader": {
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "description": "X-AS-Product | X-AS-Timestamp | X-AS-Signature | Content-Type",
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "description": "Значение или шаблон: `umka`, `<unix>`, `sha256=<hex>`",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "description"
+        ],
+        "title": "IntegrationHeader",
+        "type": "object"
+      },
+      "ProductIntegration": {
+        "properties": {
+          "deeplink_examples": {
+            "items": {
+              "$ref": "#/components/schemas/DeeplinkExample"
+            },
+            "title": "Deeplink Examples",
+            "type": "array"
+          },
+          "emitter_snippets": {
+            "$ref": "#/components/schemas/EmitterSnippets"
+          },
+          "event_types": {
+            "items": {
+              "$ref": "#/components/schemas/ConversionEventType"
+            },
+            "title": "Event Types",
+            "type": "array"
+          },
+          "example_payload": {
+            "additionalProperties": true,
+            "description": "Тело IngestRequest с одним событием",
+            "title": "Example Payload",
+            "type": "object"
+          },
+          "headers": {
+            "items": {
+              "$ref": "#/components/schemas/IntegrationHeader"
+            },
+            "title": "Headers",
+            "type": "array"
+          },
+          "ingest_url": {
+            "description": "https://<redirect_host>/ingest/v1/events",
+            "title": "Ingest Url",
+            "type": "string"
+          },
+          "last_event_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Последнее принятое событие (не тестовое)",
+            "title": "Last Event At"
+          },
+          "max_body_bytes": {
+            "title": "Max Body Bytes",
+            "type": "integer"
+          },
+          "max_events": {
+            "title": "Max Events",
+            "type": "integer"
+          },
+          "max_skew_sec": {
+            "title": "Max Skew Sec",
+            "type": "integer"
+          },
+          "previous_secret_valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Secret Valid Until"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "rate_limit_per_sec": {
+            "title": "Rate Limit Per Sec",
+            "type": "integer"
+          },
+          "recent_requests": {
+            "description": "Последние 20 запросов приёма",
+            "items": {
+              "$ref": "#/components/schemas/IngestRequestLogItem"
+            },
+            "title": "Recent Requests",
+            "type": "array"
+          },
+          "secret_rotated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Secret Rotated At"
+          },
+          "secret_set": {
+            "title": "Secret Set",
+            "type": "boolean"
+          },
+          "signature_spec": {
+            "description": "HMAC_SHA256(secret, f\"{ts}.\" + raw_body), hex, префикс sha256=",
+            "title": "Signature Spec",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "ingest_url",
+          "headers",
+          "signature_spec",
+          "max_skew_sec",
+          "max_events",
+          "max_body_bytes",
+          "rate_limit_per_sec",
+          "event_types",
+          "example_payload",
+          "deeplink_examples",
+          "emitter_snippets",
+          "secret_set",
+          "secret_rotated_at",
+          "previous_secret_valid_until",
+          "last_event_at",
+          "recent_requests"
+        ],
+        "title": "ProductIntegration",
+        "type": "object"
+      },
+      "WebhookSecretRotate": {
+        "additionalProperties": false,
+        "properties": {
+          "grace_hours": {
+            "default": 24,
+            "description": "Сколько часов ещё принимать прежний секрет (0 — сразу нет)",
+            "maximum": 168.0,
+            "minimum": 0.0,
+            "title": "Grace Hours",
+            "type": "integer"
+          }
+        },
+        "title": "WebhookSecretRotate",
+        "type": "object"
+      },
+      "WebhookSecretRotated": {
+        "properties": {
+          "previous_valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Valid Until"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "rotated_at": {
+            "format": "date-time",
+            "title": "Rotated At",
+            "type": "string"
+          },
+          "secret": {
+            "description": "Показывается один раз; ≥ 32 байт энтропии, base64url",
+            "title": "Secret",
+            "type": "string"
+          },
+          "secret_name": {
+            "title": "Secret Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "product_id",
+          "secret",
+          "secret_name",
+          "rotated_at",
+          "previous_valid_until"
+        ],
+        "title": "WebhookSecretRotated",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/products/{product_id}/integration": {
+      "get": {
+        "operationId": "integration_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductIntegration"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Инструкция интеграции и последние запросы приёма",
+        "tags": [
+          "integration"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/test-conversion": {
+      "post": {
+        "operationId": "integration_test_conversion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversionTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversionTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Тестовое событие через публичный ingest (в статистику не идёт)",
+        "tags": [
+          "integration"
+        ]
+      }
+    },
+    "/api/v1/products/{product_id}/webhook-secret/rotate": {
+      "post": {
+        "operationId": "integration_webhook_secret_rotate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebhookSecretRotate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookSecretRotated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Новый HMAC-секрет (admin; показывается один раз)",
+        "tags": [
+          "integration"
+        ]
+      }
+    }
+  },
+  "tag": "integration"
+}

@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoshorts"
+version = "0.1.0"
+description = "Конвейер вертикальных шортсов: генерация, нарезка, баннер, приёмка, публикация вручную"
+requires-python = ">=3.11"
+# Единственный источник Python-зависимостей (docs/ARCHITECTURE.md §3.1, §9).
+# Меняет только поток контрактов (§10.1 п. 6). Тяжёлые медиа/ML-пакеты — в extras [clipping].
+dependencies = [
+    # API и данные
+    "fastapi>=0.141,<1",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.13,<3",
+    "pydantic-settings>=2.6",
+    "python-multipart>=0.0.20",          # multipart в FastAPI: import-yaml, голос оператора
+    "psycopg[binary]>=3.3,<4",
+    "psycopg-pool>=3.2",
+    "jinja2>=3.1",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+    # безопасность и эксплуатация
+    "argon2-cffi>=25.1",
+    "cryptography>=44",
+    "python-json-logger>=4.2",           # форк nhairs, BSD-2
+    # сеть и провайдеры
+    "httpx>=0.28",
+    "python-telegram-bot[job-queue]>=21.0",
+    "edge-tts>=7.2.8",                   # boundary="WordBoundary" (§3.3 п. 1)
+    "yt-dlp[default]>=2026.8.19",
+    # медиа (лёгкая часть, без onnx/opencv)
+    "pillow>=12.3",
+    "fonttools>=4.60",
+    "numpy>=2.0",
+    "scipy>=1.18",
+    "scenedetect>=0.7.1",
+    "librosa>=1.0.0",
+    "soundfile>=0.13",
+]
+
+[project.optional-dependencies]
+# Трек нарезки: ASR GigaAM через onnx-asr, лица YuNet через cv2 (§6.3). В dev-venv не ставить без нужды.
+clipping = [
+    "onnx-asr>=0.12",
+    "onnxruntime>=1.30",
+    "opencv-python-headless>=4.10",
+]
+dev = [
+    "pytest>=9.0",
+    "pytest-timeout>=2.3",
+    "ruff>=0.15",
+    "import-linter>=2.1",
+]
+
+[project.scripts]
+autoshorts-admin = "autoshorts.cli:main"            # cli/__init__.py (M1-A), подкоманды из cli/*.py
+autoshorts-worker = "autoshorts.workers.main:main"  # workers/main.py (M1-C): --class heavy|light
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+autoshorts = ["db/migrations/*.sql", "clipping/assets/*.png"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "media: тяжёлые тесты с ffmpeg/моделями (pytest -m 'not media' их пропускает)",
+    "db: тесты, которым нужна тестовая БД (TEST_DATABASE_URL)",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI объявляет параметры вызовами в дефолтах — это не мутабельные значения
+extend-immutable-calls = [
+    "fastapi.Body", "fastapi.Cookie", "fastapi.Depends", "fastapi.File", "fastapi.Form",
+    "fastapi.Header", "fastapi.Path", "fastapi.Query", "fastapi.Security",
+]

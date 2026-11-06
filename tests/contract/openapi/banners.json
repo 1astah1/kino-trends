@@ -1,0 +1,3850 @@
+{
+  "components": {
+    "schemas": {
+      "AdMarking": {
+        "additionalProperties": false,
+        "description": "Маркировка рекламы (38-ФЗ ст. 18.1): «Реклама», рекламодатель, erid от ОРД.",
+        "properties": {
+          "advertiser_text": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Advertiser Text"
+          },
+          "erid": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "pattern": "^[A-Za-z0-9_-]{4,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Erid"
+          },
+          "required": {
+            "default": false,
+            "description": "Если true, без erid рендер не должен уходить в публикацию",
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "title": "AdMarking",
+        "type": "object"
+      },
+      "Anchor": {
+        "enum": [
+          "top_left",
+          "top_center",
+          "top_right",
+          "center_left",
+          "center",
+          "center_right",
+          "bottom_left",
+          "bottom_center",
+          "bottom_right"
+        ],
+        "title": "Anchor",
+        "type": "string"
+      },
+      "BannerCreative": {
+        "description": "Загруженный креатив владельца (таблица `banner_creatives`, ключ — sha256 исходных байтов).\n\nПовторная загрузка того же файла возвращает ту же запись (без перекодирования). Поля\nнормализованного файла (`width`…`first_frame_url`) пусты, пока `status=processing`, и после `failed`.\nКоординаты и размеры для редактора — `width`×`height` нормализованного файла.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Один цикл анимации; 0 у статики",
+            "title": "Duration Sec"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CreativeRejectCode"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только при status=failed"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Для человека, по-русски",
+            "title": "Error Message"
+          },
+          "file_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "/api/v1/banner-creatives/{sha256}/media/file",
+            "title": "File Url"
+          },
+          "first_frame_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "/api/v1/banner-creatives/{sha256}/media/first_frame",
+            "title": "First Frame Url"
+          },
+          "fps": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fps"
+          },
+          "frame_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frame Count"
+          },
+          "has_alpha": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Alpha"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CreativeKind"
+          },
+          "loop": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Повторять анимацию, если окно показа длиннее креатива",
+            "title": "Loop"
+          },
+          "name": {
+            "description": "Подпись в библиотеке; по умолчанию имя загруженного файла",
+            "title": "Name",
+            "type": "string"
+          },
+          "normalized_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Bytes"
+          },
+          "normalized_mime": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "image/png | video/webm",
+            "title": "Normalized Mime"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Продукт для фильтра библиотеки (необязательно)",
+            "title": "Product Id"
+          },
+          "sha256": {
+            "description": "sha256 исходного файла, 64 hex; так креатив адресуют слои варианта",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "source_bytes": {
+            "title": "Source Bytes",
+            "type": "integer"
+          },
+          "source_format": {
+            "$ref": "#/components/schemas/CreativeSourceFormat",
+            "description": "Определён по сигнатуре, не по расширению"
+          },
+          "source_height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Height"
+          },
+          "source_width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Width"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CreativeStatus"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Задача нормализации (анимация), прогресс — SSE task_progress",
+            "title": "Task Id"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "/api/v1/banner-creatives/{sha256}/media/thumb",
+            "title": "Thumb Url"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "used_by_variants": {
+            "description": "Сколько вариантов ссылается на креатив (удалить нельзя, пока > 0)",
+            "title": "Used By Variants",
+            "type": "integer"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нормализованный файл, px (ужат до канвы 1080×1920)",
+            "title": "Width"
+          }
+        },
+        "required": [
+          "sha256",
+          "name",
+          "status",
+          "error_code",
+          "error_message",
+          "kind",
+          "source_format",
+          "source_bytes",
+          "source_width",
+          "source_height",
+          "width",
+          "height",
+          "has_alpha",
+          "duration_sec",
+          "fps",
+          "frame_count",
+          "loop",
+          "normalized_mime",
+          "normalized_bytes",
+          "file_url",
+          "thumb_url",
+          "first_frame_url",
+          "product_id",
+          "notes",
+          "used_by_variants",
+          "task_id",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BannerCreative",
+        "type": "object"
+      },
+      "BannerCreativeBrief": {
+        "description": "Креатив в списках вариантов: миниатюра без полной карточки.",
+        "properties": {
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/CreativeKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sha256": {
+            "title": "Sha256",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CreativeStatus"
+          },
+          "thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thumb Url"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "sha256",
+          "name",
+          "kind",
+          "status",
+          "width",
+          "height",
+          "thumb_url"
+        ],
+        "title": "BannerCreativeBrief",
+        "type": "object"
+      },
+      "BannerCreativePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BannerCreative"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "BannerCreativePage",
+        "type": "object"
+      },
+      "BannerCreativePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "title": "BannerCreativePatch",
+        "type": "object"
+      },
+      "BannerCreativeUploadResult": {
+        "properties": {
+          "creative": {
+            "$ref": "#/components/schemas/BannerCreative"
+          },
+          "deduplicated": {
+            "description": "Такой файл (тот же sha256) уже был в библиотеке: запись возвращена как есть",
+            "title": "Deduplicated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "creative",
+          "deduplicated"
+        ],
+        "title": "BannerCreativeUploadResult",
+        "type": "object"
+      },
+      "BannerFont": {
+        "properties": {
+          "cyrillic_ok": {
+            "title": "Cyrillic Ok",
+            "type": "boolean"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "file_url": {
+            "description": "/api/v1/banner-fonts/{name} — для FontFace в превью редактора",
+            "title": "File Url",
+            "type": "string"
+          },
+          "name": {
+            "description": "Имя файла — значение TextStyle.font_file: Montserrat-Bold.ttf",
+            "title": "Name",
+            "type": "string"
+          },
+          "style": {
+            "title": "Style",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "family",
+          "style",
+          "cyrillic_ok",
+          "file_url"
+        ],
+        "title": "BannerFont",
+        "type": "object"
+      },
+      "BannerFontList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BannerFont"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "BannerFontList",
+        "type": "object"
+      },
+      "BannerLayer": {
+        "additionalProperties": false,
+        "properties": {
+          "attach": {
+            "$ref": "#/components/schemas/TextAttach",
+            "default": "none"
+          },
+          "attach_gap_px": {
+            "default": 6,
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Attach Gap Px",
+            "type": "integer"
+          },
+          "creative_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "creative: обязателен; micro_brand: логотип вместо текста (необязательно)",
+            "title": "Creative Sha256"
+          },
+          "enabled": {
+            "default": true,
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BannerLayerKind"
+          },
+          "loop_override": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Перебить loop креатива",
+            "title": "Loop Override"
+          },
+          "show": {
+            "$ref": "#/components/schemas/LayerShow",
+            "default": "with_creative"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/BannerSlot"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextStyle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 400,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Текст или шаблон с {code_url}, {erid} …",
+            "title": "Text"
+          },
+          "z": {
+            "default": 0,
+            "description": "Порядок внутри группы: больше — выше",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "slot"
+        ],
+        "title": "BannerLayer",
+        "type": "object"
+      },
+      "BannerLayerKind": {
+        "enum": [
+          "creative",
+          "text_code",
+          "text_erid",
+          "micro_brand",
+          "fallback_plate"
+        ],
+        "title": "BannerLayerKind",
+        "type": "string"
+      },
+      "BannerLayerPlacement": {
+        "description": "Где слой оказался после вписывания (`banner_place.place_variant`), канва 1080×1920.",
+        "properties": {
+          "clipped": {
+            "title": "Clipped",
+            "type": "boolean"
+          },
+          "creative_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creative Sha256"
+          },
+          "full_rect": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rect"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Креатив целиком до обрезки слотом и кадром"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BannerLayerKind"
+          },
+          "layer_id": {
+            "title": "Layer Id",
+            "type": "string"
+          },
+          "rect": {
+            "$ref": "#/components/schemas/Rect",
+            "description": "Видимая часть; у текста до рендера — весь слот"
+          },
+          "scale": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пикселей канвы на пиксель нормализованного креатива",
+            "title": "Scale"
+          },
+          "show": {
+            "$ref": "#/components/schemas/LayerShow"
+          },
+          "slot": {
+            "$ref": "#/components/schemas/Rect",
+            "description": "Итоговый слот (для attach — пересчитанный от креатива)"
+          },
+          "z": {
+            "title": "Z",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "layer_id",
+          "kind",
+          "show",
+          "creative_sha256",
+          "slot",
+          "rect",
+          "full_rect",
+          "scale",
+          "clipped",
+          "z"
+        ],
+        "title": "BannerLayerPlacement",
+        "type": "object"
+      },
+      "BannerPreviewRequest": {
+        "additionalProperties": false,
+        "description": "PNG-кадр тем же кодом, что финальный рендер (`banner_overlay`), для «Кадр из рендера».\n\nОтвет `image/png`; фактическое время кадра — в заголовке `X-Preview-T-Sec`.",
+        "properties": {
+          "background": {
+            "default": "sample",
+            "description": "sample | black | checker | job:<id> (кадр ролика в t) | asset:<id> (картинка)",
+            "pattern": "^(sample|black|checker|job:[0-9]+|asset:[0-9]+)$",
+            "title": "Background",
+            "type": "string"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Контекст черновика: продукт кампании даёт домен для {code_url}",
+            "title": "Campaign Id"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Za-z0-9_-]{2,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Код ролика для {code}; пусто — образец",
+            "title": "Code"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantDraft"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Несохранённый вариант из редактора; если задан, важнее variant_id"
+          },
+          "duration_sec": {
+            "default": 30.0,
+            "description": "Длительность ролика — от неё окна показа",
+            "exclusiveMinimum": 0.0,
+            "maximum": 180.0,
+            "title": "Duration Sec",
+            "type": "number"
+          },
+          "moment": {
+            "$ref": "#/components/schemas/PreviewMoment",
+            "default": "impulse"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform",
+            "default": "youtube"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z][a-z0-9_]{1,39}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Профиль safe zone (зона субтитров); пусто — профиль площадки",
+            "title": "Profile Id"
+          },
+          "size": {
+            "$ref": "#/components/schemas/PreviewSize",
+            "default": "half"
+          },
+          "t_sec": {
+            "anyOf": [
+              {
+                "maximum": 180.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Для moment=at_time",
+            "title": "T Sec"
+          },
+          "variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Сохранённый вариант",
+            "title": "Variant Id"
+          }
+        },
+        "title": "BannerPreviewRequest",
+        "type": "object"
+      },
+      "BannerSafeZoneCatalog": {
+        "properties": {
+          "canvas": {
+            "$ref": "#/components/schemas/CanvasSize",
+            "description": "Дизайн-канва редактора: 1080×1920"
+          },
+          "default_profile": {
+            "description": "Общий консервативный профиль (common_organic)",
+            "title": "Default Profile",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BannerSafeZoneProfile"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "platform_profiles": {
+            "items": {
+              "$ref": "#/components/schemas/PlatformSafeZone"
+            },
+            "title": "Platform Profiles",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "canvas",
+          "default_profile",
+          "platform_profiles",
+          "items"
+        ],
+        "title": "BannerSafeZoneCatalog",
+        "type": "object"
+      },
+      "BannerSafeZoneProfile": {
+        "description": "Профиль безопасной зоны площадки (`config/safe_zones.json`, research §7.1).\n\nКоординаты — пиксели канвы 1080×1920, края `x1,y1,x2,y2`. `dead_zones` посчитаны сервером\nвокруг `safe` (top_bar, bottom_ui, left_margin, right_rail) — для оверлея редактора.",
+        "properties": {
+          "canvas": {
+            "$ref": "#/components/schemas/CanvasSize"
+          },
+          "dead_zones": {
+            "items": {
+              "$ref": "#/components/schemas/DeadZone"
+            },
+            "title": "Dead Zones",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "margins": {
+            "$ref": "#/components/schemas/SafeZoneMargins"
+          },
+          "micro_brand_area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "offer_area": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rect"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Рекомендуемая зона оффера/креатива"
+          },
+          "offer_max_height_px": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offer Max Height Px"
+          },
+          "platforms": {
+            "description": "youtube, vk, instagram, tiktok — к каким площадкам относится",
+            "items": {
+              "type": "string"
+            },
+            "title": "Platforms",
+            "type": "array"
+          },
+          "safe": {
+            "$ref": "#/components/schemas/Rect"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SafeZoneSourceInfo"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SafeZoneStatus"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "status",
+          "canvas",
+          "safe",
+          "margins",
+          "offer_area",
+          "offer_max_height_px",
+          "micro_brand_area",
+          "dead_zones",
+          "platforms",
+          "sources",
+          "notes"
+        ],
+        "title": "BannerSafeZoneProfile",
+        "type": "object"
+      },
+      "BannerSlot": {
+        "additionalProperties": false,
+        "description": "Куда и как вписать слой. x, y, w, h — область слота на канве 1080×1920.",
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/Anchor",
+            "default": "center"
+          },
+          "clip_to_slot": {
+            "default": true,
+            "description": "Обрезать всё, что вышло за слот (cover/none/scale>1)",
+            "title": "Clip To Slot",
+            "type": "boolean"
+          },
+          "corner_radius_px": {
+            "default": 0,
+            "maximum": 400.0,
+            "minimum": 0.0,
+            "title": "Corner Radius Px",
+            "type": "integer"
+          },
+          "fit": {
+            "$ref": "#/components/schemas/FitMode",
+            "default": "contain"
+          },
+          "h": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 3840.0,
+            "title": "H",
+            "type": "integer"
+          },
+          "offset_x": {
+            "default": 0,
+            "maximum": 1080.0,
+            "minimum": -1080.0,
+            "title": "Offset X",
+            "type": "integer"
+          },
+          "offset_y": {
+            "default": 0,
+            "maximum": 1920.0,
+            "minimum": -1920.0,
+            "title": "Offset Y",
+            "type": "integer"
+          },
+          "opacity": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "scale": {
+            "default": 1.0,
+            "description": "Множитель поверх fit",
+            "maximum": 4.0,
+            "minimum": 0.05,
+            "title": "Scale",
+            "type": "number"
+          },
+          "shadow": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShadowSpec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "w": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 2160.0,
+            "title": "W",
+            "type": "integer"
+          },
+          "x": {
+            "maximum": 2160.0,
+            "minimum": -1080.0,
+            "title": "X",
+            "type": "integer"
+          },
+          "y": {
+            "maximum": 3840.0,
+            "minimum": -1920.0,
+            "title": "Y",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h"
+        ],
+        "title": "BannerSlot",
+        "type": "object"
+      },
+      "BannerTemplate": {
+        "description": "Пресет варианта: из него создаются варианты кампании; импорт/экспорт формы config/banner.yaml.",
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "layout": {
+            "$ref": "#/components/schemas/BannerVariantDraft",
+            "description": "Слои, тайминг, маркировка — как у варианта"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BannerTemplateStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "description": "Передавать как expected_version при правке",
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "layout",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BannerTemplate",
+        "type": "object"
+      },
+      "BannerTemplateCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/BannerVariantDraft"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "layout"
+        ],
+        "title": "BannerTemplateCreate",
+        "type": "object"
+      },
+      "BannerTemplatePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BannerTemplate"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "BannerTemplatePage",
+        "type": "object"
+      },
+      "BannerTemplatePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "layout": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantDraft"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerTemplateStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "BannerTemplatePatch",
+        "type": "object"
+      },
+      "BannerTemplateStatus": {
+        "enum": [
+          "active",
+          "archived"
+        ],
+        "title": "BannerTemplateStatus",
+        "type": "string"
+      },
+      "BannerTiming": {
+        "additionalProperties": false,
+        "description": "Тайминг группы `with_creative`. Числа — гипотеза для A/B из research §7.2.",
+        "properties": {
+          "fade_in_ms": {
+            "default": 200,
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Fade In Ms",
+            "type": "integer"
+          },
+          "fade_out_ms": {
+            "default": 200,
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Fade Out Ms",
+            "type": "integer"
+          },
+          "final_repeat": {
+            "default": true,
+            "title": "Final Repeat",
+            "type": "boolean"
+          },
+          "final_repeat_sec": {
+            "default": 2.5,
+            "maximum": 30.0,
+            "minimum": 0.5,
+            "title": "Final Repeat Sec",
+            "type": "number"
+          },
+          "hook_silence_sec": {
+            "default": 2.0,
+            "description": "Первые секунды без оффера",
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Hook Silence Sec",
+            "type": "number"
+          },
+          "impulse_duration_sec": {
+            "default": 4.0,
+            "maximum": 30.0,
+            "minimum": 0.5,
+            "title": "Impulse Duration Sec",
+            "type": "number"
+          },
+          "impulse_min_sec": {
+            "default": 3.0,
+            "description": "Короче не показываем (растягиваем)",
+            "maximum": 30.0,
+            "minimum": 0.3,
+            "title": "Impulse Min Sec",
+            "type": "number"
+          },
+          "impulse_window_pct": {
+            "default": [
+              0.4,
+              0.65
+            ],
+            "maxItems": 2,
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Impulse Window Pct",
+            "type": "array"
+          },
+          "merge_gap_sec": {
+            "default": 1.0,
+            "description": "Окна ближе этого сливаются в одно",
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Merge Gap Sec",
+            "type": "number"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TimingMode",
+            "default": "impulse"
+          },
+          "persistent_fade_in_ms": {
+            "default": 0,
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Persistent Fade In Ms",
+            "type": "integer"
+          },
+          "windows": {
+            "description": "Для mode=windows",
+            "items": {
+              "$ref": "#/components/schemas/TimeWindow"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "title": "BannerTiming",
+        "type": "object"
+      },
+      "BannerValidateRequest": {
+        "additionalProperties": false,
+        "description": "Серверная проверка — источник истины для редактора (debounce 150 мс) и рендера.\n\n`/banner-variants/validate`: нужен `draft` или `variant_id` (иначе 422).\n`/banner-templates/{template_id}/validate`: без обоих проверяется `layout` шаблона.",
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Контекст черновика: продукт кампании даёт домен для {code_url}",
+            "title": "Campaign Id"
+          },
+          "captions_zone": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rect"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Фиксированная зона субтитров (трек нарезки) — проверка перекрытия"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantDraft"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Несохранённый вариант из редактора; если задан, важнее variant_id"
+          },
+          "duration_sec": {
+            "default": 30.0,
+            "description": "Длительность ролика — от неё окна показа",
+            "exclusiveMinimum": 0.0,
+            "maximum": 180.0,
+            "title": "Duration Sec",
+            "type": "number"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform",
+            "default": "youtube"
+          },
+          "profile_ids": {
+            "description": "Профили safe zone; пусто — профиль площадки + common_organic. Первый — основной",
+            "items": {
+              "pattern": "^[a-z][a-z0-9_]{1,39}$",
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Profile Ids",
+            "type": "array"
+          },
+          "variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Сохранённый вариант",
+            "title": "Variant Id"
+          }
+        },
+        "title": "BannerValidateRequest",
+        "type": "object"
+      },
+      "BannerValidateResponse": {
+        "properties": {
+          "captions_zone": {
+            "$ref": "#/components/schemas/CaptionsZoneInfo"
+          },
+          "duration_sec": {
+            "title": "Duration Sec",
+            "type": "number"
+          },
+          "fallback_used": {
+            "description": "Креатива нет — показывается запасная плашка",
+            "title": "Fallback Used",
+            "type": "boolean"
+          },
+          "missing_creatives": {
+            "description": "sha256 из слоёв, которых нет в библиотеке",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Creatives",
+            "type": "array"
+          },
+          "ok": {
+            "description": "Нет предупреждений с severity=error",
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "placements": {
+            "items": {
+              "$ref": "#/components/schemas/BannerLayerPlacement"
+            },
+            "title": "Placements",
+            "type": "array"
+          },
+          "profile_ids": {
+            "description": "Проверенные профили; первый — основной",
+            "items": {
+              "type": "string"
+            },
+            "title": "Profile Ids",
+            "type": "array"
+          },
+          "warnings": {
+            "description": "Сначала error, затем warn, info",
+            "items": {
+              "$ref": "#/components/schemas/BannerWarning"
+            },
+            "title": "Warnings",
+            "type": "array"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/BannerWindow"
+            },
+            "title": "Windows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "profile_ids",
+          "duration_sec",
+          "windows",
+          "placements",
+          "captions_zone",
+          "fallback_used",
+          "missing_creatives",
+          "warnings"
+        ],
+        "title": "BannerValidateResponse",
+        "type": "object"
+      },
+      "BannerValidationCode": {
+        "description": "Коды предупреждений редактора и рендера (латиница, стабильны для API и аналитики).",
+        "enum": [
+          "creative_outside_safe_zone",
+          "creative_in_bottom_dead_zone",
+          "micro_brand_in_top_bar",
+          "creative_too_small_to_read",
+          "creative_upscaled_blurry",
+          "creative_aspect_distorted",
+          "animated_too_long",
+          "erid_missing_when_required",
+          "banner_overlaps_captions_zone",
+          "file_too_large",
+          "unsupported_format",
+          "layer_outside_canvas",
+          "creative_clipped_by_slot",
+          "creative_missing",
+          "fallback_plate_used",
+          "text_shrunk_below_min",
+          "text_truncated",
+          "animated_cut_by_window",
+          "impulse_window_stretched",
+          "offer_area_too_tall",
+          "captions_zone_too_small",
+          "effect_unsupported_for_animated"
+        ],
+        "title": "BannerValidationCode",
+        "type": "string"
+      },
+      "BannerVariant": {
+        "properties": {
+          "ad_marking": {
+            "$ref": "#/components/schemas/AdMarking"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "code_url_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — шаблон продукта",
+            "title": "Code Url Template"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "creatives": {
+            "description": "Креативы из слоёв, по порядку слоёв",
+            "items": {
+              "$ref": "#/components/schemas/BannerCreativeBrief"
+            },
+            "title": "Creatives",
+            "type": "array"
+          },
+          "description_cta_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description Cta Template"
+          },
+          "effective_code_url_template": {
+            "description": "Что реально печатается: «u.umka.chat/{code}»",
+            "title": "Effective Code Url Template",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/BannerLayer"
+            },
+            "title": "Layers",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "pinned_comment_template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pinned Comment Template"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VariantStatus"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/BannerTiming"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "description": "Передавать как expected_version при правке",
+            "title": "Version",
+            "type": "integer"
+          },
+          "voice_cta_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Cta Text"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "campaign_id",
+          "product_id",
+          "code",
+          "name",
+          "status",
+          "weight",
+          "layers",
+          "timing",
+          "ad_marking",
+          "code_url_template",
+          "effective_code_url_template",
+          "voice_cta_text",
+          "pinned_comment_template",
+          "description_cta_template",
+          "notes",
+          "creatives",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "BannerVariant",
+        "type": "object"
+      },
+      "BannerVariantDraft": {
+        "additionalProperties": false,
+        "description": "Вариант баннера без id и статуса: поля `domain.banner_schema.BannerVariant` один в один.\n\nСлои (`layers`) — обычно один `creative` (ссылка `creative_sha256` на загруженный креатив) +\nслужебные `text_code`/`text_erid` + `micro_brand`; `fallback_plate` включается, только если\nкреатива нет. Все правила домена (уникальные id слоёв, обязательный текст у текстовых слоёв,\n`attach` только у кода/erid, окна у `timing.mode=windows`) проверяются здесь же → 422.\n\n`code_url_template: null` — шаблон продукта: `<products.redirect_host>/{code}`.",
+        "properties": {
+          "ad_marking": {
+            "$ref": "#/components/schemas/AdMarking"
+          },
+          "code": {
+            "default": "A",
+            "pattern": "^[A-Za-z0-9_-]{1,16}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "code_url_template": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^[^\\s]*\\{code\\}[^\\s]*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Как печатать код ролика: «u.umka.chat/{code}»; null — из продукта",
+            "title": "Code Url Template"
+          },
+          "layers": {
+            "items": {
+              "$ref": "#/components/schemas/BannerLayer"
+            },
+            "maxItems": 16,
+            "title": "Layers",
+            "type": "array"
+          },
+          "name": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Name",
+            "type": "string"
+          },
+          "timing": {
+            "$ref": "#/components/schemas/BannerTiming"
+          }
+        },
+        "required": [
+          "layers"
+        ],
+        "title": "BannerVariantDraft",
+        "type": "object"
+      },
+      "BannerVariantDuplicate": {
+        "additionalProperties": false,
+        "description": "Копия варианта для A/B: те же слои и тайминг, дальше меняется креатив или позиция.",
+        "properties": {
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "В другую кампанию; пусто — в ту же",
+            "title": "Campaign Id"
+          },
+          "code": {
+            "pattern": "^[A-Za-z0-9_-]{1,16}$",
+            "title": "Code",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто — «<имя> (копия)»",
+            "title": "Name"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "BannerVariantDuplicate",
+        "type": "object"
+      },
+      "BannerWarning": {
+        "description": "Предупреждение редактора/рендера: `domain.banner_schema.BannerValidationWarning` один в один.",
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/BannerValidationCode"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "layer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Layer Id"
+          },
+          "message": {
+            "default": "",
+            "description": "Объяснение для человека, по-русски",
+            "title": "Message",
+            "type": "string"
+          },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/WarningSeverity"
+          }
+        },
+        "required": [
+          "code",
+          "severity"
+        ],
+        "title": "BannerWarning",
+        "type": "object"
+      },
+      "BannerWindow": {
+        "description": "Окно показа группы слоёв: `persistent` — весь ролик, `with_creative` — импульс и финал.",
+        "properties": {
+          "end_sec": {
+            "title": "End Sec",
+            "type": "number"
+          },
+          "group": {
+            "$ref": "#/components/schemas/LayerShow"
+          },
+          "start_sec": {
+            "title": "Start Sec",
+            "type": "number"
+          }
+        },
+        "required": [
+          "group",
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "BannerWindow",
+        "type": "object"
+      },
+      "Body_banners_creatives_upload": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "PNG/JPG/WebP, GIF, APNG, WebM (альфа), MP4/MOV; тип — по сигнатуре",
+            "title": "File",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_banners_creatives_upload",
+        "type": "object"
+      },
+      "Body_banners_import_yaml": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "name"
+        ],
+        "title": "Body_banners_import_yaml",
+        "type": "object"
+      },
+      "CanvasSize": {
+        "additionalProperties": false,
+        "properties": {
+          "h": {
+            "exclusiveMinimum": 0.0,
+            "title": "H",
+            "type": "integer"
+          },
+          "w": {
+            "exclusiveMinimum": 0.0,
+            "title": "W",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "w",
+          "h"
+        ],
+        "title": "CanvasSize",
+        "type": "object"
+      },
+      "CaptionsZoneInfo": {
+        "properties": {
+          "fits": {
+            "description": "Хватает ли места под субтитры (минимум из настроек)",
+            "title": "Fits",
+            "type": "boolean"
+          },
+          "rect": {
+            "$ref": "#/components/schemas/Rect"
+          }
+        },
+        "required": [
+          "rect",
+          "fits"
+        ],
+        "title": "CaptionsZoneInfo",
+        "type": "object"
+      },
+      "CreativeKind": {
+        "enum": [
+          "static",
+          "animated"
+        ],
+        "title": "CreativeKind",
+        "type": "string"
+      },
+      "CreativeMediaKind": {
+        "enum": [
+          "file",
+          "thumb",
+          "first_frame"
+        ],
+        "title": "CreativeMediaKind",
+        "type": "string"
+      },
+      "CreativeRejectCode": {
+        "description": "Почему файл не принят: `BannerAssetError.code` из `pipeline/banner_assets.py` + сбой нормализации.\n\nПриходит в `details.asset_error` ошибки 413/415/422 загрузки и в `BannerCreative.error_code`\n(асинхронная нормализация анимации упала).",
+        "enum": [
+          "empty_file",
+          "corrupt_file",
+          "unsupported_format",
+          "file_too_large",
+          "dimensions_too_large",
+          "dimensions_too_small",
+          "animated_too_long",
+          "too_many_frames",
+          "normalize_failed"
+        ],
+        "title": "CreativeRejectCode",
+        "type": "string"
+      },
+      "CreativeSourceFormat": {
+        "enum": [
+          "png",
+          "jpeg",
+          "webp",
+          "gif",
+          "apng",
+          "webp_animated",
+          "webm",
+          "mp4",
+          "mov"
+        ],
+        "title": "CreativeSourceFormat",
+        "type": "string"
+      },
+      "CreativeStatus": {
+        "description": "Состояние загруженного креатива. Статика нормализуется сразу (`ready` в ответе загрузки),\nанимация — тяжёлой задачей очереди (`processing` → `ready` | `failed`).",
+        "enum": [
+          "processing",
+          "ready",
+          "failed"
+        ],
+        "title": "CreativeStatus",
+        "type": "string"
+      },
+      "DeadZone": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9_]{2,40}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2",
+          "id"
+        ],
+        "title": "DeadZone",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "FitMode": {
+        "enum": [
+          "contain",
+          "cover",
+          "none"
+        ],
+        "title": "FitMode",
+        "type": "string"
+      },
+      "LayerShow": {
+        "enum": [
+          "persistent",
+          "with_creative"
+        ],
+        "title": "LayerShow",
+        "type": "string"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PlatformSafeZone": {
+        "properties": {
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "profile_id": {
+            "description": "Профиль по умолчанию для площадки (youtube → youtube_shorts)",
+            "title": "Profile Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "profile_id"
+        ],
+        "title": "PlatformSafeZone",
+        "type": "object"
+      },
+      "PreviewMoment": {
+        "enum": [
+          "at_time",
+          "impulse",
+          "final_repeat"
+        ],
+        "title": "PreviewMoment",
+        "type": "string"
+      },
+      "PreviewSize": {
+        "enum": [
+          "half",
+          "full"
+        ],
+        "title": "PreviewSize",
+        "type": "string"
+      },
+      "Rect": {
+        "additionalProperties": false,
+        "properties": {
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "Rect",
+        "type": "object"
+      },
+      "SafeZoneMargins": {
+        "additionalProperties": false,
+        "properties": {
+          "bottom": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bottom"
+          },
+          "left": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Left"
+          },
+          "right": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Right"
+          },
+          "top": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top"
+          }
+        },
+        "title": "SafeZoneMargins",
+        "type": "object"
+      },
+      "SafeZoneSourceInfo": {
+        "properties": {
+          "measured": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Rect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SafeZoneStatus"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "url",
+          "note",
+          "status",
+          "measured"
+        ],
+        "title": "SafeZoneSourceInfo",
+        "type": "object"
+      },
+      "SafeZoneStatus": {
+        "enum": [
+          "official",
+          "community",
+          "unconfirmed"
+        ],
+        "title": "SafeZoneStatus",
+        "type": "string"
+      },
+      "ShadowSpec": {
+        "additionalProperties": false,
+        "description": "Тень под креативом. Выключена по умолчанию (слот `shadow=None`).",
+        "properties": {
+          "blur_px": {
+            "default": 12,
+            "maximum": 60.0,
+            "minimum": 0.0,
+            "title": "Blur Px",
+            "type": "integer"
+          },
+          "color": {
+            "default": "#000000",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "offset_x": {
+            "default": 0,
+            "maximum": 40.0,
+            "minimum": -40.0,
+            "title": "Offset X",
+            "type": "integer"
+          },
+          "offset_y": {
+            "default": 6,
+            "maximum": 40.0,
+            "minimum": -40.0,
+            "title": "Offset Y",
+            "type": "integer"
+          },
+          "opacity": {
+            "default": 0.35,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          }
+        },
+        "title": "ShadowSpec",
+        "type": "object"
+      },
+      "TextAlign": {
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "title": "TextAlign",
+        "type": "string"
+      },
+      "TextAttach": {
+        "enum": [
+          "none",
+          "below_creative",
+          "above_creative",
+          "inside_bottom",
+          "inside_top"
+        ],
+        "title": "TextAttach",
+        "type": "string"
+      },
+      "TextStyle": {
+        "additionalProperties": false,
+        "description": "Стиль служебного текста (код, erid, микро-бренд, запасная плашка).",
+        "properties": {
+          "align": {
+            "$ref": "#/components/schemas/TextAlign",
+            "default": "center"
+          },
+          "bg_color": {
+            "default": "#000000",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Bg Color",
+            "type": "string"
+          },
+          "bg_opacity": {
+            "default": 0.55,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Bg Opacity",
+            "type": "number"
+          },
+          "color": {
+            "default": "#FFFFFF",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "corner_radius_px": {
+            "default": 10,
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Corner Radius Px",
+            "type": "integer"
+          },
+          "font_file": {
+            "default": "Montserrat-Bold.ttf",
+            "pattern": "^[A-Za-z0-9._-]{1,80}\\.(ttf|otf)$",
+            "title": "Font File",
+            "type": "string"
+          },
+          "hug_text": {
+            "default": true,
+            "description": "Подложка по размеру текста, а не во весь слот",
+            "title": "Hug Text",
+            "type": "boolean"
+          },
+          "line_spacing": {
+            "default": 1.12,
+            "maximum": 2.0,
+            "minimum": 0.8,
+            "title": "Line Spacing",
+            "type": "number"
+          },
+          "max_font_px": {
+            "default": 44,
+            "maximum": 200.0,
+            "minimum": 8.0,
+            "title": "Max Font Px",
+            "type": "integer"
+          },
+          "max_lines": {
+            "default": 1,
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Max Lines",
+            "type": "integer"
+          },
+          "min_font_px": {
+            "default": 24,
+            "maximum": 200.0,
+            "minimum": 8.0,
+            "title": "Min Font Px",
+            "type": "integer"
+          },
+          "padding_x": {
+            "default": 16,
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Padding X",
+            "type": "integer"
+          },
+          "padding_y": {
+            "default": 8,
+            "maximum": 120.0,
+            "minimum": 0.0,
+            "title": "Padding Y",
+            "type": "integer"
+          },
+          "stroke_color": {
+            "default": "#000000",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Stroke Color",
+            "type": "string"
+          },
+          "stroke_px": {
+            "default": 0,
+            "maximum": 12.0,
+            "minimum": 0.0,
+            "title": "Stroke Px",
+            "type": "integer"
+          },
+          "text_opacity": {
+            "default": 1.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Text Opacity",
+            "type": "number"
+          }
+        },
+        "title": "TextStyle",
+        "type": "object"
+      },
+      "TimeWindow": {
+        "additionalProperties": false,
+        "properties": {
+          "end_sec": {
+            "exclusiveMinimum": 0.0,
+            "title": "End Sec",
+            "type": "number"
+          },
+          "start_sec": {
+            "minimum": 0.0,
+            "title": "Start Sec",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_sec",
+          "end_sec"
+        ],
+        "title": "TimeWindow",
+        "type": "object"
+      },
+      "TimingMode": {
+        "enum": [
+          "impulse",
+          "persistent",
+          "windows"
+        ],
+        "title": "TimingMode",
+        "type": "string"
+      },
+      "VariantStatus": {
+        "enum": [
+          "draft",
+          "active",
+          "paused",
+          "archived"
+        ],
+        "title": "VariantStatus",
+        "type": "string"
+      },
+      "WarningSeverity": {
+        "description": "Важность флагов и предупреждений (приёмка, валидация баннера). Не путать с AlertSeverity.",
+        "enum": [
+          "info",
+          "warn",
+          "error"
+        ],
+        "title": "WarningSeverity",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/banner-creatives": {
+      "get": {
+        "operationId": "banners_creatives_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CreativeKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/CreativeStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "description": "Поиск по имени",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поиск по имени",
+              "title": "Q"
+            }
+          },
+          {
+            "description": "Поле сортировки из белого списка, `-` — по убыванию",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^-?[a-z0-9_]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Поле сортировки из белого списка, `-` — по убыванию",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerCreativePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Библиотека креативов (без удалённых)",
+        "tags": [
+          "banners"
+        ]
+      },
+      "post": {
+        "operationId": "banners_creatives_upload",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_banners_creatives_upload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerCreativeUploadResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Загрузить креатив (multipart, ≤ 50 МБ; 413/415/422 c details.asset_error)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-creatives/{creative_sha256}": {
+      "delete": {
+        "operationId": "banners_creatives_delete",
+        "parameters": [
+          {
+            "description": "sha256 исходного файла креатива, 64 hex",
+            "in": "path",
+            "name": "creative_sha256",
+            "required": true,
+            "schema": {
+              "description": "sha256 исходного файла креатива, 64 hex",
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Creative Sha256",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Удалить креатив (409 creative_in_use, пока на него ссылаются варианты)",
+        "tags": [
+          "banners"
+        ]
+      },
+      "get": {
+        "operationId": "banners_creatives_get",
+        "parameters": [
+          {
+            "description": "sha256 исходного файла креатива, 64 hex",
+            "in": "path",
+            "name": "creative_sha256",
+            "required": true,
+            "schema": {
+              "description": "sha256 исходного файла креатива, 64 hex",
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Creative Sha256",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerCreative"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Креатив",
+        "tags": [
+          "banners"
+        ]
+      },
+      "patch": {
+        "operationId": "banners_creatives_update",
+        "parameters": [
+          {
+            "description": "sha256 исходного файла креатива, 64 hex",
+            "in": "path",
+            "name": "creative_sha256",
+            "required": true,
+            "schema": {
+              "description": "sha256 исходного файла креатива, 64 hex",
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Creative Sha256",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerCreativePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerCreative"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Переименовать, заметка, продукт",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-creatives/{creative_sha256}/media/{media_kind}": {
+      "get": {
+        "operationId": "banners_creatives_media",
+        "parameters": [
+          {
+            "description": "sha256 исходного файла креатива, 64 hex",
+            "in": "path",
+            "name": "creative_sha256",
+            "required": true,
+            "schema": {
+              "description": "sha256 исходного файла креатива, 64 hex",
+              "pattern": "^[0-9a-f]{64}$",
+              "title": "Creative Sha256",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "media_kind",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CreativeMediaKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "video/webm": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Нормализованный файл, миниатюра, 1-й кадр"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Медиа креатива (Range)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-fonts": {
+      "get": {
+        "operationId": "banners_fonts_list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerFontList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Шрифты служебного текста",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-fonts/{font_name}": {
+      "get": {
+        "operationId": "banners_fonts_file",
+        "parameters": [
+          {
+            "description": "Имя файла шрифта из config/fonts",
+            "in": "path",
+            "name": "font_name",
+            "required": true,
+            "schema": {
+              "description": "Имя файла шрифта из config/fonts",
+              "pattern": "^[A-Za-z0-9._-]{1,80}\\.(ttf|otf)$",
+              "title": "Font Name",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "font/otf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "font/ttf": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Файл шрифта"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Файл шрифта для превью редактора",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-safe-zones": {
+      "get": {
+        "operationId": "banners_safe_zones",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerSafeZoneCatalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Профили safe zones площадок (config/safe_zones.json)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates": {
+      "get": {
+        "operationId": "banners_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/BannerTemplateStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerTemplatePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Шаблоны баннера",
+        "tags": [
+          "banners"
+        ]
+      },
+      "post": {
+        "operationId": "banners_create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerTemplateCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Создать шаблон",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates/import-yaml": {
+      "post": {
+        "operationId": "banners_import_yaml",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_banners_import_yaml"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Импорт формы config/banner.yaml",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates/{template_id}": {
+      "get": {
+        "operationId": "banners_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Шаблон",
+        "tags": [
+          "banners"
+        ]
+      },
+      "patch": {
+        "operationId": "banners_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerTemplatePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Правка шаблона (409 version_conflict)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates/{template_id}/duplicate": {
+      "post": {
+        "operationId": "banners_duplicate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerTemplate"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Копия шаблона",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates/{template_id}/export-yaml": {
+      "get": {
+        "operationId": "banners_export_yaml",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/yaml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "YAML формы config/banner.yaml"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Экспорт в YAML",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates/{template_id}/preview": {
+      "post": {
+        "operationId": "banners_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Кадр 540×960 тем же кодом, что в рендере"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "PNG-кадр баннера",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-templates/{template_id}/validate": {
+      "post": {
+        "operationId": "banners_validate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerValidateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Серверная валидация (источник истины)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-variants/preview": {
+      "post": {
+        "operationId": "banners_variant_preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "image/png": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Кадр PNG тем же кодом, что финальный рендер",
+            "headers": {
+              "X-Preview-T-Sec": {
+                "description": "Фактическое время кадра, с (для moment=impulse|final_repeat)",
+                "schema": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "«Кадр из рендера»: PNG варианта или черновика",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-variants/validate": {
+      "post": {
+        "operationId": "banners_variant_validate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerValidateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerValidateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Проверка варианта или черновика (источник истины)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-variants/{variant_id}": {
+      "get": {
+        "operationId": "banners_variant_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "title": "Variant Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerVariant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Вариант целиком (для редактора)",
+        "tags": [
+          "banners"
+        ]
+      }
+    },
+    "/api/v1/banner-variants/{variant_id}/duplicate": {
+      "post": {
+        "operationId": "banners_variant_duplicate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "variant_id",
+            "required": true,
+            "schema": {
+              "title": "Variant Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BannerVariantDuplicate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BannerVariant"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Копия варианта для A/B (новый code)",
+        "tags": [
+          "banners"
+        ]
+      }
+    }
+  },
+  "tag": "banners"
+}

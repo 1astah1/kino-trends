@@ -1,0 +1,681 @@
+{
+  "components": {
+    "schemas": {
+      "CampaignStatus": {
+        "enum": [
+          "draft",
+          "active",
+          "paused",
+          "ended"
+        ],
+        "title": "CampaignStatus",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "Experiment": {
+        "properties": {
+          "alpha": {
+            "title": "Alpha",
+            "type": "number"
+          },
+          "campaign_id": {
+            "title": "Campaign Id",
+            "type": "integer"
+          },
+          "campaign_name": {
+            "title": "Campaign Name",
+            "type": "string"
+          },
+          "campaign_status": {
+            "$ref": "#/components/schemas/CampaignStatus"
+          },
+          "computed_at": {
+            "format": "date-time",
+            "title": "Computed At",
+            "type": "string"
+          },
+          "min_age_hours": {
+            "description": "ab_min_age_hours (72)",
+            "title": "Min Age Hours",
+            "type": "integer"
+          },
+          "min_videos_per_variant": {
+            "description": "ab_min_videos_per_variant (20)",
+            "title": "Min Videos Per Variant",
+            "type": "integer"
+          },
+          "min_visitors_total": {
+            "title": "Min Visitors Total",
+            "type": "integer"
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExperimentNotReadyReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tests": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentTest"
+            },
+            "title": "Tests",
+            "type": "array"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentVariant"
+            },
+            "title": "Variants",
+            "type": "array"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExperimentVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только при ready=true"
+          },
+          "videos_needed": {
+            "title": "Videos Needed",
+            "type": "integer"
+          },
+          "visitors_total": {
+            "title": "Visitors Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "campaign_id",
+          "campaign_name",
+          "product_id",
+          "campaign_status",
+          "ready",
+          "reason",
+          "min_videos_per_variant",
+          "min_age_hours",
+          "min_visitors_total",
+          "videos_needed",
+          "visitors_total",
+          "alpha",
+          "computed_at",
+          "variants",
+          "tests",
+          "verdict"
+        ],
+        "title": "Experiment",
+        "type": "object"
+      },
+      "ExperimentNotReadyReason": {
+        "enum": [
+          "no_variants",
+          "single_variant",
+          "not_enough_mature_videos",
+          "not_enough_visitors"
+        ],
+        "title": "ExperimentNotReadyReason",
+        "type": "string"
+      },
+      "ExperimentPoint": {
+        "description": "Один ролик варианта — точка strip-plot.",
+        "properties": {
+          "age_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Hours"
+          },
+          "channel_id": {
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "ctr_per_1k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr Per 1K"
+          },
+          "ln_views_72h": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ln Views 72H"
+          },
+          "mature": {
+            "title": "Mature",
+            "type": "boolean"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          },
+          "views_72h": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 72H"
+          },
+          "visitors": {
+            "title": "Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "video_uid",
+          "channel_id",
+          "platform",
+          "published_at",
+          "age_hours",
+          "mature",
+          "views_72h",
+          "ln_views_72h",
+          "visitors",
+          "ctr_per_1k"
+        ],
+        "title": "ExperimentPoint",
+        "type": "object"
+      },
+      "ExperimentTest": {
+        "properties": {
+          "a": {
+            "description": "Код варианта A",
+            "title": "A",
+            "type": "string"
+          },
+          "a_variant_id": {
+            "title": "A Variant Id",
+            "type": "integer"
+          },
+          "b": {
+            "description": "Код варианта B",
+            "title": "B",
+            "type": "string"
+          },
+          "b_variant_id": {
+            "title": "B Variant Id",
+            "type": "integer"
+          },
+          "better": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Код варианта с большей медианой, если значимо",
+            "title": "Better"
+          },
+          "method": {
+            "$ref": "#/components/schemas/StatTestMethod"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/ExperimentTestMetric"
+          },
+          "n_a": {
+            "title": "N A",
+            "type": "integer"
+          },
+          "n_b": {
+            "title": "N B",
+            "type": "integer"
+          },
+          "p_value": {
+            "title": "P Value",
+            "type": "number"
+          },
+          "significant": {
+            "description": "p_value < alpha (без поправки на множественность)",
+            "title": "Significant",
+            "type": "boolean"
+          },
+          "u": {
+            "title": "U",
+            "type": "number"
+          }
+        },
+        "required": [
+          "metric",
+          "method",
+          "a",
+          "b",
+          "a_variant_id",
+          "b_variant_id",
+          "u",
+          "p_value",
+          "n_a",
+          "n_b",
+          "significant",
+          "better"
+        ],
+        "title": "ExperimentTest",
+        "type": "object"
+      },
+      "ExperimentTestMetric": {
+        "enum": [
+          "ln_views_72h",
+          "ctr_per_1k"
+        ],
+        "title": "ExperimentTestMetric",
+        "type": "string"
+      },
+      "ExperimentVariant": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "cost_per_bot_start_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Bot Start Usd"
+          },
+          "cost_per_visitor_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Visitor Usd"
+          },
+          "ctr_ci": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[нижняя, верхняя] граница 95% (Пуассон–Гамма)",
+            "title": "Ctr Ci"
+          },
+          "ctr_per_1k_pooled": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr Per 1K Pooled"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "needs_more": {
+            "description": "Сколько зрелых роликов не хватает до минимума",
+            "title": "Needs More",
+            "type": "integer"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "spend_usd": {
+            "title": "Spend Usd",
+            "type": "number"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VariantStatus"
+          },
+          "users": {
+            "title": "Users",
+            "type": "integer"
+          },
+          "videos": {
+            "description": "Опубликовано роликов с этим вариантом",
+            "title": "Videos",
+            "type": "integer"
+          },
+          "videos_mature": {
+            "title": "Videos Mature",
+            "type": "integer"
+          },
+          "views_72h_median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 72H Median"
+          },
+          "views_72h_p25": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 72H P25"
+          },
+          "views_72h_p75": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views 72H P75"
+          },
+          "visitors": {
+            "title": "Visitors",
+            "type": "integer"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name",
+          "status",
+          "weight",
+          "videos",
+          "videos_mature",
+          "needs_more",
+          "views_72h_median",
+          "views_72h_p25",
+          "views_72h_p75",
+          "visitors",
+          "ctr_per_1k_pooled",
+          "ctr_ci",
+          "bot_starts",
+          "users",
+          "first_payments",
+          "revenue_minor",
+          "spend_usd",
+          "cost_per_visitor_usd",
+          "cost_per_bot_start_usd",
+          "points"
+        ],
+        "title": "ExperimentVariant",
+        "type": "object"
+      },
+      "ExperimentVerdict": {
+        "properties": {
+          "metric": {
+            "$ref": "#/components/schemas/ExperimentTestMetric"
+          },
+          "p_value": {
+            "title": "P Value",
+            "type": "number"
+          },
+          "summary": {
+            "description": "Вывод для человека, по-русски",
+            "title": "Summary",
+            "type": "string"
+          },
+          "winner_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winner Code"
+          },
+          "winner_variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null — значимой разницы нет",
+            "title": "Winner Variant Id"
+          }
+        },
+        "required": [
+          "winner_variant_id",
+          "winner_code",
+          "metric",
+          "p_value",
+          "summary"
+        ],
+        "title": "ExperimentVerdict",
+        "type": "object"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "StatTestMethod": {
+        "enum": [
+          "mann_whitney_u"
+        ],
+        "title": "StatTestMethod",
+        "type": "string"
+      },
+      "VariantStatus": {
+        "enum": [
+          "draft",
+          "active",
+          "paused",
+          "archived"
+        ],
+        "title": "VariantStatus",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/campaigns/{campaign_id}/experiment": {
+      "get": {
+        "operationId": "experiments_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "campaign_id",
+            "required": true,
+            "schema": {
+              "title": "Campaign Id",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Пусто — все площадки (смешивать YouTube и VK не рекомендуется)",
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "description": "Пусто — все площадки (смешивать YouTube и VK не рекомендуется)",
+              "items": {
+                "$ref": "#/components/schemas/Platform"
+              },
+              "title": "Platform",
+              "type": "array"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Experiment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "A/B-статистика кампании: варианты, зрелость, Манн–Уитни, вердикт после 72 ч и 20 роликов",
+        "tags": [
+          "experiments"
+        ]
+      }
+    }
+  },
+  "tag": "experiments"
+}

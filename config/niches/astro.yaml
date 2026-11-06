@@ -1,0 +1,56 @@
+id: astro
+label: "Астрология — гороскоп / лунный календарь"
+
+script:
+  format: card_of_day            # card_of_day | horoscope_12 | numerology
+  tone: "уверенный, тёплый, как совет подруги"
+  pacing: medium
+  word_count: [55, 80]
+  hooks:
+    - pattern: direct_address
+      template: "Это для тебя, если ты родился под знаком {sign}."
+    - pattern: incomplete_visual
+      template: "Сегодня Луна делает то, что случается раз в месяц."
+  cta_variants:
+    - "Какой у тебя знак? Напиши в комментах — разберём завтра."
+  forbidden_phrases:
+    - "гарантированно"
+    - "100%"
+    - "точная дата"
+    - "излечит"
+    - "вылечит"
+    - "вам не нужен врач"
+
+visuals:
+  style: "звёздное небо, зодиакальные созвездия, мягкий неон, минимализм"
+  mood: "calm, aspirational"
+  subjects: ["натальная карта", "созвездия", "луна", "планеты"]
+  avoid: ["фотореалистичные лица крупным планом", "кириллический текст внутри генерации"]
+  motion: crop_pan
+  scene_count: 6
+
+voice:
+  pace: "medium"
+  energy: "warm, confident"
+  suggested_providers:
+    primary: "silero:v5_cis_base"
+    premium: "fal:minimax-speech-2.8-hd"
+
+captions:
+  style: karaoke_word_highlight
+  highlight_color: "#8CD9C9"
+  base_color: "#FFFFFF"
+  font_weight: bold
+  position: lower_third
+
+music:
+  mood: "ambient, soft pad"
+  energy: low
+
+duration:
+  target_sec: [15, 25]
+  loop_seam: true
+
+thumbnail:
+  style: "звёздное небо, знак зодиака крупно"
+  text_position: top

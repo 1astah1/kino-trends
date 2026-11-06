@@ -1,0 +1,60 @@
+# Auto Shorts v1 — Telegram-бот: уведомления, приёмка с телефона, /link <код> <url>.
+# docs/ARCHITECTURE.md §2.2, §8.5. Портов не слушает (long polling).
+# Заменяет legacy-юнит deploy/autoshorts-bot.service (то же имя юнита): ставится вместо него, не рядом.
+# Если api.telegram.org с VPS недоступен, прокси задаётся настройкой telegram_proxy_url (§8.3).
+[Unit]
+Description=Auto Shorts Telegram bot (review and notifications)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+PartOf=autoshorts.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/autoshorts XDG_CACHE_HOME=/var/cache/autoshorts
+ExecStart=/opt/auto-shorts/.venv/bin/python -m autoshorts.bot.telegram_bot
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=20
+
+# Ресурсы
+MemoryHigh=192M
+MemoryMax=256M
+TasksMax=64
+
+# Песочница
+UMask=0027
+CacheDirectory=autoshorts
+CacheDirectoryMode=0750
+ReadWritePaths=/var/lib/autoshorts
+# legacy config.py создаёт render_tmp и master_archive при импорте; убрать в M7-C
+ReadWritePaths=-/opt/auto-shorts/render_tmp -/opt/auto-shorts/assets/master_archive
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=autoshorts.target

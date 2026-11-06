@@ -1,0 +1,2591 @@
+{
+  "components": {
+    "schemas": {
+      "AgeVerdict": {
+        "description": "Какой срез по возрасту уже готов для вердикта.",
+        "enum": [
+          "h24",
+          "h72",
+          "d7"
+        ],
+        "title": "AgeVerdict",
+        "type": "string"
+      },
+      "BannerVariantRef": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "BannerVariantRef",
+        "type": "object"
+      },
+      "ChannelRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "platform"
+        ],
+        "title": "ChannelRef",
+        "type": "object"
+      },
+      "CollectorReason": {
+        "description": "Причина не-ok состояния (`collector_state.reason`).",
+        "enum": [
+          "no_api_key",
+          "quota_exhausted",
+          "quota_soft_limit",
+          "network_error",
+          "http_error",
+          "auth_error",
+          "tool_missing",
+          "not_configured",
+          "manual_only"
+        ],
+        "title": "CollectorReason",
+        "type": "string"
+      },
+      "CollectorState": {
+        "description": "Состояние коллектора (`collector_state.state`).",
+        "enum": [
+          "ok",
+          "idle",
+          "disabled",
+          "degraded",
+          "paused",
+          "failing"
+        ],
+        "title": "CollectorState",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "JobKind": {
+        "enum": [
+          "generate",
+          "clip"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
+      "MetricsGranularity": {
+        "enum": [
+          "raw",
+          "day"
+        ],
+        "title": "MetricsGranularity",
+        "type": "string"
+      },
+      "MetricsPoint": {
+        "properties": {
+          "age_hours": {
+            "title": "Age Hours",
+            "type": "number"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "engaged_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engaged Views"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MetricsSource"
+          },
+          "t": {
+            "format": "date-time",
+            "title": "T",
+            "type": "string"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "t",
+          "age_hours",
+          "views",
+          "likes",
+          "comments",
+          "engaged_views",
+          "source"
+        ],
+        "title": "MetricsPoint",
+        "type": "object"
+      },
+      "MetricsSource": {
+        "enum": [
+          "yt_data",
+          "yt_analytics",
+          "vk_api",
+          "ytdlp",
+          "manual"
+        ],
+        "title": "MetricsSource",
+        "type": "string"
+      },
+      "OriginalityVerdict": {
+        "description": "Итог отчёта (`jobs.originality_verdict`): fail — не заливать, пока не исправлено.",
+        "enum": [
+          "pass",
+          "warn",
+          "fail"
+        ],
+        "title": "OriginalityVerdict",
+        "type": "string"
+      },
+      "ParseUrlRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "maxLength": 2000,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ParseUrlRequest",
+        "type": "object"
+      },
+      "ParsedUrl": {
+        "description": "Результат `domain/url_parse.py` (фронт повторяет его в `web/lib/platform-url.ts`).",
+        "properties": {
+          "alias_code": {
+            "description": "yt_<id> | vk_<owner>_<id>, алфавит start-параметра Telegram",
+            "title": "Alias Code",
+            "type": "string"
+          },
+          "canonical_url": {
+            "title": "Canonical Url",
+            "type": "string"
+          },
+          "owner_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "VK: владелец клипа (-<group_id> или <user_id>)",
+            "title": "Owner Ref"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "platform_kind": {
+            "$ref": "#/components/schemas/PlatformKind"
+          },
+          "platform_video_id": {
+            "title": "Platform Video Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "platform_video_id",
+          "platform_kind",
+          "canonical_url",
+          "alias_code"
+        ],
+        "title": "ParsedUrl",
+        "type": "object"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PlatformKind": {
+        "enum": [
+          "short",
+          "clip",
+          "video"
+        ],
+        "title": "PlatformKind",
+        "type": "string"
+      },
+      "Publication": {
+        "properties": {
+          "age_views": {
+            "$ref": "#/components/schemas/PublicationAgeViews"
+          },
+          "banner_variant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BannerVariantRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "canonical_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Canonical Url"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelRef"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "freshness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationFreshness"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: свежесть метрик, коллектор и ручной ввод"
+          },
+          "has_claim": {
+            "title": "Has Claim",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "latest": {
+            "$ref": "#/components/schemas/PublicationLatest"
+          },
+          "next_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Poll At"
+          },
+          "niche_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Niche Id"
+          },
+          "originality_verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OriginalityVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Нарезка: итог отчёта на момент заливки"
+          },
+          "package_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Package Id"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "platform_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlatformKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "platform_video_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform Video Id"
+          },
+          "product_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Product Id"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicationStatus"
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          },
+          "tracking": {
+            "$ref": "#/components/schemas/PublicationTracking"
+          },
+          "traffic": {
+            "$ref": "#/components/schemas/PublicationTraffic"
+          },
+          "unit_economics": {
+            "$ref": "#/components/schemas/PublicationUnitEconomics"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgeVerdict"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "verify_detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verify Detail"
+          },
+          "verify_status": {
+            "$ref": "#/components/schemas/VerifyStatus"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "job_id",
+          "package_id",
+          "video_uid",
+          "kind",
+          "platform",
+          "platform_video_id",
+          "platform_kind",
+          "url",
+          "canonical_url",
+          "status",
+          "status_reason",
+          "verify_status",
+          "verify_detail",
+          "verified_at",
+          "has_claim",
+          "channel",
+          "niche_id",
+          "product_id",
+          "campaign_id",
+          "banner_variant",
+          "tracking",
+          "latest",
+          "age_views",
+          "verdict",
+          "traffic",
+          "unit_economics",
+          "originality_verdict",
+          "next_poll_at",
+          "published_at",
+          "created_at"
+        ],
+        "title": "Publication",
+        "type": "object"
+      },
+      "PublicationAgeViews": {
+        "description": "Просмотры на ровный возраст: линейная интерполяция между снимками, без экстраполяции (§6.5).",
+        "properties": {
+          "d14": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: для когорт d14",
+            "title": "D14"
+          },
+          "d30": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "M4: для когорт d30",
+            "title": "D30"
+          },
+          "d7": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "D7"
+          },
+          "h24": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H24"
+          },
+          "h72": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "H72"
+          }
+        },
+        "required": [
+          "h24",
+          "h72",
+          "d7"
+        ],
+        "title": "PublicationAgeViews",
+        "type": "object"
+      },
+      "PublicationCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "package_id": {
+            "title": "Package Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Пусто — сейчас",
+            "title": "Published At"
+          },
+          "url": {
+            "maxLength": 2000,
+            "minLength": 8,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "package_id",
+          "url"
+        ],
+        "title": "PublicationCreate",
+        "type": "object"
+      },
+      "PublicationCreated": {
+        "properties": {
+          "publication": {
+            "$ref": "#/components/schemas/Publication"
+          },
+          "tracking_links": {
+            "description": "Код пакета (package) и алиас (publication)",
+            "items": {
+              "$ref": "#/components/schemas/TrackingLink"
+            },
+            "title": "Tracking Links",
+            "type": "array"
+          }
+        },
+        "required": [
+          "publication",
+          "tracking_links"
+        ],
+        "title": "PublicationCreated",
+        "type": "object"
+      },
+      "PublicationFreshness": {
+        "description": "Свежесть метрик одной публикации (`Publication.freshness`, карточка ролика).",
+        "properties": {
+          "collector": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Коллектор, который сейчас ведёт публикацию"
+          },
+          "collector_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collector_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Время последнего снимка (любой источник)",
+            "title": "Last Captured At"
+          },
+          "last_poll_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Poll Error"
+          },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Polled At"
+          },
+          "manual_due": {
+            "description": "Ждёт ручного ввода (manual_due_at <= now)",
+            "title": "Manual Due",
+            "type": "boolean"
+          },
+          "manual_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Due At"
+          },
+          "metrics_age_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Минут с последнего снимка",
+            "title": "Metrics Age Min"
+          },
+          "next_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Poll At"
+          },
+          "poll_failures": {
+            "title": "Poll Failures",
+            "type": "integer"
+          },
+          "poll_step": {
+            "description": "Ступень лестницы опроса",
+            "title": "Poll Step",
+            "type": "integer"
+          },
+          "stale": {
+            "description": "next_poll_at просрочен больше чем на METRICS_OVERDUE_GRACE_MIN",
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "collector",
+          "collector_state",
+          "collector_reason",
+          "last_polled_at",
+          "last_captured_at",
+          "next_poll_at",
+          "poll_step",
+          "metrics_age_min",
+          "stale",
+          "manual_due",
+          "manual_due_at",
+          "poll_failures",
+          "last_poll_error"
+        ],
+        "title": "PublicationFreshness",
+        "type": "object"
+      },
+      "PublicationLatest": {
+        "properties": {
+          "avg_pct_viewed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Pct Viewed"
+          },
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "engaged_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engaged Views"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "retention_3s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention 3S"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Источник последнего снимка (M4)"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "captured_at",
+          "views",
+          "likes",
+          "comments",
+          "engaged_views",
+          "retention_3s",
+          "avg_pct_viewed"
+        ],
+        "title": "PublicationLatest",
+        "type": "object"
+      },
+      "PublicationMetrics": {
+        "properties": {
+          "granularity": {
+            "$ref": "#/components/schemas/MetricsGranularity"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/MetricsPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "granularity",
+          "points"
+        ],
+        "title": "PublicationMetrics",
+        "type": "object"
+      },
+      "PublicationPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Publication"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "PublicationPage",
+        "type": "object"
+      },
+      "PublicationPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "has_claim": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Claim"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status Reason"
+          }
+        },
+        "title": "PublicationPatch",
+        "type": "object"
+      },
+      "PublicationRetention": {
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Captured At"
+          },
+          "duration_sec": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Sec"
+          },
+          "failure_class": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetentionFailureClass"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/RetentionPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "retention_3s": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retention 3S"
+          }
+        },
+        "required": [
+          "captured_at",
+          "duration_sec",
+          "retention_3s",
+          "failure_class",
+          "points"
+        ],
+        "title": "PublicationRetention",
+        "type": "object"
+      },
+      "PublicationStatus": {
+        "enum": [
+          "live",
+          "unlisted",
+          "private",
+          "removed_by_platform",
+          "deleted_by_us"
+        ],
+        "title": "PublicationStatus",
+        "type": "string"
+      },
+      "PublicationTracking": {
+        "properties": {
+          "codes": {
+            "description": "Код пакета и алиас площадки",
+            "items": {
+              "type": "string"
+            },
+            "title": "Codes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "codes"
+        ],
+        "title": "PublicationTracking",
+        "type": "object"
+      },
+      "PublicationTraffic": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "pattern": "^[A-Z]{3}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "landing_views": {
+            "title": "Landing Views",
+            "type": "integer"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          },
+          "to_site": {
+            "title": "To Site",
+            "type": "integer"
+          },
+          "to_telegram": {
+            "title": "To Telegram",
+            "type": "integer"
+          },
+          "unique_visitors": {
+            "title": "Unique Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "landing_views",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "bot_starts",
+          "signups",
+          "first_payments",
+          "revenue_minor",
+          "currency"
+        ],
+        "title": "PublicationTraffic",
+        "type": "object"
+      },
+      "PublicationTrafficSeries": {
+        "properties": {
+          "granularity": {
+            "$ref": "#/components/schemas/TrafficGranularity"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/TrafficPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "publication_id",
+          "granularity",
+          "points"
+        ],
+        "title": "PublicationTrafficSeries",
+        "type": "object"
+      },
+      "PublicationUnitEconomics": {
+        "properties": {
+          "cost_per_visitor_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Per Visitor Usd"
+          },
+          "ctr_per_1k_views": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr Per 1K Views"
+          },
+          "job_cost_usd": {
+            "title": "Job Cost Usd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "job_cost_usd",
+          "ctr_per_1k_views",
+          "cost_per_visitor_usd"
+        ],
+        "title": "PublicationUnitEconomics",
+        "type": "object"
+      },
+      "RetentionFailureClass": {
+        "enum": [
+          "hook_drop",
+          "middle_sag",
+          "no_loop_lift",
+          "none"
+        ],
+        "title": "RetentionFailureClass",
+        "type": "string"
+      },
+      "RetentionPoint": {
+        "properties": {
+          "audience_watch_ratio": {
+            "title": "Audience Watch Ratio",
+            "type": "number"
+          },
+          "ratio": {
+            "description": "Доля длительности ролика, 0..1",
+            "title": "Ratio",
+            "type": "number"
+          },
+          "relative": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "relativeRetentionPerformance",
+            "title": "Relative"
+          }
+        },
+        "required": [
+          "ratio",
+          "audience_watch_ratio",
+          "relative"
+        ],
+        "title": "RetentionPoint",
+        "type": "object"
+      },
+      "TaskAccepted": {
+        "description": "202: работа поставлена в очередь.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task_id"
+        ],
+        "title": "TaskAccepted",
+        "type": "object"
+      },
+      "TrackingLevel": {
+        "enum": [
+          "package",
+          "publication",
+          "channel",
+          "campaign",
+          "manual"
+        ],
+        "title": "TrackingLevel",
+        "type": "string"
+      },
+      "TrackingLink": {
+        "properties": {
+          "banner_variant_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Banner Variant Id"
+          },
+          "campaign_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campaign Id"
+          },
+          "channel_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Channel Id"
+          },
+          "clicks_7d": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Только в списке",
+            "title": "Clicks 7D"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "level": {
+            "$ref": "#/components/schemas/TrackingLevel"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Platform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "product_id": {
+            "title": "Product Id",
+            "type": "string"
+          },
+          "publication_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publication Id"
+          },
+          "redirect_url": {
+            "description": "https://<redirect_host>/<code>",
+            "title": "Redirect Url",
+            "type": "string"
+          },
+          "target_override_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Override Url"
+          },
+          "telegram_https_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "https://telegram.me/<bot>?start=<code>",
+            "title": "Telegram Https Url"
+          },
+          "telegram_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "tg://resolve?domain=<bot>&start=<code>",
+            "title": "Telegram Url"
+          },
+          "tma_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "https://t.me/<bot>/<app>?startapp=<code> для TMA",
+            "title": "Tma Url"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "product_id",
+          "level",
+          "job_id",
+          "publication_id",
+          "channel_id",
+          "campaign_id",
+          "banner_variant_id",
+          "platform",
+          "label",
+          "target_override_url",
+          "is_active",
+          "redirect_url",
+          "telegram_url",
+          "telegram_https_url",
+          "tma_url",
+          "created_by",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TrackingLink",
+        "type": "object"
+      },
+      "TrafficGranularity": {
+        "enum": [
+          "hour",
+          "day"
+        ],
+        "title": "TrafficGranularity",
+        "type": "string"
+      },
+      "TrafficPoint": {
+        "properties": {
+          "bot_starts": {
+            "title": "Bot Starts",
+            "type": "integer"
+          },
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "first_payments": {
+            "title": "First Payments",
+            "type": "integer"
+          },
+          "revenue_minor": {
+            "title": "Revenue Minor",
+            "type": "integer"
+          },
+          "signups": {
+            "title": "Signups",
+            "type": "integer"
+          },
+          "t": {
+            "format": "date-time",
+            "title": "T",
+            "type": "string"
+          },
+          "to_site": {
+            "title": "To Site",
+            "type": "integer"
+          },
+          "to_telegram": {
+            "title": "To Telegram",
+            "type": "integer"
+          },
+          "unique_visitors": {
+            "title": "Unique Visitors",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "t",
+          "clicks",
+          "unique_visitors",
+          "to_telegram",
+          "to_site",
+          "bot_starts",
+          "signups",
+          "first_payments",
+          "revenue_minor"
+        ],
+        "title": "TrafficPoint",
+        "type": "object"
+      },
+      "VerifyStatus": {
+        "enum": [
+          "pending",
+          "ok",
+          "channel_mismatch",
+          "not_found",
+          "unverifiable"
+        ],
+        "title": "VerifyStatus",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/publications": {
+      "get": {
+        "operationId": "publications_list",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Platform"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "niche_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Niche Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "product_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Product Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campaign_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campaign Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "banner_variant_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Banner Variant Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/JobKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/PublicationStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "in": "query",
+            "name": "verify_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/VerifyStatus"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Verify Status"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_from",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date From"
+            }
+          },
+          {
+            "description": "YYYY-MM-DD включительно, business_timezone",
+            "in": "query",
+            "name": "date_to",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "YYYY-MM-DD включительно, business_timezone",
+              "title": "Date To"
+            }
+          },
+          {
+            "description": "Поле сортировки из белого списка, `-` — по убыванию",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^-?[a-z0-9_]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": "-published_at",
+              "description": "Поле сортировки из белого списка, `-` — по убыванию",
+              "title": "Sort"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Реестр публикаций",
+        "tags": [
+          "publications"
+        ]
+      },
+      "post": {
+        "operationId": "publications_create",
+        "parameters": [
+          {
+            "description": "Повтор с тем же ключом вернёт тот же ответ",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Повтор с тем же ключом вернёт тот же ответ",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Зарегистрировать публикацию по ссылке (409, 422 platform_mismatch)",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/analytics/collect": {
+      "post": {
+        "operationId": "publications_collect_analytics",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Publications Collect Analytics",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Досмотры и удержание из YouTube Analytics по подключённым каналам (канал не чаще раза в 3 ч)",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/parse-url": {
+      "post": {
+        "operationId": "publications_parse_url",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ParseUrlRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ParsedUrl"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Разобрать ссылку YouTube/VK (422 unsupported_url)",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}": {
+      "delete": {
+        "operationId": "publications_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Мягко удалить ошибочную регистрацию (admin; ролик → approved, пакет → ready)",
+        "tags": [
+          "publications"
+        ]
+      },
+      "get": {
+        "operationId": "publications_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Publication"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Карточка публикации",
+        "tags": [
+          "publications"
+        ]
+      },
+      "patch": {
+        "operationId": "publications_update",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublicationPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Publication"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Статус и отметки (удалена площадкой, клейм, …)",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/metrics": {
+      "get": {
+        "operationId": "publications_metrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/MetricsGranularity",
+              "default": "raw"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationMetrics"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Ряд метрик",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/refresh-metrics": {
+      "post": {
+        "operationId": "publications_refresh_metrics",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Внеочередной опрос метрик",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/remove-remote": {
+      "post": {
+        "operationId": "publications_remove_remote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Publication"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Снять ролик с YouTube (удалить на площадке; у подключения канала нужно право youtube.force-ssl)",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/retention": {
+      "get": {
+        "operationId": "publications_retention",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationRetention"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Кривая удержания (только при OAuth YouTube Analytics)",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/reverify": {
+      "post": {
+        "operationId": "publications_reverify",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Повторить проверку принадлежности каналу",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/traffic": {
+      "get": {
+        "operationId": "publications_traffic",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "granularity",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TrafficGranularity",
+              "default": "day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationTrafficSeries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Клики и конверсии по часам/дням",
+        "tags": [
+          "publications"
+        ]
+      }
+    }
+  },
+  "tag": "publications"
+}

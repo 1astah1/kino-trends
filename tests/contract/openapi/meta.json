@@ -1,0 +1,795 @@
+{
+  "components": {
+    "schemas": {
+      "CanvasSize": {
+        "additionalProperties": false,
+        "properties": {
+          "h": {
+            "exclusiveMinimum": 0.0,
+            "title": "H",
+            "type": "integer"
+          },
+          "w": {
+            "exclusiveMinimum": 0.0,
+            "title": "W",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "w",
+          "h"
+        ],
+        "title": "CanvasSize",
+        "type": "object"
+      },
+      "DeadZone": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "pattern": "^[a-z0-9_]{2,40}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2",
+          "id"
+        ],
+        "title": "DeadZone",
+        "type": "object"
+      },
+      "EnumOption": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label"
+        ],
+        "title": "EnumOption",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "MetaEnums": {
+        "description": "Все словари enum с русскими подписями; ключи — имена словарей (латиница snake_case).",
+        "properties": {
+          "alert_severity": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Alert Severity",
+            "type": "array"
+          },
+          "alert_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Alert Status",
+            "type": "array"
+          },
+          "allowlist_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Allowlist Status",
+            "type": "array"
+          },
+          "api_token_scope": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Api Token Scope",
+            "type": "array"
+          },
+          "asset_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Asset Kind",
+            "type": "array"
+          },
+          "banner_layer": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Banner Layer",
+            "type": "array"
+          },
+          "banner_warning_code": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Banner Warning Code",
+            "type": "array"
+          },
+          "brief_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Brief Status",
+            "type": "array"
+          },
+          "campaign_allocation": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Campaign Allocation",
+            "type": "array"
+          },
+          "campaign_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Campaign Status",
+            "type": "array"
+          },
+          "candidate_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Candidate Status",
+            "type": "array"
+          },
+          "channel_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Channel Status",
+            "type": "array"
+          },
+          "checklist_code": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Checklist Code",
+            "type": "array"
+          },
+          "click_route": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Click Route",
+            "type": "array"
+          },
+          "conversion_event_type": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Conversion Event Type",
+            "type": "array"
+          },
+          "decided_via": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Decided Via",
+            "type": "array"
+          },
+          "defer_reason": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Defer Reason",
+            "type": "array"
+          },
+          "incident_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Incident Kind",
+            "type": "array"
+          },
+          "job_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Job Kind",
+            "type": "array"
+          },
+          "job_stage": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Job Stage",
+            "type": "array"
+          },
+          "job_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Job Status",
+            "type": "array"
+          },
+          "media_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Media Kind",
+            "type": "array"
+          },
+          "niche_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Niche Status",
+            "type": "array"
+          },
+          "outlier_tier": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Outlier Tier",
+            "type": "array"
+          },
+          "package_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Package Status",
+            "type": "array"
+          },
+          "platform": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Platform",
+            "type": "array"
+          },
+          "platform_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Platform Kind",
+            "type": "array"
+          },
+          "product_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Product Kind",
+            "type": "array"
+          },
+          "product_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Product Status",
+            "type": "array"
+          },
+          "provider_kind": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Provider Kind",
+            "type": "array"
+          },
+          "publication_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Publication Status",
+            "type": "array"
+          },
+          "qc_check": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Qc Check",
+            "type": "array"
+          },
+          "redirect_mode": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Redirect Mode",
+            "type": "array"
+          },
+          "reframe_mode": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Reframe Mode",
+            "type": "array"
+          },
+          "reject_reason": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Reject Reason",
+            "type": "array"
+          },
+          "resource_class": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Resource Class",
+            "type": "array"
+          },
+          "resource_profile": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Resource Profile",
+            "type": "array"
+          },
+          "review_decision": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Review Decision",
+            "type": "array"
+          },
+          "review_flag": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Review Flag",
+            "type": "array"
+          },
+          "rights_type": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Rights Type",
+            "type": "array"
+          },
+          "role": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Role",
+            "type": "array"
+          },
+          "source_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Source Status",
+            "type": "array"
+          },
+          "task_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Task Status",
+            "type": "array"
+          },
+          "telegram_link_style": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Telegram Link Style",
+            "type": "array"
+          },
+          "tracking_level": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Tracking Level",
+            "type": "array"
+          },
+          "variant_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Variant Status",
+            "type": "array"
+          },
+          "verify_status": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Verify Status",
+            "type": "array"
+          },
+          "warning_severity": {
+            "items": {
+              "$ref": "#/components/schemas/EnumOption"
+            },
+            "title": "Warning Severity",
+            "type": "array"
+          }
+        },
+        "required": [
+          "job_kind",
+          "job_status",
+          "job_stage",
+          "review_decision",
+          "decided_via",
+          "reject_reason",
+          "qc_check",
+          "review_flag",
+          "warning_severity",
+          "media_kind",
+          "reframe_mode",
+          "task_status",
+          "resource_class",
+          "defer_reason",
+          "role",
+          "api_token_scope",
+          "provider_kind",
+          "alert_severity",
+          "alert_status",
+          "resource_profile",
+          "product_kind",
+          "product_status",
+          "redirect_mode",
+          "telegram_link_style",
+          "niche_status",
+          "channel_status",
+          "incident_kind",
+          "asset_kind",
+          "banner_layer",
+          "banner_warning_code",
+          "campaign_status",
+          "campaign_allocation",
+          "variant_status",
+          "platform",
+          "platform_kind",
+          "publication_status",
+          "verify_status",
+          "package_status",
+          "checklist_code",
+          "tracking_level",
+          "click_route",
+          "conversion_event_type",
+          "rights_type",
+          "allowlist_status",
+          "source_status",
+          "candidate_status",
+          "outlier_tier",
+          "brief_status"
+        ],
+        "title": "MetaEnums",
+        "type": "object"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "Rect": {
+        "additionalProperties": false,
+        "properties": {
+          "x1": {
+            "title": "X1",
+            "type": "integer"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "integer"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "integer"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "Rect",
+        "type": "object"
+      },
+      "RejectReason": {
+        "description": "Коды из legacy `models.REJECT_REASONS` + новые. `tehnicheskiy_sboy` убран: это status=failed.",
+        "enum": [
+          "hook_slabyy",
+          "vizual_artefakty",
+          "subtitry_rassinhron",
+          "banner_perekryvaet",
+          "zvuk_problema",
+          "zapreshchennaya_fraza",
+          "dublikat",
+          "ne_ta_dlitelnost",
+          "drugoe",
+          "avtorskiy_sloy_slabyy",
+          "prava_somnitelny",
+          "povtor_shablona"
+        ],
+        "title": "RejectReason",
+        "type": "string"
+      },
+      "RejectReasonItem": {
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/RejectReason"
+          },
+          "hotkey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Клавиша после X на экране приёмки: 1–9, 0",
+            "title": "Hotkey"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "hotkey"
+        ],
+        "title": "RejectReasonItem",
+        "type": "object"
+      },
+      "RejectReasonList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RejectReasonItem"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "RejectReasonList",
+        "type": "object"
+      },
+      "SafeZoneList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SafeZonePreset"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "SafeZoneList",
+        "type": "object"
+      },
+      "SafeZonePreset": {
+        "additionalProperties": false,
+        "description": "Форма `GET /meta/safe-zones` (§5.4). Координаты в пикселях канвы 1080×1920.",
+        "properties": {
+          "canvas": {
+            "$ref": "#/components/schemas/CanvasSize"
+          },
+          "conservative_safe_rect": {
+            "$ref": "#/components/schemas/Rect"
+          },
+          "dead_zones": {
+            "items": {
+              "$ref": "#/components/schemas/DeadZone"
+            },
+            "title": "Dead Zones",
+            "type": "array"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "source_note": {
+            "title": "Source Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "canvas",
+          "dead_zones",
+          "conservative_safe_rect",
+          "source_note"
+        ],
+        "title": "SafeZonePreset",
+        "type": "object"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/meta/enums": {
+      "get": {
+        "operationId": "meta_enums",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaEnums"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Все enum с русскими подписями",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/v1/meta/reject-reasons": {
+      "get": {
+        "operationId": "meta_reject_reasons",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RejectReasonList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Причины отказа",
+        "tags": [
+          "meta"
+        ]
+      }
+    },
+    "/api/v1/meta/safe-zones": {
+      "get": {
+        "operationId": "meta_safe_zones",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SafeZoneList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Пресеты мёртвых зон",
+        "tags": [
+          "meta"
+        ]
+      }
+    }
+  },
+  "tag": "meta"
+}

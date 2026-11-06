@@ -1,0 +1,650 @@
+{
+  "components": {
+    "schemas": {
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "UploadInfo": {
+        "description": "Состояние загрузки для UI (tus-клиенту хватает HEAD).",
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "filetype": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filetype"
+          },
+          "id": {
+            "pattern": "^[a-f0-9]{32}$",
+            "title": "Id",
+            "type": "string"
+          },
+          "length_bytes": {
+            "title": "Length Bytes",
+            "type": "integer"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/UploadPurpose"
+          },
+          "received_bytes": {
+            "title": "Received Bytes",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/UploadStatus"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "filename",
+          "filetype",
+          "length_bytes",
+          "received_bytes",
+          "status",
+          "created_at",
+          "updated_at",
+          "expires_at",
+          "completed_at"
+        ],
+        "title": "UploadInfo",
+        "type": "object"
+      },
+      "UploadPurpose": {
+        "enum": [
+          "source",
+          "asset",
+          "rights_doc"
+        ],
+        "title": "UploadPurpose",
+        "type": "string"
+      },
+      "UploadStatus": {
+        "enum": [
+          "uploading",
+          "complete",
+          "consumed",
+          "expired",
+          "aborted"
+        ],
+        "title": "UploadStatus",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/uploads/tus": {
+      "options": {
+        "operationId": "uploads_tus_options",
+        "responses": {
+          "204": {
+            "description": "Возможности сервера",
+            "headers": {
+              "Tus-Extension": {
+                "description": "creation,termination,expiration",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Max-Size": {
+                "description": "upload_max_gb в байтах",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Resumable": {
+                "description": "1.0.0",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Version": {
+                "description": "1.0.0",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "tus: возможности",
+        "tags": [
+          "uploads"
+        ]
+      },
+      "post": {
+        "operationId": "uploads_tus_create",
+        "parameters": [
+          {
+            "description": "Обязателен: 1.0.0 (иначе 412)",
+            "in": "header",
+            "name": "Tus-Resumable",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Обязателен: 1.0.0 (иначе 412)",
+              "title": "Tus-Resumable"
+            }
+          },
+          {
+            "description": "Полный размер файла, байт",
+            "in": "header",
+            "name": "Upload-Length",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Полный размер файла, байт",
+              "title": "Upload-Length"
+            }
+          },
+          {
+            "description": "`filename <b64>,filetype <b64>,purpose <b64>` (purpose: source | asset | rights_doc)",
+            "in": "header",
+            "name": "Upload-Metadata",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4096,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`filename <b64>,filetype <b64>,purpose <b64>` (purpose: source | asset | rights_doc)",
+              "title": "Upload-Metadata"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Сессия создана",
+            "headers": {
+              "Location": {
+                "description": "/api/v1/uploads/tus/<upload_id>",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Resumable": {
+                "description": "1.0.0",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Upload-Expires": {
+                "description": "RFC 7231, 24 ч",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "tus: создать загрузку (413 больше upload_max_gb, 507 нет места)",
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/v1/uploads/tus/{upload_id}": {
+      "delete": {
+        "operationId": "uploads_tus_terminate",
+        "parameters": [
+          {
+            "description": "32 hex",
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "description": "32 hex",
+              "pattern": "^[a-f0-9]{32}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Обязателен: 1.0.0 (иначе 412)",
+            "in": "header",
+            "name": "Tus-Resumable",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Обязателен: 1.0.0 (иначе 412)",
+              "title": "Tus-Resumable"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Загрузка прервана, файл удалён",
+            "headers": {
+              "Tus-Resumable": {
+                "description": "1.0.0",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "tus: прервать загрузку",
+        "tags": [
+          "uploads"
+        ]
+      },
+      "head": {
+        "operationId": "uploads_tus_head",
+        "parameters": [
+          {
+            "description": "32 hex",
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "description": "32 hex",
+              "pattern": "^[a-f0-9]{32}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Обязателен: 1.0.0 (иначе 412)",
+            "in": "header",
+            "name": "Tus-Resumable",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Обязателен: 1.0.0 (иначе 412)",
+              "title": "Tus-Resumable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Смещение",
+            "headers": {
+              "Cache-Control": {
+                "description": "no-store",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Tus-Resumable": {
+                "description": "1.0.0",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Upload-Length": {
+                "description": "Полный размер",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Upload-Offset": {
+                "description": "Получено байт",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "tus: сколько уже получено (404, 410 upload_expired)",
+        "tags": [
+          "uploads"
+        ]
+      },
+      "patch": {
+        "operationId": "uploads_tus_patch",
+        "parameters": [
+          {
+            "description": "32 hex",
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "description": "32 hex",
+              "pattern": "^[a-f0-9]{32}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Обязателен: 1.0.0 (иначе 412)",
+            "in": "header",
+            "name": "Tus-Resumable",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Обязателен: 1.0.0 (иначе 412)",
+              "title": "Tus-Resumable"
+            }
+          },
+          {
+            "description": "Смещение чанка",
+            "in": "header",
+            "name": "Upload-Offset",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Смещение чанка",
+              "title": "Upload-Offset"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/offset+octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Чанк принят",
+            "headers": {
+              "Tus-Resumable": {
+                "description": "1.0.0",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Upload-Offset": {
+                "description": "Новое смещение",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "tus: чанк ≤ 16 МБ (409 upload_offset_mismatch, 410, 413, 415)",
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/v1/uploads/{upload_id}": {
+      "get": {
+        "operationId": "uploads_get",
+        "parameters": [
+          {
+            "description": "32 hex",
+            "in": "path",
+            "name": "upload_id",
+            "required": true,
+            "schema": {
+              "description": "32 hex",
+              "pattern": "^[a-f0-9]{32}$",
+              "title": "Upload Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Состояние загрузки",
+        "tags": [
+          "uploads"
+        ]
+      }
+    }
+  },
+  "tag": "uploads"
+}

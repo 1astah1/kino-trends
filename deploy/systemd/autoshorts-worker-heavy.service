@@ -1,0 +1,83 @@
+# Auto Shorts v1 — тяжёлый воркер: ffmpeg (рендер, превью, QC, прокси, peaks, раскадровка), GigaAM ASR,
+# рефрейм, анализ структуры. docs/ARCHITECTURE.md §2.2, §6.1, §8.1. Портов не слушает.
+#
+# РОВНО ОДИН экземпляр: pg_try_advisory_lock(771001) + flock /run/lock/autoshorts-heavy.lock (§2.2).
+# Юнит не шаблонный, второй копии не будет; /run/lock открыт на запись ради flock.
+#
+# Лимиты ниже — профиль shared_dev (§8.1): машина общая с живыми сервисами, тяжёлая работа не должна
+# их выдавливать. ionice не используется: на mq-deadline он ничего не даёт (§0.1 п. 6), поэтому
+# работают лимиты пропускной способности IO. Устройство — корневой диск (lsblk; на VPS часто /dev/vda):
+# если оно другое, поправьте IO*BandwidthMax drop-in'ом (systemctl edit autoshorts-worker-heavy).
+# Выделенный VPS (dedicated_small: Nice=5, MemoryMax=3G, без CPUQuota и IO-лимитов) —
+# drop-in deploy/systemd/profiles/dedicated_small/autoshorts-worker-heavy.service.d/.
+# Проверка на хосте: systemctl show autoshorts-worker-heavy -p CPUQuotaPerSecUSec -p MemoryMax -p Nice
+[Unit]
+Description=Auto Shorts heavy worker (ffmpeg, ASR; exactly one instance)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+PartOf=autoshorts.target
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=autoshorts
+Group=autoshorts
+WorkingDirectory=/opt/auto-shorts
+EnvironmentFile=/opt/auto-shorts/.env
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+Environment=HOME=/var/lib/autoshorts XDG_CACHE_HOME=/var/cache/autoshorts
+# Потоки библиотек (§8.1): ffmpeg -threads 2, ORT intra 2, BLAS по одному
+Environment=FFMPEG_THREADS=2 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 NUMBA_NUM_THREADS=1
+ExecStart=/opt/auto-shorts/.venv/bin/autoshorts-worker --class heavy
+Restart=on-failure
+RestartSec=15
+# SIGTERM: воркер отменяет текущий ffmpeg (killpg группы) и возвращает задачу в очередь без траты
+# попытки. KillMode=mixed: SIGTERM получает только главный процесс (при control-group ffmpeg умер бы
+# от SIGTERM раньше, чем воркер отменит задачу, и попытка засчиталась бы как сбой); всё, что не вышло
+# за 60 с, systemd добивает SIGKILL по всей cgroup, включая дочерние ffmpeg
+KillMode=mixed
+TimeoutStopSec=60
+
+# Ресурсы: профиль shared_dev (§8.1)
+Nice=15
+CPUWeight=20
+CPUQuota=200%
+MemoryHigh=1300M
+MemoryMax=1800M
+IOReadBandwidthMax=/dev/sda 60M
+IOWriteBandwidthMax=/dev/sda 40M
+TasksMax=512
+# при нехватке памяти на машине OOM-киллер выбирает тяжёлый воркер первым, а не соседей
+OOMScoreAdjust=500
+
+# Песочница
+UMask=0027
+CacheDirectory=autoshorts
+CacheDirectoryMode=0750
+ReadWritePaths=/var/lib/autoshorts -/run/lock
+# legacy config.py создаёт render_tmp и master_archive при импорте; убрать в M7-C
+ReadWritePaths=-/opt/auto-shorts/render_tmp -/opt/auto-shorts/assets/master_archive
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=autoshorts.target

@@ -1,0 +1,39 @@
+# Режим B dev-compose (docs/ARCHITECTURE.md §8.4) — надстройка над docker-compose.yml.
+#
+# Экономный режим для общего бокса: postgres и web из compose не поднимаются, api/public/воркеры идут
+# из .venv (deploy/dev/mode-b.sh) против ОТДЕЛЬНОЙ базы в системном PostgreSQL 16. Контейнерами
+# по требованию поднимаются только тяжёлый воркер и web — в сети хоста, потому что системный PG
+# слушает только 127.0.0.1:5432, а api из .venv — 127.0.0.1:18300.
+#
+#   docker compose -f docker-compose.yml -f deploy/compose.mode-b.yml --profile heavy up -d worker-heavy
+#   docker compose -f docker-compose.yml -f deploy/compose.mode-b.yml --profile web up -d web
+#   docker compose -f docker-compose.yml -f deploy/compose.mode-b.yml --profile heavy --profile web down
+#
+# Обязательные переменные (окружение или .env; без них compose откажется работать):
+#   AS_DEV_DATABASE_URL  отдельная база, например postgresql://autoshorts:autoshorts@127.0.0.1:5432/autoshorts_v1.
+#                        НЕ legacy-база "autoshorts" и не autoshorts_test* (тесты её чистят).
+#   AS_DEV_MEDIA_ROOT    абсолютный путь медиатеки — тот же, что MEDIA_ROOT у процессов из .venv
+#                        (монтируется по тому же пути, чтобы пути в базе совпадали у всех процессов).
+# Относительные пути ниже считаются от корня репозитория (каталог первого compose-файла).
+
+services:
+  worker-heavy:
+    network_mode: host
+    environment:
+      DATABASE_URL: ${AS_DEV_DATABASE_URL:?AS_DEV_DATABASE_URL is required in mode B (separate database, not legacy autoshorts)}
+      MEDIA_ROOT: ${AS_DEV_MEDIA_ROOT:?AS_DEV_MEDIA_ROOT is required in mode B (absolute path shared with .venv processes)}
+    volumes: !override
+      - ./src:/app/src:ro
+      - ./config:/app/config:ro
+      - ./var/models:/var/lib/autoshorts/models
+      - ./var/backups:/var/lib/autoshorts/backups
+      - ${AS_DEV_MEDIA_ROOT:?AS_DEV_MEDIA_ROOT is required in mode B}:${AS_DEV_MEDIA_ROOT:?AS_DEV_MEDIA_ROOT is required in mode B}
+    depends_on: !reset {}
+
+  web:
+    network_mode: host
+    ports: !reset []
+    environment:
+      AS_API_ORIGIN: http://127.0.0.1:18300
+      AS_WEB_HOST: 127.0.0.1
+      AS_WEB_PORT: "18301"

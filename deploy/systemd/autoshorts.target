@@ -1,0 +1,12 @@
+# Auto Shorts v1 — группа процессов. Юниты с WantedBy=autoshorts.target подтягиваются при старте,
+# а через PartOf= останавливаются и перезапускаются вместе с группой:
+#   systemctl stop autoshorts.target     # например, перед миграциями 0003/0004 (§4.1)
+#   systemctl start autoshorts.target
+# Штатная выкладка перезапускает юниты по одному (§8.5), а не всю группу разом.
+[Unit]
+Description=Auto Shorts v1 (api, public, workers, bot)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+After=network-online.target postgresql.service
+
+[Install]
+WantedBy=multi-user.target

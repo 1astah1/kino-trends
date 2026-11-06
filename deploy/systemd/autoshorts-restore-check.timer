@@ -1,0 +1,14 @@
+# Auto Shorts v1 — проверка восстановления раз в неделю: воскресенье 05:30 по Москве,
+# после ночного дампа (03:00) и уборки (04:00). Включать после появления команды в M7-A.
+[Unit]
+Description=Auto Shorts weekly restore check (Sunday 05:30 Europe/Moscow)
+Documentation=file:///opt/auto-shorts/docs/ARCHITECTURE.md
+
+[Timer]
+OnCalendar=Sun *-*-* 05:30:00 Europe/Moscow
+Persistent=true
+RandomizedDelaySec=10min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

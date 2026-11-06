@@ -1,0 +1,886 @@
+{
+  "components": {
+    "schemas": {
+      "ChannelRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "platform"
+        ],
+        "title": "ChannelRef",
+        "type": "object"
+      },
+      "CollectorReason": {
+        "description": "Причина не-ok состояния (`collector_state.reason`).",
+        "enum": [
+          "no_api_key",
+          "quota_exhausted",
+          "quota_soft_limit",
+          "network_error",
+          "http_error",
+          "auth_error",
+          "tool_missing",
+          "not_configured",
+          "manual_only"
+        ],
+        "title": "CollectorReason",
+        "type": "string"
+      },
+      "CollectorState": {
+        "description": "Состояние коллектора (`collector_state.state`).",
+        "enum": [
+          "ok",
+          "idle",
+          "disabled",
+          "degraded",
+          "paused",
+          "failing"
+        ],
+        "title": "CollectorState",
+        "type": "string"
+      },
+      "ErrorBody": {
+        "properties": {
+          "code": {
+            "description": "Машинный код ошибки, латиница snake_case",
+            "examples": [
+              "job_not_found"
+            ],
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Подробности; для 422 — `errors: [{loc, msg, type}]`",
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "description": "Сообщение для человека (по-русски)",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "description": "Единый формат ошибки: `{\"error\": {\"code\", \"message\", \"details\"}}`.",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "ManualDueItem": {
+        "properties": {
+          "age_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Hours"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ChannelRef"
+          },
+          "collector_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorReason"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Почему не собралось автоматически"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "last_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Captured At"
+          },
+          "last_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Views"
+          },
+          "manual_due_at": {
+            "format": "date-time",
+            "title": "Manual Due At",
+            "type": "string"
+          },
+          "platform": {
+            "$ref": "#/components/schemas/Platform"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/PublicationStatus"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "video_uid": {
+            "title": "Video Uid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication_id",
+          "job_id",
+          "video_uid",
+          "platform",
+          "url",
+          "channel",
+          "status",
+          "published_at",
+          "age_hours",
+          "manual_due_at",
+          "last_captured_at",
+          "last_views",
+          "collector_reason"
+        ],
+        "title": "ManualDueItem",
+        "type": "object"
+      },
+      "ManualDuePage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ManualDueItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "limit",
+          "offset",
+          "items"
+        ],
+        "title": "ManualDuePage",
+        "type": "object"
+      },
+      "ManualMetricsCreate": {
+        "additionalProperties": false,
+        "description": "Ручной ввод счётчиков (VK Клипы, YouTube без ключа). Пусто в `captured_at` — сейчас.",
+        "properties": {
+          "captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Когда сняты цифры; не раньше публикации и не в будущем",
+            "title": "Captured At"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "maximum": 100000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "maximum": 100000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "maximum": 100000000000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "views": {
+            "maximum": 100000000000.0,
+            "minimum": 0.0,
+            "title": "Views",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "views"
+        ],
+        "title": "ManualMetricsCreate",
+        "type": "object"
+      },
+      "ManualMetricsResult": {
+        "properties": {
+          "freshness": {
+            "$ref": "#/components/schemas/PublicationFreshness"
+          },
+          "snapshot": {
+            "$ref": "#/components/schemas/MetricsSnapshot"
+          },
+          "warnings": {
+            "description": "Коды предупреждений: views_decreased (меньше прошлого снимка), large_jump (рост больше чем в 20 раз)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "snapshot",
+          "freshness",
+          "warnings"
+        ],
+        "title": "ManualMetricsResult",
+        "type": "object"
+      },
+      "MetricsSnapshot": {
+        "properties": {
+          "age_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Hours"
+          },
+          "captured_at": {
+            "format": "date-time",
+            "title": "Captured At",
+            "type": "string"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comments"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ручной ввод: кто",
+            "title": "Created By"
+          },
+          "engaged_views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engaged Views"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "likes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Likes"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "publication_id": {
+            "title": "Publication Id",
+            "type": "integer"
+          },
+          "shares": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shares"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MetricsSource"
+          },
+          "views": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Views"
+          }
+        },
+        "required": [
+          "id",
+          "publication_id",
+          "captured_at",
+          "age_hours",
+          "views",
+          "likes",
+          "comments",
+          "shares",
+          "engaged_views",
+          "source",
+          "created_by",
+          "note"
+        ],
+        "title": "MetricsSnapshot",
+        "type": "object"
+      },
+      "MetricsSource": {
+        "enum": [
+          "yt_data",
+          "yt_analytics",
+          "vk_api",
+          "ytdlp",
+          "manual"
+        ],
+        "title": "MetricsSource",
+        "type": "string"
+      },
+      "Platform": {
+        "enum": [
+          "youtube",
+          "vk"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PublicationFreshness": {
+        "description": "Свежесть метрик одной публикации (`Publication.freshness`, карточка ролика).",
+        "properties": {
+          "collector": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MetricsSource"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Коллектор, который сейчас ведёт публикацию"
+          },
+          "collector_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "collector_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CollectorState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_captured_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Время последнего снимка (любой источник)",
+            "title": "Last Captured At"
+          },
+          "last_poll_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Poll Error"
+          },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Polled At"
+          },
+          "manual_due": {
+            "description": "Ждёт ручного ввода (manual_due_at <= now)",
+            "title": "Manual Due",
+            "type": "boolean"
+          },
+          "manual_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Manual Due At"
+          },
+          "metrics_age_min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Минут с последнего снимка",
+            "title": "Metrics Age Min"
+          },
+          "next_poll_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Poll At"
+          },
+          "poll_failures": {
+            "title": "Poll Failures",
+            "type": "integer"
+          },
+          "poll_step": {
+            "description": "Ступень лестницы опроса",
+            "title": "Poll Step",
+            "type": "integer"
+          },
+          "stale": {
+            "description": "next_poll_at просрочен больше чем на METRICS_OVERDUE_GRACE_MIN",
+            "title": "Stale",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "collector",
+          "collector_state",
+          "collector_reason",
+          "last_polled_at",
+          "last_captured_at",
+          "next_poll_at",
+          "poll_step",
+          "metrics_age_min",
+          "stale",
+          "manual_due",
+          "manual_due_at",
+          "poll_failures",
+          "last_poll_error"
+        ],
+        "title": "PublicationFreshness",
+        "type": "object"
+      },
+      "PublicationStatus": {
+        "enum": [
+          "live",
+          "unlisted",
+          "private",
+          "removed_by_platform",
+          "deleted_by_us"
+        ],
+        "title": "PublicationStatus",
+        "type": "string"
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/metrics/manual-due": {
+      "get": {
+        "operationId": "metrics_manual_due",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/Platform"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channel_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "pattern": "^[a-z0-9][a-z0-9_-]{1,39}$",
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Channel Id"
+            }
+          },
+          {
+            "description": "Размер страницы, ≤ 200",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Размер страницы, ≤ 200",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Смещение",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "description": "Смещение",
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualDuePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Публикации, которые ждут ручного ввода метрик (VK без yt-dlp, YouTube без ключа)",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/metrics/manual": {
+      "post": {
+        "operationId": "metrics_manual_create",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualMetricsCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManualMetricsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Ручной снимок счётчиков публикации (source=manual)",
+        "tags": [
+          "metrics"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/metrics/{snapshot_id}": {
+      "delete": {
+        "operationId": "metrics_snapshot_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "title": "Publication Id",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "path",
+            "name": "snapshot_id",
+            "required": true,
+            "schema": {
+              "title": "Snapshot Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка запроса: `{error: {code, message, details}}`"
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Ошибка сервера или 501 not_implemented"
+          }
+        },
+        "summary": "Удалить ошибочный ручной снимок (снимки коллекторов не удаляются: 409)",
+        "tags": [
+          "metrics"
+        ]
+      }
+    }
+  },
+  "tag": "metrics"
+}
