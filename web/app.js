@@ -233,6 +233,37 @@ function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Ma
 
 // ---------- общие куски ----------
 const facts = items => h('div', { class: 'facts' }, items.filter(Boolean).map(([label, value, sub]) => h('div', { class: 'fact' }, h('b', null, value), h('span', null, label, FACT_HELP[label] ? helpIcon(FACT_HELP[label]) : null), sub ? h('i', null, sub) : null)));
+// жизнь каналов: когда канал «умер» (ролики выходят, показов нет) и когда ожил — kinotrends/vitality.py
+const msk = iso => iso ? new Date(iso).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+const VITAL = { alive: ['жив', 'tag-good'], dead: ['умер', 'tag-bad'], dying: ['умирает', 'tag-warn'], never: ['не взлетал', 'tag-warn'], weak: ['слабый', 'tag-warn'], new: ['мало данных', ''] };
+function vitalityPanel(v) {
+  const th = v.thresholds || { zero: 20, alive: 100, streak: 4 };
+  const cell = r => h('span', { class: 'vcell ' + (r.v24 >= th.alive ? 'vc-ok' : r.v24 <= th.zero ? 'vc-zero' : 'vc-mid'),
+    title: `${msk(r.published_at)} МСК — ${r.v24} просм. за сутки` });
+  const rows = Object.entries(v.channels).sort((a, b) => (a[1].status === 'dead' ? -1 : 0) - (b[1].status === 'dead' ? -1 : 0)).map(([id, c]) => {
+    const [label, cls] = VITAL[c.status] || [c.status, ''];
+    const la = c.last_alive;
+    return h('tr', null, h('td', { class: 'row-title' }, c.title || id),
+      h('td', null, h('span', { class: 'tag ' + cls }, label)),
+      h('td', null, c.status === 'dead' || c.status === 'dying' ? msk(c.since) + ' МСК' : '—'),
+      h('td', null, la ? `${msk(la.published_at)} · ${fmtN(la.v24)}` : '—'),
+      h('td', null, h('span', { class: 'vstrip' }, (c.recent || []).map(cell))));
+  });
+  const ev = (v.events || []).slice(0, 30).map(e => {
+    const name = (v.channels[e.channel_id] || {}).title || e.channel_id;
+    const what = e.kind === 'died' ? h('span', { class: 'tag tag-bad' }, 'умер') : e.kind === 'revived' ? h('span', { class: 'tag tag-good' }, 'ожил') : h('span', { class: 'tag' }, 'заметка');
+    const ex = e.kind === 'died' ? `первый ноль: «${(e.title || '').slice(0, 50)}»; до этого живой — ${fmtN((e.evidence.last_alive || {}).v24 || 0)} за сутки`
+      : e.kind === 'revived' ? `«${(e.title || '').slice(0, 50)}» — ${fmtN(e.evidence.v24 || 0)} за сутки после ${e.evidence.zeros_before} нулей` : (e.title || '');
+    return h('li', null, h('b', null, msk(e.at) + ' МСК'), ' · ', name, ' ', what, h('span', { class: 'sub' }, ' ' + ex));
+  });
+  return panel('Жизнь каналов', h('div', null,
+    h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' },
+      h('thead', null, h('tr', null, h('th', null, 'Канал'), h('th', null, 'Состояние'), h('th', null, 'Умер с'), h('th', null, 'Последний живой'), h('th', null, 'Ролики за сутки, по порядку'))),
+      h('tbody', null, rows))),
+    ev.length ? h('ul', { class: 'plain-list', style: 'margin-top:12px' }, ev) : null),
+    `ноль — ≤${th.zero} просмотров за первые сутки, живой — ≥${th.alive}; умер — ${th.streak} нуля подряд после живых роликов`);
+}
+
 const panel = (title, body, hint, actions) => h('section', { class: 'panel' }, h('div', { class: 'panel-head' }, h('h2', null, title, PANEL_HELP[title] ? helpIcon(PANEL_HELP[title]) : null), hint ? h('span', { class: 'hint' }, hint) : null, actions || null), h('div', { class: 'panel-body' + (body?.classList?.contains('tbl-wrap') ? ' tight' : '') }, body));
 const empty = (title, text) => h('div', { class: 'empty' }, h('b', null, title), text || '');
 const skeleton = (rows = 6) => h('div', { class: 'panel-body' }, Array.from({ length: rows }, (_, i) => h('div', { class: 'skeleton', style: `margin:10px 0;width:${90 - (i * 13) % 40}%` })));
@@ -1047,6 +1078,8 @@ async function renderResults(main) {
     box.append(h('div', { class: 'status-line' }, h('span', null, 'проверено: ', h('b', null, d.checked_at ? ago(d.checked_at) : 'ещё нет')),
       h('span', null, 'роликов: ', h('b', null, String(d.publications.length))),
       h('span', null, 'заблокировано: ', h('b', null, String(d.publications.filter(p => p.block).length)))));
+    const vit = d.vitality || {};
+    if (Object.keys(vit.channels || {}).length) box.append(vitalityPanel(vit));
     if ((d.formats || []).length) box.append(panel('Формат роликов: что работает', h('div', { class: 'tbl-wrap' }, h('table', { class: 'tbl' },
       h('thead', null, h('tr', null, h('th', null, 'Формат'), h('th', { class: 'num' }, 'Вышло'),
         h('th', { class: 'num', title: 'старше 6 ч и не более 5 просмотров — YouTube ролик не показывал' }, 'Не показаны'),

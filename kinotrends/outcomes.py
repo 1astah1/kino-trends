@@ -391,6 +391,11 @@ def channel_health(conn: sqlite3.Connection, settings: dict | None = None) -> di
     return out
 
 
+def _vitality(conn: sqlite3.Connection) -> dict:
+    from . import vitality
+    return vitality.state(conn)
+
+
 def report(conn: sqlite3.Connection) -> dict:
     """Для вкладки «Итоги»: публикации по каналам, рейтинг произведений, запреты."""
     init(conn)
@@ -401,7 +406,7 @@ def report(conn: sqlite3.Connection) -> dict:
     bans = [dict(r) for r in conn.execute("SELECT * FROM title_bans ORDER BY at DESC")]
     holders = [dict(r) for r in conn.execute("SELECT * FROM holder_bans ORDER BY at DESC")]
     return {"publications": pubs, "titles": titles, "title_bans": bans, "holder_bans": holders, "formats": formats_report(conn),
-            "channels": channel_health(conn),
+            "channels": channel_health(conn), "vitality": _vitality(conn),
             "checked_at": max((p["checked_at"] for p in pubs if p.get("checked_at")), default=None)}
 
 
@@ -409,6 +414,12 @@ def run(conn: sqlite3.Connection, settings: dict, asc=None, log=print) -> dict:
     from .pipeline import client_from_settings
     asc = asc or client_from_settings(settings)
     res = collect(conn, settings, asc, log)
+    from . import vitality
+    try:
+        names = {c["id"]: c.get("title") for c in asc.channels()}
+    except Exception:  # noqa: BLE001 — без имён посчитаем по старым из итогов
+        names = {}
+    res["vitality"] = [f"{e['channel']}: {vitality.KIND_RU[e['kind']]} {e['at'][:16]}" for e in vitality.run(conn, settings, log, names=names)["new"]]
     res["learn"] = learn(conn, settings, asc, log)
     res["purge"] = purge(conn, asc, log)
     conn.execute("INSERT INTO meta(key, value) VALUES ('outcomes_at', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", (now_iso(),))

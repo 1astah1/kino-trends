@@ -49,7 +49,7 @@ LOG_KEEP_MB = 15
 LOG_NOISE = ("timeout graceful shutdown exceeded", "CancelledError", "Application shutdown")
 
 STATUS_ORDER = {"ok": 0, "info": 0, "warn": 1, "fail": 2}
-GROUP_ORDER = ("Стенд", "Очередь", "Ролики", "Приёмка", "Публикация", "Конвейер", "Хранилище", "Нейросети")
+GROUP_ORDER = ("Стенд", "Очередь", "Ролики", "Приёмка", "Каналы", "Публикация", "Конвейер", "Хранилище", "Нейросети")
 
 
 @dataclass
@@ -483,6 +483,11 @@ def run(conn: sqlite3.Connection, settings: dict, log=print, fix: bool = True) -
             checks += g_checks
         except Exception as e:  # noqa: BLE001 — сторож не должен ронять доктора
             checks.append(Check("guard.error", "Публикация", "Сторож правил", "warn", "упал", str(e)[:300]))
+    try:
+        from . import vitality
+        checks += vitality.checks(conn)  # канал умер — инцидент и уведомление, как у остальных проверок
+    except Exception as e:  # noqa: BLE001
+        checks.append(Check("vital.error", "Каналы", "Жизнь каналов", "warn", "не посчитана", str(e)[:300]))
     checks.sort(key=lambda c: GROUP_ORDER.index(c.group) if c.group in GROUP_ORDER else len(GROUP_ORDER))
     actions = (remediate(checks, stand, settings, log) if fix else []) + guard_actions
     rep = Report(at=at, status=_worst(*(c.status for c in checks)), checks=checks, actions=actions,

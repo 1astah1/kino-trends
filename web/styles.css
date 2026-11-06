@@ -332,3 +332,10 @@ details.fold > summary::before { content: "▸"; color: var(--ink-3); font-size:
 .health-strip i.hs-fail { background: var(--bad); opacity: .9; }
 .plain-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .log-pre { margin: 0; max-height: 360px; overflow: auto; font: 12px/1.5 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-word; color: var(--ink-2); }
+
+/* жизнь каналов: ролики по порядку, цвет — просмотры за первые сутки */
+.vstrip { display: inline-flex; gap: 3px; vertical-align: middle; }
+.vcell { width: 10px; height: 16px; border-radius: 2px; background: var(--line, #ccc); }
+.vcell.vc-ok { background: #2e9d5b; }
+.vcell.vc-mid { background: #d9a520; }
+.vcell.vc-zero { background: #d0453a; }
