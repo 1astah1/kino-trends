@@ -24,10 +24,11 @@ from typing import Any
 
 from .db import dumps, get_meta, loads, now_iso, set_meta
 
-STAND_HOST = "185.102.115.55"
+# адрес стенда, строка базы и панель — в настройках (stand_host, stand_db_url, stand_web; база var/, не в git)
+STAND_HOST = ""
 STAND_ROOT = "/home/devaccess/auto-shorts"
-STAND_DB = "postgresql://autoshorts:autoshorts@127.0.0.1:5432/autoshorts_v1"
-STAND_WEB = "https://185-102-115-55.sslip.io"
+STAND_DB = ""
+STAND_WEB = ""
 STAND_SERVICES = ("api", "web", "worker-light", "worker-heavy")
 RUN_EVERY_MIN = 5
 KEEP_RUNS = 600  # ~2 суток по 5 минут
@@ -211,7 +212,7 @@ def _worst(*statuses: str) -> str:
 def evaluate_stand(p: dict, settings: dict | None = None) -> list[Check]:
     if p.get("probe_error"):
         return [Check("stand.reachable", "Стенд", "Стенд доступен", "fail", "нет", p["probe_error"],
-                      "проверить VPS 185.102.115.55 и SSH-ключ ~/.ssh/kt_storage")]
+                      f"проверить VPS {stand_cfg(settings or {})['host'] or '(stand_host не задан)'} и SSH-ключ ~/.ssh/kt_storage")]
     out: list[Check] = []
     free = float(p.get("disk_free_gb") or 0)
     out.append(Check("stand.disk", "Стенд", "Диск стенда", "fail" if free < DISK_FAIL_GB else "warn" if free < DISK_WARN_GB else "ok",

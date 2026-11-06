@@ -20,7 +20,7 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 )
 # Wikimedia с 2026 отвечает 403 на User-Agent без адреса для связи (политика UA) — указываем сайт сервиса
-WIKIDATA_UA = "kino-trends/0.2 (+https://hubproxy.win/kt-d3764d18/) python-httpx"
+WIKIDATA_UA = "kino-trends/0.2 (+https://github.com/1astah1/kino-trends) python-httpx"
 
 # Умолчания настроек, редактируемых из интерфейса. Ключи только латиницей.
 DEFAULT_SETTINGS: dict[str, str] = {

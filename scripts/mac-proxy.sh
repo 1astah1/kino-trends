@@ -7,9 +7,10 @@ set -u
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PID="$ROOT/var/mac-proxy.pid"
 LOG="$ROOT/var/log/mac-proxy.log"
-MAC="${MAC_HOST:-giga@100.66.203.50}"
+[ -f "$ROOT/var/mac-proxy.env" ] && . "$ROOT/var/mac-proxy.env"  # MAC_HOST, STORE_HOST (не в git)
+MAC="${MAC_HOST:-}"
 MAC_KEY="${MAC_KEY:-$HOME/.ssh/bpn_ios}"
-STORE="${STORE_HOST:-root@45.157.235.178}"
+STORE="${STORE_HOST:-}"
 STORE_KEY="${STORE_KEY:-$HOME/.ssh/kt_storage}"
 PORT="${MAC_PROXY_PORT:-18341}"
 OPTS=(-o BatchMode=yes -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new -N)
@@ -26,6 +27,7 @@ keep() {  # keep <имя> <команда…>: перезапускать при
 
 case "${1:-status}" in
   start)
+    [ -n "$MAC" ] && [ -n "$STORE" ] || { echo "задайте MAC_HOST и STORE_HOST в var/mac-proxy.env"; exit 1; }
     if [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null; then echo "уже работает (pid $(cat "$PID"))"; exit 0; fi
     nohup bash "$0" loop >/dev/null 2>&1 &
     echo $! >"$PID"
